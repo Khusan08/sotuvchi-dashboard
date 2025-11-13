@@ -24,12 +24,17 @@ const Orders = () => {
   const [endDate, setEndDate] = useState<Date>();
   const [filterStatus, setFilterStatus] = useState<string>("all");
   
+  const [items, setItems] = useState<Array<{
+    product_name: string;
+    quantity: string;
+    price: string;
+  }>>([
+    { product_name: "", quantity: "1", price: "" }
+  ]);
+  
   const [formData, setFormData] = useState({
     customer_name: "",
     customer_phone: "",
-    product_name: "",
-    quantity: "1",
-    price: "",
   });
 
   useEffect(() => {
@@ -83,6 +88,22 @@ const Orders = () => {
     setFilteredOrders(filtered);
   };
 
+  const addItem = () => {
+    setItems([...items, { product_name: "", quantity: "1", price: "" }]);
+  };
+
+  const removeItem = (index: number) => {
+    if (items.length > 1) {
+      setItems(items.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateItem = (index: number, field: string, value: string) => {
+    const newItems = [...items];
+    newItems[index] = { ...newItems[index], [field]: value };
+    setItems(newItems);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -90,32 +111,35 @@ const Orders = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const quantity = parseInt(formData.quantity);
-      const price = parseFloat(formData.price);
-      const total = quantity * price;
+      // Create multiple orders for each item
+      const orders = items.map(item => {
+        const quantity = parseInt(item.quantity);
+        const price = parseFloat(item.price);
+        const total = quantity * price;
 
-      const { error } = await supabase.from("orders").insert({
-        seller_id: user.id,
-        customer_name: formData.customer_name,
-        customer_phone: formData.customer_phone,
-        product_name: formData.product_name,
-        quantity,
-        price,
-        total_amount: total,
-        status: "pending",
+        return {
+          seller_id: user.id,
+          customer_name: formData.customer_name,
+          customer_phone: formData.customer_phone,
+          product_name: item.product_name,
+          quantity,
+          price,
+          total_amount: total,
+          status: "pending",
+        };
       });
+
+      const { error } = await supabase.from("orders").insert(orders);
 
       if (error) throw error;
 
-      toast.success("Zakaz muvaffaqiyatli qo'shildi!");
+      toast.success(`${orders.length} ta zakaz qo'shildi!`);
       setDialogOpen(false);
       setFormData({
         customer_name: "",
         customer_phone: "",
-        product_name: "",
-        quantity: "1",
-        price: "",
       });
+      setItems([{ product_name: "", quantity: "1", price: "" }]);
       fetchOrders();
     } catch (error: any) {
       toast.error(error.message);
@@ -180,40 +204,71 @@ const Orders = () => {
                     onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="product_name">Mahsulot</Label>
-                  <Input
-                    id="product_name"
-                    value={formData.product_name}
-                    onChange={(e) => setFormData({ ...formData, product_name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="quantity">Soni</Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      min="1"
-                      value={formData.quantity}
-                      onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                      required
-                    />
+
+                <div className="space-y-3 border-t pt-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Mahsulotlar</Label>
+                    <Button type="button" size="sm" variant="outline" onClick={addItem}>
+                      <Plus className="h-3 w-3 mr-1" />
+                      Mahsulot qo'shish
+                    </Button>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Narxi (so'm)</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      required
-                    />
-                  </div>
+                  
+                  {items.map((item, index) => (
+                    <Card key={index} className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Mahsulot {index + 1}</span>
+                          {items.length > 1 && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => removeItem(index)}
+                            >
+                              O'chirish
+                            </Button>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`product_${index}`}>Mahsulot nomi</Label>
+                          <Input
+                            id={`product_${index}`}
+                            value={item.product_name}
+                            onChange={(e) => updateItem(index, "product_name", e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <Label htmlFor={`quantity_${index}`}>Soni</Label>
+                            <Input
+                              id={`quantity_${index}`}
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) => updateItem(index, "quantity", e.target.value)}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`price_${index}`}>Narxi (so'm)</Label>
+                            <Input
+                              id={`price_${index}`}
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.price}
+                              onChange={(e) => updateItem(index, "price", e.target.value)}
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
                 </div>
+                
                 <Button type="submit" className="w-full">
                   Saqlash
                 </Button>
