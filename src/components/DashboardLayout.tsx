@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { LogOut, LayoutDashboard, ShoppingCart, User } from "lucide-react";
+import { LogOut, LayoutDashboard, ShoppingCart, User, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -13,6 +14,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [loading, setLoading] = useState(true);
+  const { isAdmin } = useUserRole();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -50,6 +52,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { path: "/", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/orders", icon: ShoppingCart, label: "Zakazlar" },
     { path: "/profile", icon: User, label: "Profil" },
+    ...(isAdmin ? [{ path: "/admin", icon: Shield, label: "Admin" }] : []),
   ];
 
   return (

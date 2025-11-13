@@ -1,0 +1,292 @@
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import DashboardLayout from "@/components/DashboardLayout";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Users, ShoppingCart } from "lucide-react";
+import { toast } from "sonner";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useNavigate } from "react-router-dom";
+
+const Admin = () => {
+  const { isAdmin, loading: roleLoading } = useUserRole();
+  const navigate = useNavigate();
+  const [sellers, setSellers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    full_name: "",
+    phone: "",
+  });
+
+  useEffect(() => {
+    if (!roleLoading && !isAdmin) {
+      navigate("/");
+      toast.error("Ruxsat yo'q");
+    }
+  }, [isAdmin, roleLoading, navigate]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchSellers();
+    }
+  }, [isAdmin]);
+
+  const fetchSellers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(`
+          *,
+          user_roles!inner(role)
+        `)
+        .eq("user_roles.role", "seller")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      // Fetch order stats for each seller
+      const sellersWithStats = await Promise.all(
+        (data || []).map(async (seller) => {
+          const { data: orders } = await supabase
+            .from("orders")
+            .select("*")
+            .eq("seller_id", seller.id);
+
+          const totalOrders = orders?.length || 0;
+          const totalRevenue = orders?.reduce((sum, o) => sum + parseFloat(String(o.total_amount)), 0) || 0;
+
+          return {
+            ...seller,
+            totalOrders,
+            totalRevenue,
+          };
+        })
+      );
+
+      setSellers(sellersWithStats);
+    } catch (error) {
+      console.error("Error fetching sellers:", error);
+      toast.error("Sotuvchilarni yuklashda xato");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateSeller = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-seller`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          full_name: formData.full_name,
+          phone: formData.phone,
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create seller');
+      }
+
+      toast.success("Sotuvchi yaratildi!");
+      setDialogOpen(false);
+      setFormData({
+        email: "",
+        password: "",
+        full_name: "",
+        phone: "",
+      });
+      fetchSellers();
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  if (roleLoading || loading) {
+    return (
+      <DashboardLayout>
+        <div className="text-center text-muted-foreground">Yuklanmoqda...</div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!isAdmin) {
+    return null;
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Admin Panel</h2>
+            <p className="text-muted-foreground mt-2">
+              Sotuvchilarni boshqarish
+            </p>
+          </div>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Yangi sotuvchi
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Yangi sotuvchi yaratish</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleCreateSeller} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="full_name">To'liq ism</Label>
+                  <Input
+                    id="full_name"
+                    value={formData.full_name}
+                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email (Login)</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Parol</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Telefon</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  />
+                </div>
+                <Button type="submit" className="w-full">
+                  Yaratish
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Jami sotuvchilar
+              </CardTitle>
+              <Users className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{sellers.length}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Jami zakazlar
+              </CardTitle>
+              <ShoppingCart className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {sellers.reduce((sum, s) => sum + s.totalOrders, 0)}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Jami daromad
+              </CardTitle>
+              <ShoppingCart className="h-4 w-4 text-success" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {sellers.reduce((sum, s) => sum + s.totalRevenue, 0).toLocaleString()} so'm
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Sotuvchilar</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Ism</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Telefon</TableHead>
+                    <TableHead>Zakazlar</TableHead>
+                    <TableHead>Daromad</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sellers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        Sotuvchilar topilmadi
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    sellers.map((seller) => (
+                      <TableRow key={seller.id}>
+                        <TableCell className="font-medium">{seller.full_name}</TableCell>
+                        <TableCell>{seller.id}</TableCell>
+                        <TableCell>{seller.phone || "-"}</TableCell>
+                        <TableCell>{seller.totalOrders}</TableCell>
+                        <TableCell>{seller.totalRevenue.toLocaleString()} so'm</TableCell>
+                        <TableCell>
+                          <Badge variant="default">Active</Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </DashboardLayout>
+  );
+};
+
+export default Admin;
