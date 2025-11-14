@@ -25,9 +25,11 @@ const Leads = () => {
   const [formData, setFormData] = useState({
     customer_name: "",
     customer_phone: "",
-    customer_email: "",
-    source: "",
+    activity: "",
+    employee: "",
+    lead_type: "",
     notes: "",
+    price: "",
   });
 
   useEffect(() => {
@@ -84,9 +86,11 @@ const Leads = () => {
         seller_id: user.id,
         customer_name: formData.customer_name,
         customer_phone: formData.customer_phone,
-        customer_email: formData.customer_email,
-        source: formData.source,
+        activity: formData.activity,
+        employee: formData.employee,
+        lead_type: formData.lead_type,
         notes: formData.notes,
+        price: formData.price ? parseFloat(formData.price) : null,
         status: "new",
       });
 
@@ -97,9 +101,11 @@ const Leads = () => {
       setFormData({
         customer_name: "",
         customer_phone: "",
-        customer_email: "",
-        source: "",
+        activity: "",
+        employee: "",
+        lead_type: "",
         notes: "",
+        price: "",
       });
       fetchLeads();
     } catch (error: any) {
@@ -167,7 +173,7 @@ const Leads = () => {
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="customer_name">Mijoz ismi</Label>
+                  <Label htmlFor="customer_name">Ism</Label>
                   <Input
                     id="customer_name"
                     value={formData.customer_name}
@@ -176,7 +182,7 @@ const Leads = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="customer_phone">Telefon</Label>
+                  <Label htmlFor="customer_phone">Nomer</Label>
                   <Input
                     id="customer_phone"
                     value={formData.customer_phone}
@@ -184,32 +190,40 @@ const Leads = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="customer_email">Email</Label>
+                  <Label htmlFor="activity">Faoliyat</Label>
                   <Input
-                    id="customer_email"
-                    type="email"
-                    value={formData.customer_email}
-                    onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })}
+                    id="activity"
+                    value={formData.activity}
+                    onChange={(e) => setFormData({ ...formData, activity: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="source">Manba</Label>
-                  <Select value={formData.source} onValueChange={(value) => setFormData({ ...formData, source: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Tanlang" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="telegram">Telegram</SelectItem>
-                      <SelectItem value="instagram">Instagram</SelectItem>
-                      <SelectItem value="facebook">Facebook</SelectItem>
-                      <SelectItem value="website">Website</SelectItem>
-                      <SelectItem value="referral">Tavsiya</SelectItem>
-                      <SelectItem value="other">Boshqa</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="employee">Xodim</Label>
+                  <Input
+                    id="employee"
+                    value={formData.employee}
+                    onChange={(e) => setFormData({ ...formData, employee: e.target.value })}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="notes">Izohlar</Label>
+                  <Label htmlFor="lead_type">Lead</Label>
+                  <Input
+                    id="lead_type"
+                    value={formData.lead_type}
+                    onChange={(e) => setFormData({ ...formData, lead_type: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="price">Narx</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Izoh</Label>
                   <Textarea
                     id="notes"
                     value={formData.notes}
@@ -237,35 +251,17 @@ const Leads = () => {
                   <SelectContent>
                     <SelectItem value="all">Barcha statuslar</SelectItem>
                     <SelectItem value="new">Yangi</SelectItem>
-                    <SelectItem value="contacted">Bog'lanildi</SelectItem>
+                    <SelectItem value="contacted">Bog'landi</SelectItem>
                     <SelectItem value="qualified">Malakali</SelectItem>
-                    <SelectItem value="converted">Konvert</SelectItem>
+                    <SelectItem value="converted">O'tkazildi</SelectItem>
                     <SelectItem value="lost">Yo'qoldi</SelectItem>
                   </SelectContent>
                 </Select>
-                
-                <Select value={filterSource} onValueChange={setFilterSource}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Barcha manbalar</SelectItem>
-                    <SelectItem value="telegram">Telegram</SelectItem>
-                    <SelectItem value="instagram">Instagram</SelectItem>
-                    <SelectItem value="facebook">Facebook</SelectItem>
-                    <SelectItem value="website">Website</SelectItem>
-                    <SelectItem value="referral">Tavsiya</SelectItem>
-                    <SelectItem value="other">Boshqa</SelectItem>
-                  </SelectContent>
-                </Select>
 
-                {(filterStatus !== "all" || filterSource !== "all") && (
+                {filterStatus !== "all" && (
                   <Button 
                     variant="outline" 
-                    onClick={() => {
-                      setFilterStatus("all");
-                      setFilterSource("all");
-                    }}
+                    onClick={() => setFilterStatus("all")}
                   >
                     Tozalash
                   </Button>
@@ -281,57 +277,48 @@ const Leads = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Sana</TableHead>
-                    <TableHead>Mijoz</TableHead>
-                    <TableHead>Aloqa</TableHead>
-                    <TableHead>Manba</TableHead>
+                    <TableHead>Ism</TableHead>
+                    <TableHead>Nomer</TableHead>
+                    <TableHead>Faoliyat</TableHead>
+                    <TableHead>Xodim</TableHead>
+                    <TableHead>Lead</TableHead>
+                    <TableHead>Izoh</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Izohlar</TableHead>
+                    <TableHead>Narx</TableHead>
                     <TableHead>Amallar</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredLeads.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                         Lidlar topilmadi
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredLeads.map((lead) => (
                       <TableRow key={lead.id}>
-                        <TableCell>{format(new Date(lead.created_at), "dd.MM.yyyy")}</TableCell>
                         <TableCell className="font-medium">{lead.customer_name}</TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {lead.customer_phone && <div>{lead.customer_phone}</div>}
-                            {lead.customer_email && <div className="text-muted-foreground">{lead.customer_email}</div>}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {lead.source && (
-                            <Badge variant="outline">{lead.source}</Badge>
-                          )}
-                        </TableCell>
+                        <TableCell>{lead.customer_phone || "-"}</TableCell>
+                        <TableCell>{lead.activity || "-"}</TableCell>
+                        <TableCell>{lead.employee || "-"}</TableCell>
+                        <TableCell>{lead.lead_type || "-"}</TableCell>
+                        <TableCell className="max-w-xs truncate">{lead.notes || "-"}</TableCell>
                         <TableCell>{getStatusBadge(lead.status)}</TableCell>
-                        <TableCell>
-                          <div className="max-w-xs truncate text-sm text-muted-foreground">
-                            {lead.notes || "-"}
-                          </div>
-                        </TableCell>
+                        <TableCell>{lead.price ? `${Number(lead.price).toLocaleString()} so'm` : "-"}</TableCell>
                         <TableCell>
                           <Select 
                             value={lead.status} 
                             onValueChange={(value) => updateLeadStatus(lead.id, value)}
                           >
-                            <SelectTrigger className="w-[140px]">
+                            <SelectTrigger className="w-32">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="new">Yangi</SelectItem>
-                              <SelectItem value="contacted">Bog'lanildi</SelectItem>
+                              <SelectItem value="contacted">Bog'landi</SelectItem>
                               <SelectItem value="qualified">Malakali</SelectItem>
-                              <SelectItem value="converted">Konvert</SelectItem>
+                              <SelectItem value="converted">O'tkazildi</SelectItem>
                               <SelectItem value="lost">Yo'qoldi</SelectItem>
                             </SelectContent>
                           </Select>
