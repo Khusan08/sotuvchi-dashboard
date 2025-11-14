@@ -66,6 +66,22 @@ const Orders = () => {
     }
   };
 
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ status: newStatus })
+        .eq("id", orderId);
+
+      if (error) throw error;
+
+      toast.success("Zakaz statusi yangilandi!");
+      fetchOrders();
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
   const filterOrders = () => {
     let filtered = [...orders];
 
@@ -384,7 +400,21 @@ const Orders = () => {
                         <TableCell className="font-medium">
                           {parseFloat(String(order.total_amount)).toLocaleString()} so'm
                         </TableCell>
-                        <TableCell>{getStatusBadge(order.status)}</TableCell>
+                        <TableCell>
+                          <Select 
+                            value={order.status} 
+                            onValueChange={(value) => updateOrderStatus(order.id, value)}
+                          >
+                            <SelectTrigger className="w-[140px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Kutilmoqda</SelectItem>
+                              <SelectItem value="completed">Bajarildi</SelectItem>
+                              <SelectItem value="cancelled">Bekor qilindi</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
