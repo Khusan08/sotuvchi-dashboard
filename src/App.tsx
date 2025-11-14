@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import Leads from "./pages/Leads";
 import Products from "./pages/Products";
 import Orders from "./pages/Orders";
+import AllOrders from "./pages/AllOrders";
 import Profile from "./pages/Profile";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/leads" element={<Leads />} />
           <Route path="/products" element={<Products />} />
           <Route path="/orders" element={<Orders />} />
+          <Route path="/all-orders" element={<AllOrders />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/admin" element={<Admin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
