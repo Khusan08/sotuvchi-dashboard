@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { LogOut, LayoutDashboard, ShoppingCart, User, Shield, Users, Package } from "lucide-react";
+import { LogOut, LayoutDashboard, ShoppingCart, User, Shield, Users, Package, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
 import { useUserRole } from "@/hooks/useUserRole";
 
@@ -54,6 +54,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { path: "/products", icon: Package, label: "Mahsulotlar" },
     { path: "/orders", icon: ShoppingCart, label: "Zakazlar (7 kun)" },
     { path: "/all-orders", icon: Package, label: "Barcha zakazlar" },
+    { path: "/tasks", icon: CheckSquare, label: "Tasklar" },
     { path: "/profile", icon: User, label: "Profil" },
     ...(isAdmin ? [{ path: "/admin", icon: Shield, label: "Admin" }] : []),
   ];
