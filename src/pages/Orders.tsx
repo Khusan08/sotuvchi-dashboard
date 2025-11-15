@@ -23,14 +23,14 @@ const Orders = () => {
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [products, setProducts] = useState<any[]>([]);
   
   const [items, setItems] = useState<Array<{
+    product_id: string;
     product_name: string;
     quantity: string;
     price: string;
-  }>>([
-    { product_name: "", quantity: "1", price: "" }
-  ]);
+  }>>([]);
   
   const [formData, setFormData] = useState({
     customer_name: "",
@@ -40,11 +40,26 @@ const Orders = () => {
 
   useEffect(() => {
     fetchOrders();
+    fetchProducts();
   }, []);
 
   useEffect(() => {
     filterOrders();
   }, [orders, startDate, endDate, filterStatus]);
+
+  const fetchProducts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .order("name");
+      
+      if (error) throw error;
+      setProducts(data || []);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -125,20 +140,45 @@ const Orders = () => {
     setFilteredOrders(filtered);
   };
 
-  const addItem = () => {
-    setItems([...items, { product_name: "", quantity: "1", price: "" }]);
+  const addProductToOrder = (product: any) => {
+    const existingIndex = items.findIndex(item => item.product_id === product.id);
+    
+    if (existingIndex >= 0) {
+      // Increase quantity if product already added
+      const newItems = [...items];
+      newItems[existingIndex].quantity = (parseInt(newItems[existingIndex].quantity) + 1).toString();
+      setItems(newItems);
+    } else {
+      // Add new product
+      setItems([...items, {
+        product_id: product.id,
+        product_name: product.name,
+        quantity: "1",
+        price: product.price.toString()
+      }]);
+    }
   };
 
   const removeItem = (index: number) => {
-    if (items.length > 1) {
-      setItems(items.filter((_, i) => i !== index));
-    }
+    setItems(items.filter((_, i) => i !== index));
   };
 
   const updateItem = (index: number, field: string, value: string) => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
     setItems(newItems);
+  };
+
+  const calculateTotal = () => {
+    return items.reduce((sum, item) => {
+      return sum + (parseInt(item.quantity) * parseFloat(item.price));
+    }, 0);
+  };
+
+  const calculateRemaining = () => {
+    const total = calculateTotal();
+    const advance = parseFloat(formData.advance_payment) || 0;
+    return Math.max(0, total - advance);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -192,7 +232,7 @@ const Orders = () => {
         customer_phone: "",
         advance_payment: "",
       });
-      setItems([{ product_name: "", quantity: "1", price: "" }]);
+      setItems([]);
       fetchOrders();
     } catch (error: any) {
       toast.error(error.message);
@@ -271,71 +311,110 @@ const Orders = () => {
                   />
                 </div>
 
-                <div className="space-y-3 border-t pt-4">
-                  <div className="flex items-center justify-between">
-                    <Label>Mahsulotlar</Label>
-                    <Button type="button" size="sm" variant="outline" onClick={addItem}>
-                      <Plus className="h-3 w-3 mr-1" />
-                      Mahsulot qo'shish
-                    </Button>
-                  </div>
+                <div className="space-y-4 border-t pt-4">
+                  <Label>Mahsulotlarni tanlang</Label>
                   
-                  {items.map((item, index) => (
-                    <Card key={index} className="p-4">
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">Mahsulot {index + 1}</span>
-                          {items.length > 1 && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => removeItem(index)}
-                            >
-                              O'chirish
-                            </Button>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`product_${index}`}>Mahsulot nomi</Label>
-                          <Input
-                            id={`product_${index}`}
-                            value={item.product_name}
-                            onChange={(e) => updateItem(index, "product_name", e.target.value)}
-                            required
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-2">
-                            <Label htmlFor={`quantity_${index}`}>Soni</Label>
-                            <Input
-                              id={`quantity_${index}`}
-                              type="number"
-                              min="1"
-                              value={item.quantity}
-                              onChange={(e) => updateItem(index, "quantity", e.target.value)}
-                              required
+                  {/* Product selection grid */}
+                  <div className="grid grid-cols-2 gap-3 max-h-[300px] overflow-y-auto p-1">
+                    {products.map((product) => (
+                      <Card 
+                        key={product.id}
+                        className="cursor-pointer hover:border-primary transition-colors overflow-hidden"
+                        onClick={() => addProductToOrder(product)}
+                      >
+                        {product.image_url ? (
+                          <div className="aspect-square relative overflow-hidden bg-muted">
+                            <img 
+                              src={product.image_url} 
+                              alt={product.name}
+                              className="w-full h-full object-cover"
                             />
                           </div>
-                          <div className="space-y-2">
-                            <Label htmlFor={`price_${index}`}>Narxi (so'm)</Label>
-                            <Input
-                              id={`price_${index}`}
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={item.price}
-                              onChange={(e) => updateItem(index, "price", e.target.value)}
-                              required
-                            />
+                        ) : (
+                          <div className="aspect-square bg-muted flex items-center justify-center">
+                            <span className="text-muted-foreground text-xs">Rasm yo'q</span>
                           </div>
-                        </div>
+                        )}
+                        <CardContent className="p-3">
+                          <h4 className="font-medium text-sm line-clamp-1">{product.name}</h4>
+                          <p className="text-xs text-primary font-semibold mt-1">
+                            {product.price.toLocaleString()} so'm
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+
+                  {/* Selected products */}
+                  {items.length > 0 && (
+                    <div className="space-y-2 border-t pt-4">
+                      <Label>Tanlangan mahsulotlar</Label>
+                      {items.map((item, index) => (
+                        <Card key={index} className="p-3">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">{item.product_name}</span>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => removeItem(index)}
+                              >
+                                O'chirish
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <Label htmlFor={`quantity_${index}`} className="text-xs">Soni</Label>
+                                <Input
+                                  id={`quantity_${index}`}
+                                  type="number"
+                                  min="1"
+                                  value={item.quantity}
+                                  onChange={(e) => updateItem(index, "quantity", e.target.value)}
+                                  className="h-8"
+                                  required
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Jami</Label>
+                                <div className="h-8 flex items-center text-sm font-semibold">
+                                  {(parseInt(item.quantity) * parseFloat(item.price)).toLocaleString()} so'm
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Summary */}
+                  {items.length > 0 && (
+                    <div className="space-y-2 bg-muted p-4 rounded-lg">
+                      <div className="flex justify-between text-sm">
+                        <span>Jami summa:</span>
+                        <span className="font-semibold">{calculateTotal().toLocaleString()} so'm</span>
                       </div>
-                    </Card>
-                  ))}
+                      {formData.advance_payment && parseFloat(formData.advance_payment) > 0 && (
+                        <>
+                          <div className="flex justify-between text-sm">
+                            <span>Avans:</span>
+                            <span className="font-semibold text-primary">
+                              -{parseFloat(formData.advance_payment).toLocaleString()} so'm
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-base font-bold border-t pt-2">
+                            <span>Qolgan summa:</span>
+                            <span className="text-primary">{calculateRemaining().toLocaleString()} so'm</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
                 
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="w-full" disabled={items.length === 0}>
                   Saqlash
                 </Button>
               </form>

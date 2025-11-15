@@ -252,52 +252,60 @@ const Products = () => {
           ) : (
             products.map((product) => (
               <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                {product.image_url && (
-                  <div className="aspect-square overflow-hidden bg-muted">
+                {product.image_url ? (
+                  <div className="aspect-square relative overflow-hidden bg-muted">
                     <img
                       src={product.image_url}
                       alt={product.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover hover:scale-105 transition-transform"
                     />
+                  </div>
+                ) : (
+                  <div className="aspect-square bg-muted flex items-center justify-center">
+                    <span className="text-muted-foreground text-sm">Rasm yo'q</span>
                   </div>
                 )}
                 <CardContent className="p-4">
-                  <h3 className="font-semibold text-lg mb-2">{product.name}</h3>
-                  {product.description && (
-                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                      {product.description}
-                    </p>
-                  )}
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-lg font-bold text-primary">
-                      {parseFloat(product.price).toLocaleString()} so'm
-                    </span>
-                    {product.category && (
-                      <span className="text-xs px-2 py-1 bg-secondary rounded-full">
-                        {product.category}
+                  <div className="space-y-3">
+                    <div>
+                      <h3 className="font-semibold text-lg line-clamp-2">{product.name}</h3>
+                      {product.description && (
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                          {product.description}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t">
+                      <span className="text-xl font-bold text-primary">
+                        {parseFloat(product.price).toLocaleString()} so'm
                       </span>
+                      {product.category && (
+                        <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                          {product.category}
+                        </span>
+                      )}
+                    </div>
+                    {isAdmin && (
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleEdit(product)}
+                        >
+                          <Pencil className="h-3 w-3 mr-1" />
+                          Tahrirlash
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete(product.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     )}
                   </div>
-                  {isAdmin && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => handleEdit(product)}
-                      >
-                        <Pencil className="h-3 w-3 mr-1" />
-                        Tahrirlash
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDelete(product.id)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             ))
