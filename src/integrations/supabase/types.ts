@@ -110,6 +110,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          advance_payment: number | null
           created_at: string
           customer_name: string
           customer_phone: string | null
@@ -121,6 +122,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          advance_payment?: number | null
           created_at?: string
           customer_name: string
           customer_phone?: string | null
@@ -132,6 +134,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          advance_payment?: number | null
           created_at?: string
           customer_name?: string
           customer_phone?: string | null
@@ -211,6 +214,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      tasks: {
+        Row: {
+          created_at: string
+          description: string | null
+          due_date: string
+          id: string
+          seller_id: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          due_date: string
+          id?: string
+          seller_id: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          due_date?: string
+          id?: string
+          seller_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

@@ -3,11 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import StatsCard from "@/components/StatsCard";
 import { ShoppingCart, DollarSign, TrendingUp, Package } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalOrders: 0,
     totalRevenue: 0,
@@ -91,12 +93,14 @@ const Dashboard = () => {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatsCard
-            title="Jami zakazlar"
-            value={stats.totalOrders}
-            icon={ShoppingCart}
-            description="Joriy oyda"
-          />
+          <div onClick={() => navigate('/all-orders')} className="cursor-pointer">
+            <StatsCard
+              title="Jami zakazlar"
+              value={stats.totalOrders}
+              icon={ShoppingCart}
+              description="Joriy oyda"
+            />
+          </div>
           <StatsCard
             title="Jami daromad"
             value={`${stats.totalRevenue.toLocaleString()} so'm`}

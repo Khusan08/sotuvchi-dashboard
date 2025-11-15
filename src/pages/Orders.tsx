@@ -35,6 +35,7 @@ const Orders = () => {
   const [formData, setFormData] = useState({
     customer_name: "",
     customer_phone: "",
+    advance_payment: "",
   });
 
   useEffect(() => {
@@ -50,14 +51,34 @@ const Orders = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const { data: ordersData, error: ordersError } = await supabase
         .from("orders")
         .select("*")
         .eq("seller_id", user.id)
+        .gte("order_date", format(sevenDaysAgo, "yyyy-MM-dd"))
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setOrders(data || []);
+      if (ordersError) throw ordersError;
+
+      // Fetch order items for each order
+      const ordersWithItems = await Promise.all(
+        (ordersData || []).map(async (order) => {
+          const { data: itemsData } = await supabase
+            .from("order_items")
+            .select("*")
+            .eq("order_id", order.id);
+
+          return {
+            ...order,
+            items: itemsData || [],
+          };
+        })
+      );
+
+      setOrders(ordersWithItems);
     } catch (error) {
       console.error("Error fetching orders:", error);
       toast.error("Zakazlarni yuklashda xato");
@@ -127,33 +148,49 @@ const Orders = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Create multiple orders for each item
-      const orders = items.map(item => {
-        const quantity = parseInt(item.quantity);
-        const price = parseFloat(item.price);
-        const total = quantity * price;
+      // Calculate total amount for all items
+      const totalAmount = items.reduce((sum, item) => {
+        return sum + (parseInt(item.quantity) * parseFloat(item.price));
+      }, 0);
 
-        return {
+      const advancePayment = parseFloat(formData.advance_payment) || 0;
+
+      // Create single order
+      const { data: orderData, error: orderError } = await supabase
+        .from("orders")
+        .insert({
           seller_id: user.id,
           customer_name: formData.customer_name,
           customer_phone: formData.customer_phone,
-          product_name: item.product_name,
-          quantity,
-          price,
-          total_amount: total,
+          total_amount: totalAmount,
+          advance_payment: advancePayment,
           status: "pending",
-        };
-      });
+        })
+        .select()
+        .single();
 
-      const { error } = await supabase.from("orders").insert(orders);
+      if (orderError) throw orderError;
 
-      if (error) throw error;
+      // Create order items
+      const orderItems = items.map(item => ({
+        order_id: orderData.id,
+        product_name: item.product_name,
+        quantity: parseInt(item.quantity),
+        price: parseFloat(item.price),
+      }));
 
-      toast.success(`${orders.length} ta zakaz qo'shildi!`);
+      const { error: itemsError } = await supabase
+        .from("order_items")
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      toast.success("Zakaz qo'shildi!");
       setDialogOpen(false);
       setFormData({
         customer_name: "",
         customer_phone: "",
+        advance_payment: "",
       });
       setItems([{ product_name: "", quantity: "1", price: "" }]);
       fetchOrders();
@@ -186,9 +223,9 @@ const Orders = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Zakazlar</h2>
-            <p className="text-muted-foreground mt-2">
-              Barcha zakazlaringizni boshqaring
+            <h1 className="text-3xl font-bold">Zakazlar (oxirgi 7 kun)</h1>
+            <p className="text-muted-foreground mt-1">
+              {filteredOrders.length} ta zakaz
             </p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -218,6 +255,19 @@ const Orders = () => {
                     id="customer_phone"
                     value={formData.customer_phone}
                     onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="advance_payment">Avans to'lovi (so'm)</Label>
+                  <Input
+                    id="advance_payment"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.advance_payment}
+                    onChange={(e) => setFormData({ ...formData, advance_payment: e.target.value })}
+                    placeholder="0"
                   />
                 </div>
 
@@ -368,10 +418,10 @@ const Orders = () => {
                   <TableRow>
                     <TableHead>Sana</TableHead>
                     <TableHead>Mijoz</TableHead>
-                    <TableHead>Mahsulot</TableHead>
-                    <TableHead>Soni</TableHead>
-                    <TableHead>Narxi</TableHead>
-                    <TableHead>Jami</TableHead>
+                    <TableHead>Mahsulotlar</TableHead>
+                    <TableHead>Jami summa</TableHead>
+                    <TableHead>Avans</TableHead>
+                    <TableHead>Qolgan</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -394,11 +444,27 @@ const Orders = () => {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>{order.product_name}</TableCell>
-                        <TableCell>{order.quantity}</TableCell>
-                        <TableCell>{parseFloat(String(order.price)).toLocaleString()} so'm</TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            {order.items && order.items.length > 0 ? (
+                              order.items.map((item: any, idx: number) => (
+                                <div key={idx} className="text-sm">
+                                  {item.product_name} x{item.quantity} = {(item.quantity * item.price).toLocaleString()} so'm
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-muted-foreground">Ma'lumot yo'q</span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="font-medium">
                           {parseFloat(String(order.total_amount)).toLocaleString()} so'm
+                        </TableCell>
+                        <TableCell>
+                          {parseFloat(String(order.advance_payment || 0)).toLocaleString()} so'm
+                        </TableCell>
+                        <TableCell className="font-semibold">
+                          {(parseFloat(String(order.total_amount)) - parseFloat(String(order.advance_payment || 0))).toLocaleString()} so'm
                         </TableCell>
                         <TableCell>
                           <Select 
