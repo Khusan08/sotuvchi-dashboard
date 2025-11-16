@@ -14,7 +14,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [loading, setLoading] = useState(true);
-  const { isAdmin } = useUserRole();
+  const { isAdmin, isRop } = useUserRole();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -56,7 +56,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { path: "/all-orders", icon: Package, label: "Barcha zakazlar" },
     { path: "/tasks", icon: CheckSquare, label: "Tasklar" },
     { path: "/profile", icon: User, label: "Profil" },
-    ...(isAdmin ? [{ path: "/admin", icon: Shield, label: "Admin" }] : []),
+    ...((isAdmin || isRop) ? [{ path: "/admin", icon: Shield, label: "Boshqaruv" }] : []),
   ];
 
   return (
