@@ -14,7 +14,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useNavigate } from "react-router-dom";
 
 const Admin = () => {
-  const { isAdmin, loading: roleLoading } = useUserRole();
+  const { isAdmin, isRop, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
   const [sellers, setSellers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,17 +27,17 @@ const Admin = () => {
   });
 
   useEffect(() => {
-    if (!roleLoading && !isAdmin) {
+    if (!roleLoading && !isAdmin && !isRop) {
       navigate("/");
       toast.error("Ruxsat yo'q");
     }
-  }, [isAdmin, roleLoading, navigate]);
+  }, [isAdmin, isRop, roleLoading, navigate]);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (isAdmin || isRop) {
       fetchSellers();
     }
-  }, [isAdmin]);
+  }, [isAdmin, isRop]);
 
   const fetchSellers = async () => {
     try {
@@ -47,7 +47,7 @@ const Admin = () => {
           *,
           user_roles!inner(role)
         `)
-        .eq("user_roles.role", "seller")
+        .eq("user_roles.role", "sotuvchi")
         .order("created_at", { ascending: false });
 
       if (error) throw error;

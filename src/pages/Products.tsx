@@ -17,7 +17,7 @@ const Products = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const { isAdmin } = useUserRole();
+  const { canManage } = useUserRole();
   
   const [formData, setFormData] = useState({
     name: "",
@@ -170,7 +170,7 @@ const Products = () => {
               Barcha mahsulotlarni ko'ring
             </p>
           </div>
-          {isAdmin && (
+          {canManage && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={closeDialog}>
@@ -285,7 +285,7 @@ const Products = () => {
                         </span>
                       )}
                     </div>
-                    {isAdmin && (
+                    {canManage && (
                       <div className="flex gap-2 pt-2">
                         <Button
                           variant="outline"
