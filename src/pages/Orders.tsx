@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar } from "lucide-react";
+import { Plus, Calendar, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -20,6 +20,7 @@ const Orders = () => {
   const [filteredOrders, setFilteredOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<any>(null);
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -181,6 +182,22 @@ const Orders = () => {
     return Math.max(0, total - advance);
   };
 
+  const handleEdit = (order: any) => {
+    setEditingOrder(order);
+    setFormData({
+      customer_name: order.customer_name,
+      customer_phone: order.customer_phone || "",
+      advance_payment: order.advance_payment?.toString() || "0",
+    });
+    setItems(order.items.map((item: any) => ({
+      product_id: item.product_id || "",
+      product_name: item.product_name,
+      quantity: item.quantity.toString(),
+      price: item.price.toString(),
+    })));
+    setDialogOpen(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -188,45 +205,83 @@ const Orders = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Calculate total amount for all items
       const totalAmount = items.reduce((sum, item) => {
         return sum + (parseInt(item.quantity) * parseFloat(item.price));
       }, 0);
 
       const advancePayment = parseFloat(formData.advance_payment) || 0;
 
-      // Create single order
-      const { data: orderData, error: orderError } = await supabase
-        .from("orders")
-        .insert({
-          seller_id: user.id,
-          customer_name: formData.customer_name,
-          customer_phone: formData.customer_phone,
-          total_amount: totalAmount,
-          advance_payment: advancePayment,
-          status: "pending",
-        })
-        .select()
-        .single();
+      if (editingOrder) {
+        // Update existing order
+        const { error: orderError } = await supabase
+          .from("orders")
+          .update({
+            customer_name: formData.customer_name,
+            customer_phone: formData.customer_phone,
+            total_amount: totalAmount,
+            advance_payment: advancePayment,
+          })
+          .eq("id", editingOrder.id);
 
-      if (orderError) throw orderError;
+        if (orderError) throw orderError;
 
-      // Create order items
-      const orderItems = items.map(item => ({
-        order_id: orderData.id,
-        product_name: item.product_name,
-        quantity: parseInt(item.quantity),
-        price: parseFloat(item.price),
-      }));
+        // Delete old items
+        await supabase
+          .from("order_items")
+          .delete()
+          .eq("order_id", editingOrder.id);
 
-      const { error: itemsError } = await supabase
-        .from("order_items")
-        .insert(orderItems);
+        // Create new items
+        const orderItems = items.map(item => ({
+          order_id: editingOrder.id,
+          product_name: item.product_name,
+          quantity: parseInt(item.quantity),
+          price: parseFloat(item.price),
+        }));
 
-      if (itemsError) throw itemsError;
+        const { error: itemsError } = await supabase
+          .from("order_items")
+          .insert(orderItems);
 
-      toast.success("Zakaz qo'shildi!");
+        if (itemsError) throw itemsError;
+
+        toast.success("Zakaz yangilandi!");
+      } else {
+        // Create single order
+        const { data: orderData, error: orderError } = await supabase
+          .from("orders")
+          .insert({
+            seller_id: user.id,
+            customer_name: formData.customer_name,
+            customer_phone: formData.customer_phone,
+            total_amount: totalAmount,
+            advance_payment: advancePayment,
+            status: "pending",
+          })
+          .select()
+          .single();
+
+        if (orderError) throw orderError;
+
+        // Create order items
+        const orderItems = items.map(item => ({
+          order_id: orderData.id,
+          product_name: item.product_name,
+          quantity: parseInt(item.quantity),
+          price: parseFloat(item.price),
+        }));
+
+        const { error: itemsError } = await supabase
+          .from("order_items")
+          .insert(orderItems);
+
+        if (itemsError) throw itemsError;
+
+        toast.success("Zakaz qo'shildi!");
+      }
+      
       setDialogOpen(false);
+      setEditingOrder(null);
       setFormData({
         customer_name: "",
         customer_phone: "",
@@ -237,6 +292,17 @@ const Orders = () => {
     } catch (error: any) {
       toast.error(error.message);
     }
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setEditingOrder(null);
+    setFormData({
+      customer_name: "",
+      customer_phone: "",
+      advance_payment: "",
+    });
+    setItems([]);
   };
 
   const getStatusBadge = (status: string) => {
@@ -415,7 +481,7 @@ const Orders = () => {
                 </div>
                 
                 <Button type="submit" className="w-full" disabled={items.length === 0}>
-                  Saqlash
+                  {editingOrder ? "Yangilash" : "Saqlash"}
                 </Button>
               </form>
             </DialogContent>
@@ -502,12 +568,13 @@ const Orders = () => {
                     <TableHead>Avans</TableHead>
                     <TableHead>Qolgan</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Amallar</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredOrders.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                         Zakazlar topilmadi
                       </TableCell>
                     </TableRow>
@@ -559,6 +626,15 @@ const Orders = () => {
                               <SelectItem value="cancelled">Bekor qilindi</SelectItem>
                             </SelectContent>
                           </Select>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(order)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
