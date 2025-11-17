@@ -24,6 +24,7 @@ const Tasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [overdueCount, setOverdueCount] = useState(0);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -40,10 +41,38 @@ const Tasks = () => {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    // Count overdue tasks
+    const now = new Date();
+    const overdue = tasks.filter(task => 
+      task.status === "pending" && new Date(task.due_date) < now
+    ).length;
+    setOverdueCount(overdue);
+  }, [tasks]);
+
   const requestNotificationPermission = async () => {
     if ("Notification" in window && Notification.permission === "default") {
       await Notification.requestPermission();
     }
+  };
+
+  const playNotificationSound = () => {
+    // Create a simple beep sound using Web Audio API
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.5);
   };
 
   const checkUpcomingTasks = async () => {
@@ -62,13 +91,18 @@ const Tasks = () => {
         .gte("due_date", now.toISOString())
         .lte("due_date", fiveMinutesLater.toISOString());
 
-      if (data && data.length > 0 && Notification.permission === "granted") {
-        data.forEach((task) => {
-          new Notification("Task eslatmasi", {
-            body: `"${task.title}" vazifasi tez orada bajarilishi kerak!`,
-            icon: "/favicon.ico",
+      if (data && data.length > 0) {
+        // Play sound for notifications
+        playNotificationSound();
+        
+        if (Notification.permission === "granted") {
+          data.forEach((task) => {
+            new Notification("Task eslatmasi", {
+              body: `"${task.title}" vazifasi tez orada bajarilishi kerak!`,
+              icon: "/favicon.ico",
+            });
           });
-        });
+        }
       }
     } catch (error) {
       console.error("Error checking tasks:", error);
@@ -173,6 +207,11 @@ const Tasks = () => {
             <h1 className="text-3xl font-bold">Tasklar</h1>
             <p className="text-muted-foreground mt-1">
               {tasks.filter(t => t.status === "pending").length} ta kutilayotgan task
+              {overdueCount > 0 && (
+                <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-destructive text-destructive-foreground animate-pulse">
+                  {overdueCount} ta muddat tugagan
+                </span>
+              )}
             </p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
