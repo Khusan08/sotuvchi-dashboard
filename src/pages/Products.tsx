@@ -163,79 +163,96 @@ const Products = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Mahsulotlar</h2>
+            <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              Mahsulotlar
+            </h2>
             <p className="text-muted-foreground mt-2">
-              Barcha mahsulotlarni ko'ring
+              Barcha mahsulotlarni boshqaring
             </p>
           </div>
           {canManage && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={closeDialog}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Yangi mahsulot
+                <Button 
+                  size="lg" 
+                  className="shadow-lg hover:shadow-xl transition-shadow"
+                  onClick={closeDialog}
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  Mahsulot qo'shish
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                  <DialogTitle>
+                  <DialogTitle className="text-2xl">
                     {editingProduct ? "Mahsulotni tahrirlash" : "Yangi mahsulot qo'shish"}
                   </DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-5 mt-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Nomi</Label>
+                    <Label htmlFor="name" className="text-base font-semibold">Mahsulot nomi</Label>
                     <Input
                       id="name"
+                      placeholder="Mahsulot nomini kiriting"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       required
+                      className="h-11"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="description">Tavsif</Label>
+                    <Label htmlFor="description" className="text-base font-semibold">Tavsif</Label>
                     <Textarea
                       id="description"
+                      placeholder="Mahsulot haqida ma'lumot"
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      rows={3}
+                      rows={4}
+                      className="resize-none"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Narxi (so'm)</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      required
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="price" className="text-base font-semibold">Narxi (so'm)</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0"
+                        value={formData.price}
+                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                        required
+                        className="h-11"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="category" className="text-base font-semibold">Kategoriya</Label>
+                      <Input
+                        id="category"
+                        placeholder="Kategoriya"
+                        value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        className="h-11"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="category">Kategoriya</Label>
-                    <Input
-                      id="category"
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="image">Rasm</Label>
+                    <Label htmlFor="image" className="text-base font-semibold">Mahsulot rasmi</Label>
                     <Input
                       id="image"
                       type="file"
                       accept="image/*"
                       onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                      className="h-11 cursor-pointer"
                     />
                     {editingProduct?.image_url && !imageFile && (
                       <p className="text-sm text-muted-foreground">Mavjud rasm saqlanadi</p>
                     )}
                   </div>
-                  <Button type="submit" className="w-full">
+                  <Button type="submit" size="lg" className="w-full h-12 text-base font-semibold">
                     {editingProduct ? "Yangilash" : "Saqlash"}
                   </Button>
                 </form>
@@ -246,65 +263,88 @@ const Products = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {products.length === 0 ? (
-            <div className="col-span-full text-center text-muted-foreground py-12">
-              Mahsulotlar topilmadi
+            <div className="col-span-full text-center py-16">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-muted mb-4">
+                <Plus className="h-10 w-10 text-muted-foreground" />
+              </div>
+              <p className="text-muted-foreground text-lg">Mahsulotlar topilmadi</p>
+              {canManage && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Yangi mahsulot qo'shish uchun yuqoridagi tugmani bosing
+                </p>
+              )}
             </div>
           ) : (
             products.map((product) => (
-              <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                {product.image_url ? (
-                  <div className="aspect-square relative overflow-hidden bg-muted">
-                    <img
-                      src={product.image_url}
-                      alt={product.name}
-                      className="w-full h-full object-cover hover:scale-105 transition-transform"
-                    />
-                  </div>
-                ) : (
-                  <div className="aspect-square bg-muted flex items-center justify-center">
-                    <span className="text-muted-foreground text-sm">Rasm yo'q</span>
-                  </div>
-                )}
-                <CardContent className="p-4">
-                  <div className="space-y-3">
+              <Card key={product.id} className="group overflow-hidden hover:shadow-xl transition-all duration-300 border-2 hover:border-primary/20">
+                <div className="relative">
+                  {product.image_url ? (
+                    <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-muted to-muted/50">
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    </div>
+                  ) : (
+                    <div className="aspect-square bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-background/50 mb-2">
+                          <Plus className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                        <span className="text-muted-foreground text-sm block">Rasm yo'q</span>
+                      </div>
+                    </div>
+                  )}
+                  {product.category && (
+                    <div className="absolute top-3 right-3">
+                      <span className="text-xs font-semibold text-foreground bg-background/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg">
+                        {product.category}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <CardContent className="p-5">
+                  <div className="space-y-4">
                     <div>
-                      <h3 className="font-semibold text-lg line-clamp-2">{product.name}</h3>
+                      <h3 className="font-bold text-lg line-clamp-2 mb-2 group-hover:text-primary transition-colors">
+                        {product.name}
+                      </h3>
                       {product.description && (
-                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                        <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
                           {product.description}
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center justify-between pt-2 border-t">
-                      <span className="text-xl font-bold text-primary">
-                        {parseFloat(product.price).toLocaleString()} so'm
-                      </span>
-                      {product.category && (
-                        <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                          {product.category}
+                    <div className="pt-3 border-t">
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                          {parseFloat(product.price).toLocaleString()}
                         </span>
+                        <span className="text-sm text-muted-foreground font-medium">so'm</span>
+                      </div>
+                      {canManage && (
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 h-9 font-semibold hover:bg-primary hover:text-primary-foreground transition-colors"
+                            onClick={() => handleEdit(product)}
+                          >
+                            <Pencil className="h-4 w-4 mr-1.5" />
+                            Tahrirlash
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="h-9 w-9 p-0"
+                            onClick={() => handleDelete(product.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       )}
                     </div>
-                    {canManage && (
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => handleEdit(product)}
-                        >
-                          <Pencil className="h-3 w-3 mr-1" />
-                          Tahrirlash
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(product.id)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    )}
                   </div>
                 </CardContent>
               </Card>
