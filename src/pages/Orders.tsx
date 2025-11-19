@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { regionsData } from "@/lib/regions";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 const Orders = () => {
   const [orders, setOrders] = useState<any[]>([]);
@@ -29,6 +30,7 @@ const Orders = () => {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [products, setProducts] = useState<any[]>([]);
   const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
+  const { isAdmin } = useUserRoles();
   
   const [items, setItems] = useState<Array<{
     product_id: string;
@@ -218,6 +220,22 @@ const Orders = () => {
       price: item.price.toString(),
     })));
     setDialogOpen(true);
+  };
+
+  const handleQuickStatusUpdate = async (orderId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ status: newStatus })
+        .eq("id", orderId);
+
+      if (error) throw error;
+
+      toast.success("Status yangilandi!");
+      fetchOrders();
+    } catch (error: any) {
+      toast.error("Xatolik: " + error.message);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -767,7 +785,23 @@ const Orders = () => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {getStatusBadge(order.status)}
+                          {isAdmin ? (
+                            <Select
+                              value={order.status}
+                              onValueChange={(value) => handleQuickStatusUpdate(order.id, value)}
+                            >
+                              <SelectTrigger className="w-[140px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="processing">Jarayonda</SelectItem>
+                                <SelectItem value="delivered">Tugalandi</SelectItem>
+                                <SelectItem value="cancelled">Bekor qilindi</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            getStatusBadge(order.status)
+                          )}
                         </TableCell>
                         <TableCell>
                           <Button

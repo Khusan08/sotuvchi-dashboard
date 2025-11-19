@@ -235,16 +235,37 @@ const AllOrders = () => {
     setEditDialogOpen(true);
   };
 
+  const handleQuickStatusUpdate = async (orderId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ status: newStatus })
+        .eq("id", orderId);
+
+      if (error) throw error;
+
+      toast.success("Status yangilandi!");
+      fetchOrders();
+    } catch (error: any) {
+      toast.error("Xatolik: " + error.message);
+    }
+  };
+
   const handleUpdateOrder = async () => {
     if (!editingOrder) return;
 
     try {
+      const updateData: any = {
+        notes: editFormData.notes,
+      };
+      
+      if (isAdmin) {
+        updateData.status = editFormData.status;
+      }
+
       const { error } = await supabase
         .from("orders")
-        .update({
-          status: editFormData.status,
-          notes: editFormData.notes,
-        })
+        .update(updateData)
         .eq("id", editingOrder.id);
 
       if (error) throw error;
@@ -633,7 +654,25 @@ const AllOrders = () => {
                     <TableCell className="font-medium text-orange-600">
                       {(Number(order.total_amount) - Number(order.advance_payment || 0)).toLocaleString()} so'm
                     </TableCell>
-                    <TableCell>{getStatusBadge(order.status)}</TableCell>
+                    <TableCell>
+                      {isAdmin ? (
+                        <Select
+                          value={order.status}
+                          onValueChange={(value) => handleQuickStatusUpdate(order.id, value)}
+                        >
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="processing">Jarayonda</SelectItem>
+                            <SelectItem value="delivered">Tugalandi</SelectItem>
+                            <SelectItem value="cancelled">Bekor qilindi</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        getStatusBadge(order.status)
+                      )}
+                    </TableCell>
                     <TableCell className="max-w-[200px] truncate">{order.notes}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
@@ -690,24 +729,24 @@ const AllOrders = () => {
             <DialogTitle>Zakazni tahrirlash</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-status">Status</Label>
-              <Select
-                value={editFormData.status}
-                onValueChange={(value) => setEditFormData({ ...editFormData, status: value })}
-              >
-                <SelectTrigger id="edit-status">
-                  <SelectValue placeholder="Statusni tanlang" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Kutilmoqda</SelectItem>
-                  <SelectItem value="processing">Tayyorlanmoqda</SelectItem>
-                  <SelectItem value="shipped">Yo'lda</SelectItem>
-                  <SelectItem value="delivered">Yetkazildi</SelectItem>
-                  <SelectItem value="cancelled">Bekor qilindi</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {isAdmin && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-status">Status</Label>
+                <Select
+                  value={editFormData.status}
+                  onValueChange={(value) => setEditFormData({ ...editFormData, status: value })}
+                >
+                  <SelectTrigger id="edit-status">
+                    <SelectValue placeholder="Statusni tanlang" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="processing">Jarayonda</SelectItem>
+                    <SelectItem value="delivered">Tugalandi</SelectItem>
+                    <SelectItem value="cancelled">Bekor qilindi</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="edit-notes">Izoh</Label>
               <Textarea
