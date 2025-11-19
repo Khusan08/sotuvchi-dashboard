@@ -21,6 +21,7 @@ const Leads = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterSource, setFilterSource] = useState<string>("all");
+  const [sellers, setSellers] = useState<any[]>([]);
   
   const [formData, setFormData] = useState({
     customer_name: "",
@@ -34,6 +35,7 @@ const Leads = () => {
 
   useEffect(() => {
     fetchLeads();
+    fetchSellers();
   }, []);
 
   useEffect(() => {
@@ -58,6 +60,20 @@ const Leads = () => {
       toast.error("Lidlarni yuklashda xato");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSellers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .order("full_name");
+
+      if (error) throw error;
+      setSellers(data || []);
+    } catch (error) {
+      console.error("Error fetching sellers:", error);
     }
   };
 
@@ -198,12 +214,22 @@ const Leads = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="employee">Xodim</Label>
-                  <Input
-                    id="employee"
+                  <Label htmlFor="employee">Hodim</Label>
+                  <Select
                     value={formData.employee}
-                    onChange={(e) => setFormData({ ...formData, employee: e.target.value })}
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, employee: value })}
+                  >
+                    <SelectTrigger id="employee">
+                      <SelectValue placeholder="Hodimni tanlang" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sellers.map((seller) => (
+                        <SelectItem key={seller.id} value={seller.id}>
+                          {seller.full_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lead_type">Lead</Label>
