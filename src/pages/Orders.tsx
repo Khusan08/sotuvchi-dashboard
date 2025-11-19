@@ -15,24 +15,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-
-// Viloyatlar va tumanlar ma'lumotlari
-const regionsData: Record<string, string[]> = {
-  "Toshkent sh.": ["Bektemir", "Chilonzor", "Mirobod", "Olmazor", "Sergeli", "Shayxontohur", "Uchtepa", "Yakkasaroy", "Yashnobod", "Yunusobod", "Yangihayot"],
-  "Toshkent": ["Angren", "Bekobod", "Olmaliq", "Chirchiq", "Yangiyo'l", "Bo'ka", "Bo'stonliq", "Chinoz", "O'rtachirchiq", "Parkent", "Piskent", "Qibray", "Quyichirchiq", "Toshkent", "Ohangaron", "Yuqorichirchiq", "Zangiota"],
-  "Andijon": ["Andijon", "Asaka", "Xonobod", "Andijon", "Asaka", "Baliqchi", "Bo'z", "Buloqboshi", "Izboskan", "Jalolquduq", "Xo'jaobod", "Qo'rg'ontepa", "Marhamat", "Oltinko'l", "Paxtaobod", "Shaxrixon", "Ulug'nor"],
-  "Farg'ona": ["Farg'ona", "Marg'ilon", "Qo'qon", "Quvasoy", "Beshariq", "Bog'dod", "Buvayda", "Dang'ara", "Farg'ona", "Furqat", "O'zbekiston", "Qo'shtepa", "Rishton", "So'x", "Toshloq", "Uchko'prik", "Yozyovon"],
-  "Namangan": ["Namangan", "To'raqo'rg'on", "Chortoq", "Chust", "Kosonsoy", "Mingbuloq", "Namangan", "Norin", "Pop", "To'raqo'rg'on", "Uchqo'rg'on", "Uychi", "Yangiqo'rg'on"],
-  "Samarqand": ["Samarqand", "Kattaqo'rg'on", "Bulung'ur", "Jomboy", "Ishtixon", "Kattaqo'rg'on", "Narpay", "Nurobod", "Oqdaryo", "Paxtachi", "Payariq", "Pastdarg'om", "Qo'shrabot", "Samarqand", "Toyloq", "Urgut"],
-  "Buxoro": ["Buxoro", "Kogon", "Buxoro", "Jondor", "Kogon", "Olot", "Peshku", "Qorakul", "Qorovulbozor", "Romitan", "Shofirkon", "Vobkent", "G'ijduvon"],
-  "Navoiy": ["Navoiy", "Zarafshon", "Konimex", "Karmana", "Qiziltepa", "Xatirchi", "Navbahor", "Nurota", "Tomdi", "Uchquduq"],
-  "Qashqadaryo": ["Qarshi", "Shahrisabz", "Chiroqchi", "Dehqonobod", "G'uzor", "Kasbi", "Kitob", "Koson", "Mirishkor", "Muborak", "Nishon", "Qamashi", "Qarshi", "Shahrisabz", "Yakkabog'"],
-  "Surxondaryo": ["Termiz", "Angor", "Boysun", "Denov", "Jarqo'rg'on", "Qiziriq", "Qumqo'rg'on", "Muzrabot", "Oltinsoy", "Sariosiyo", "Sherobod", "Sho'rchi", "Termiz", "Uzun"],
-  "Jizzax": ["Jizzax", "Arnasoy", "Baxmal", "Do'stlik", "Forish", "G'allaorol", "Jizzax", "Mirzacho'l", "Paxtakor", "Yangiobod", "Zafarobod", "Zarbdor", "Zomin"],
-  "Sirdaryo": ["Guliston", "Boyovut", "Guliston", "Mirzaobod", "Oqoltin", "Sardoba", "Sayxunobod", "Sirdaryo", "Xovos"],
-  "Xorazm": ["Urganch", "Xiva", "Bog'ot", "Gurlan", "Xazorasp", "Xonqa", "Qo'shko'pir", "Shovot", "Urganch", "Xiva", "Yangiariq", "Yangibozor"],
-  "Qoraqalpog'iston": ["Nukus", "Amudaryo", "Beruniy", "Bo'zatov", "Chimboy", "Ellikqal'a", "Kegeyli", "Mo'ynoq", "Nukus", "Qonliko'l", "Qorao'zak", "Qo'ng'irot", "Shumanay", "Taxtako'pir", "To'rtko'l", "Xo'jayli"]
-};
+import { regions } from "@/lib/regions";
 
 const Orders = () => {
   const [orders, setOrders] = useState<any[]>([]);
@@ -45,6 +28,7 @@ const Orders = () => {
   const [endDate, setEndDate] = useState<Date>();
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [products, setProducts] = useState<any[]>([]);
+  const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
   
   const [items, setItems] = useState<Array<{
     product_id: string;
@@ -62,9 +46,6 @@ const Orders = () => {
     notes: "",
   });
 
-  const [selectedRegion, setSelectedRegion] = useState<string>("");
-  const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
-
   useEffect(() => {
     fetchOrders();
     fetchProducts();
@@ -73,6 +54,16 @@ const Orders = () => {
   useEffect(() => {
     filterOrders();
   }, [orders, startDate, endDate, filterStatus]);
+
+  // Update districts when region changes
+  useEffect(() => {
+    if (formData.region) {
+      const regionData = regions[formData.region];
+      setAvailableDistricts(regionData || []);
+    } else {
+      setAvailableDistricts([]);
+    }
+  }, [formData.region]);
 
   const fetchProducts = async () => {
     try {
@@ -219,8 +210,7 @@ const Orders = () => {
       notes: order.notes || "",
     });
     if (order.region) {
-      setSelectedRegion(order.region);
-      setAvailableDistricts(regionsData[order.region] || []);
+      setAvailableDistricts(regions[order.region] || []);
     }
     setItems(order.items.map((item: any) => ({
       product_id: item.product_id || "",
@@ -429,17 +419,15 @@ const Orders = () => {
                       value={formData.region} 
                       onValueChange={(value) => {
                         setFormData({ ...formData, region: value, district: "" });
-                        setSelectedRegion(value);
-                        setAvailableDistricts(regionsData[value] || []);
                       }}
                     >
                       <SelectTrigger id="region">
                         <SelectValue placeholder="Viloyatni tanlang" />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.keys(regionsData).map((region) => (
-                          <SelectItem key={region} value={region}>
-                            {region}
+                        {Object.keys(regions).map((regionName) => (
+                          <SelectItem key={regionName} value={regionName}>
+                            {regionName}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -451,7 +439,7 @@ const Orders = () => {
                     <Select 
                       value={formData.district} 
                       onValueChange={(value) => setFormData({ ...formData, district: value })}
-                      disabled={!selectedRegion}
+                      disabled={!formData.region}
                     >
                       <SelectTrigger id="district">
                         <SelectValue placeholder="Tumanni tanlang" />
