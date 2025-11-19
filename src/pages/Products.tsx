@@ -177,7 +177,7 @@ const Products = () => {
               <DialogTrigger asChild>
                 <Button 
                   size="lg" 
-                  className="shadow-lg hover:shadow-xl transition-shadow"
+                  className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all px-8 py-6 text-lg font-semibold border-2 border-primary/20"
                   onClick={closeDialog}
                 >
                   <Plus className="h-5 w-5 mr-2" />
