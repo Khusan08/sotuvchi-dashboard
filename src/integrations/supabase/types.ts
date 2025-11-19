@@ -114,8 +114,11 @@ export type Database = {
           created_at: string
           customer_name: string
           customer_phone: string | null
+          district: string | null
           id: string
+          notes: string | null
           order_date: string
+          region: string | null
           seller_id: string
           status: string
           total_amount: number
@@ -126,8 +129,11 @@ export type Database = {
           created_at?: string
           customer_name: string
           customer_phone?: string | null
+          district?: string | null
           id?: string
+          notes?: string | null
           order_date?: string
+          region?: string | null
           seller_id: string
           status?: string
           total_amount: number
@@ -138,8 +144,11 @@ export type Database = {
           created_at?: string
           customer_name?: string
           customer_phone?: string | null
+          district?: string | null
           id?: string
+          notes?: string | null
           order_date?: string
+          region?: string | null
           seller_id?: string
           status?: string
           total_amount?: number
