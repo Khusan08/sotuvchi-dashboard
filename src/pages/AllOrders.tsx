@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar, Plus, Trash2 } from "lucide-react";
+import { Calendar, Plus, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -29,6 +29,7 @@ interface OrderItem {
 
 interface Order {
   id: string;
+  order_number: number;
   order_date: string;
   customer_name: string;
   customer_phone: string;
@@ -36,6 +37,9 @@ interface Order {
   advance_payment: number;
   status: string;
   items: OrderItem[];
+  region?: string;
+  district?: string;
+  notes?: string;
 }
 
 const AllOrders = () => {
@@ -45,6 +49,7 @@ const AllOrders = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
+  const [searchQuery, setSearchQuery] = useState("");
   const [products, setProducts] = useState<any[]>([]);
   const [items, setItems] = useState<Array<{
     product_id: string;
@@ -65,7 +70,7 @@ const AllOrders = () => {
 
   useEffect(() => {
     filterOrders();
-  }, [orders, startDate, endDate]);
+  }, [orders, startDate, endDate, searchQuery]);
 
   const fetchProducts = async () => {
     try {
@@ -128,6 +133,17 @@ const AllOrders = () => {
     if (endDate) {
       filtered = filtered.filter(order => 
         new Date(order.order_date) <= endDate
+      );
+    }
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(order => 
+        order.customer_name.toLowerCase().includes(query) ||
+        order.customer_phone?.toLowerCase().includes(query) ||
+        order.region?.toLowerCase().includes(query) ||
+        order.district?.toLowerCase().includes(query) ||
+        order.order_number.toString().includes(query)
       );
     }
 
@@ -264,10 +280,19 @@ const AllOrders = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
+        <div className="flex justify-between items-center gap-4">
+          <div className="flex-1">
             <h1 className="text-3xl font-bold">Barcha zakazlar</h1>
             <p className="text-muted-foreground mt-1">Barcha vaqtdagi {orders.length} ta zakaz</p>
+          </div>
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Qidirish..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
           </div>
           <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); else setDialogOpen(open); }}>
             <DialogTrigger asChild>
@@ -391,19 +416,23 @@ const AllOrders = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>ID</TableHead>
                 <TableHead>Sana</TableHead>
                 <TableHead>Mijoz</TableHead>
                 <TableHead>Mahsulotlar</TableHead>
+                <TableHead>Manzil</TableHead>
                 <TableHead>Jami summa</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Izoh</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredOrders.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">Zakazlar topilmadi</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">Zakazlar topilmadi</TableCell></TableRow>
               ) : (
                 filteredOrders.map((order) => (
                   <TableRow key={order.id}>
+                    <TableCell className="font-mono text-sm">{order.order_number}</TableCell>
                     <TableCell>{new Date(order.order_date).toLocaleDateString("uz-UZ")}</TableCell>
                     <TableCell>
                       <div className="font-medium">{order.customer_name}</div>
@@ -416,8 +445,17 @@ const AllOrders = () => {
                         ))}
                       </div>
                     </TableCell>
+                    <TableCell>
+                      {order.region && order.district && (
+                        <div className="text-sm">
+                          <div>{order.region}</div>
+                          <div className="text-muted-foreground">{order.district}</div>
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell className="font-semibold">{Number(order.total_amount).toLocaleString()} so'm</TableCell>
                     <TableCell>{getStatusBadge(order.status)}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">{order.notes}</TableCell>
                   </TableRow>
                 ))
               )}
