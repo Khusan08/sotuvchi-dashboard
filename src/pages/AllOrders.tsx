@@ -664,7 +664,7 @@ const AllOrders = () => {
               {createFormData.items.map((item, index) => (
                 <div key={index} className="grid grid-cols-12 gap-2 mb-2">
                   <Select
-                    value={item.product_name}
+                    value={item.product_name || undefined}
                     onValueChange={(value) => {
                       const selectedProduct = products.find(p => p.name === value);
                       if (selectedProduct) {
@@ -674,7 +674,9 @@ const AllOrders = () => {
                     }}
                   >
                     <SelectTrigger className="col-span-5">
-                      <SelectValue placeholder="Mahsulot tanlang" />
+                      <SelectValue placeholder="Mahsulot tanlang">
+                        {item.product_name || "Mahsulot tanlang"}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent className="bg-background z-50">
                       {products.length === 0 ? (
@@ -736,8 +738,8 @@ const AllOrders = () => {
                 <Input
                   type="number"
                   value={createFormData.total_amount}
-                  disabled
-                  className="bg-muted"
+                  onChange={(e) => setCreateFormData({ ...createFormData, total_amount: Number(e.target.value) })}
+                  placeholder="0"
                 />
               </div>
             </div>
