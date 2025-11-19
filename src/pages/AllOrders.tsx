@@ -676,12 +676,16 @@ const AllOrders = () => {
                     <SelectTrigger className="col-span-5">
                       <SelectValue placeholder="Mahsulot tanlang" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {products.map((product) => (
-                        <SelectItem key={product.id} value={product.name}>
-                          {product.name}
-                        </SelectItem>
-                      ))}
+                    <SelectContent className="bg-background z-50">
+                      {products.length === 0 ? (
+                        <div className="p-2 text-sm text-muted-foreground">Mahsulotlar topilmadi</div>
+                      ) : (
+                        products.map((product) => (
+                          <SelectItem key={product.id} value={product.name}>
+                            {product.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <Input
