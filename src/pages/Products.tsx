@@ -23,7 +23,6 @@ const Products = () => {
     name: "",
     description: "",
     price: "",
-    category: "",
   });
 
   useEffect(() => {
@@ -86,7 +85,6 @@ const Products = () => {
         name: formData.name,
         description: formData.description,
         price: parseFloat(formData.price),
-        category: formData.category,
         image_url: imageUrl,
       };
 
@@ -109,7 +107,7 @@ const Products = () => {
 
       setDialogOpen(false);
       setEditingProduct(null);
-      setFormData({ name: "", description: "", price: "", category: "" });
+      setFormData({ name: "", description: "", price: "" });
       setImageFile(null);
       fetchProducts();
     } catch (error: any) {
@@ -123,7 +121,6 @@ const Products = () => {
       name: product.name,
       description: product.description || "",
       price: product.price.toString(),
-      category: product.category || "",
     });
     setDialogOpen(true);
   };
@@ -148,7 +145,7 @@ const Products = () => {
   const closeDialog = () => {
     setDialogOpen(false);
     setEditingProduct(null);
-    setFormData({ name: "", description: "", price: "", category: "" });
+    setFormData({ name: "", description: "", price: "" });
     setImageFile(null);
   };
 
@@ -212,31 +209,19 @@ const Products = () => {
                       className="resize-none"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="price" className="text-base font-semibold">Narxi (so'm)</Label>
-                      <Input
-                        id="price"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0"
-                        value={formData.price}
-                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                        required
-                        className="h-11"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="category" className="text-base font-semibold">Kategoriya</Label>
-                      <Input
-                        id="category"
-                        placeholder="Kategoriya"
-                        value={formData.category}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                        className="h-11"
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="price" className="text-base font-semibold">Narxi (so'm)</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0"
+                      value={formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      required
+                      className="h-11"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="image" className="text-base font-semibold">Mahsulot rasmi</Label>
@@ -287,13 +272,6 @@ const Products = () => {
                         </div>
                         <span className="text-muted-foreground text-sm block">Rasm yo'q</span>
                       </div>
-                    </div>
-                  )}
-                  {product.category && (
-                    <div className="absolute top-3 right-3">
-                      <span className="text-xs font-semibold text-foreground bg-background/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg">
-                        {product.category}
-                      </span>
                     </div>
                   )}
                 </div>
