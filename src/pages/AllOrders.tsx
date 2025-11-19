@@ -45,6 +45,8 @@ interface Order {
   region?: string;
   district?: string;
   notes?: string;
+  seller_name?: string;
+  seller_phone?: string;
 }
 
 const AllOrders = () => {
@@ -74,7 +76,7 @@ const AllOrders = () => {
   });
   const [products, setProducts] = useState<any[]>([]);
   const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
-  const { isAdmin } = useUserRoles();
+  const { isAdmin, isRop } = useUserRoles();
   const { isSotuvchi } = useUserRole();
 
   useEffect(() => {
@@ -105,11 +107,21 @@ const AllOrders = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: ordersData, error: ordersError } = await supabase
+      // Fetch orders based on role
+      let ordersQuery = supabase
         .from("orders")
-        .select("*")
-        .eq("seller_id", user.id)
+        .select(`
+          *,
+          profiles!orders_seller_id_fkey(full_name, phone)
+        `)
         .order("order_date", { ascending: false });
+
+      // If not admin or rop, only show own orders
+      if (!isAdmin && !isRop) {
+        ordersQuery = ordersQuery.eq("seller_id", user.id);
+      }
+
+      const { data: ordersData, error: ordersError } = await ordersQuery;
 
       if (ordersError) throw ordersError;
 
@@ -123,6 +135,8 @@ const AllOrders = () => {
           return {
             ...order,
             items: itemsData || [],
+            seller_name: order.profiles?.full_name || "Noma'lum",
+            seller_phone: order.profiles?.phone || "",
           };
         })
       );
@@ -602,6 +616,7 @@ const AllOrders = () => {
                 <TableHead>ID</TableHead>
                 <TableHead>Sana</TableHead>
                 <TableHead>Mijoz</TableHead>
+                {(isAdmin || isRop) && <TableHead>Sotuvchi</TableHead>}
                 <TableHead>Mahsulotlar</TableHead>
                 <TableHead>Manzil</TableHead>
                 <TableHead>Jami summa</TableHead>
@@ -615,7 +630,7 @@ const AllOrders = () => {
             <TableBody>
               {filteredOrders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center text-muted-foreground">
+                  <TableCell colSpan={(isAdmin || isRop) ? 12 : 11} className="text-center text-muted-foreground">
                     Zakazlar topilmadi
                   </TableCell>
                 </TableRow>
@@ -628,6 +643,12 @@ const AllOrders = () => {
                       <div className="font-medium">{order.customer_name}</div>
                       <div className="text-sm text-muted-foreground">{order.customer_phone}</div>
                     </TableCell>
+                    {(isAdmin || isRop) && (
+                      <TableCell>
+                        <div className="font-medium">{order.seller_name}</div>
+                        <div className="text-sm text-muted-foreground">{order.seller_phone}</div>
+                      </TableCell>
+                    )}
                     <TableCell>
                       <div className="space-y-1">
                         {order.items.map((item, idx) => (

@@ -5,7 +5,7 @@ import StatsCard from "@/components/StatsCard";
 import { ShoppingCart, DollarSign, TrendingUp, Package } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from "recharts";
 import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
 
 const Dashboard = () => {
@@ -132,8 +132,33 @@ const Dashboard = () => {
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip />
-                <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+                <Legend />
+                <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} name="Daromad" />
               </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Zakazlar tendensiyasi</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="orders" 
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={2}
+                  name="Zakazlar"
+                />
+              </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
