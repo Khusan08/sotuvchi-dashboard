@@ -17,7 +17,7 @@ const Products = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const { canManage } = useUserRole();
+  const { isAdmin } = useUserRole();
   
   const [formData, setFormData] = useState({
     name: "",
@@ -169,80 +169,82 @@ const Products = () => {
               Barcha mahsulotlar ro'yxati
             </p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button
-                  size="lg" 
-                  className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all px-6 py-6 text-base font-semibold"
-                  onClick={closeDialog}
-                >
-                  <Plus className="h-5 w-5 mr-2" />
-                  Mahsulot qo'shish
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                  <DialogTitle className="text-2xl">
-                    {editingProduct ? "Mahsulotni tahrirlash" : "Yangi mahsulot qo'shish"}
-                  </DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-5 mt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name" className="text-base font-semibold">Mahsulot nomi</Label>
-                    <Input
-                      id="name"
-                      placeholder="Mahsulot nomini kiriting"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      required
-                      className="h-11"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="description" className="text-base font-semibold">Tavsif</Label>
-                    <Textarea
-                      id="description"
-                      placeholder="Mahsulot haqida ma'lumot"
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      rows={4}
-                      className="resize-none"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="price" className="text-base font-semibold">Narxi (so'm)</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      required
-                      className="h-11"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="image" className="text-base font-semibold">Mahsulot rasmi</Label>
-                    <Input
-                      id="image"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-                      className="h-11 cursor-pointer"
-                    />
-                    {editingProduct?.image_url && !imageFile && (
-                      <p className="text-sm text-muted-foreground">Mavjud rasm saqlanadi</p>
-                    )}
-                  </div>
-                  <Button type="submit" size="lg" className="w-full h-12 text-base font-semibold">
-                    {editingProduct ? "Yangilash" : "Saqlash"}
+          {isAdmin && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                    size="lg" 
+                    className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all px-6 py-6 text-base font-semibold"
+                    onClick={closeDialog}
+                  >
+                    <Plus className="h-5 w-5 mr-2" />
+                    Mahsulot qo'shish
                   </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-        </div>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                  <DialogHeader>
+                    <DialogTitle className="text-2xl">
+                      {editingProduct ? "Mahsulotni tahrirlash" : "Yangi mahsulot qo'shish"}
+                    </DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleSubmit} className="space-y-5 mt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name" className="text-base font-semibold">Mahsulot nomi</Label>
+                      <Input
+                        id="name"
+                        placeholder="Mahsulot nomini kiriting"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        required
+                        className="h-11"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="description" className="text-base font-semibold">Tavsif</Label>
+                      <Textarea
+                        id="description"
+                        placeholder="Mahsulot haqida ma'lumot"
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        rows={4}
+                        className="resize-none"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="price" className="text-base font-semibold">Narxi (so'm)</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0"
+                        value={formData.price}
+                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                        required
+                        className="h-11"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="image" className="text-base font-semibold">Mahsulot rasmi</Label>
+                      <Input
+                        id="image"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                        className="h-11 cursor-pointer"
+                      />
+                      {editingProduct?.image_url && !imageFile && (
+                        <p className="text-sm text-muted-foreground">Mavjud rasm saqlanadi</p>
+                      )}
+                    </div>
+                    <Button type="submit" size="lg" className="w-full h-12 text-base font-semibold">
+                      {editingProduct ? "Yangilash" : "Saqlash"}
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {products.length === 0 ? (
@@ -294,7 +296,7 @@ const Products = () => {
                         </span>
                         <span className="text-sm text-muted-foreground font-medium">so'm</span>
                       </div>
-                      {canManage && (
+                      {isAdmin && (
                         <div className="flex gap-2">
                           <Button
                             variant="outline"
