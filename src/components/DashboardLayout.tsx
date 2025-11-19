@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { LogOut, LayoutDashboard, ShoppingCart, User, Shield, Users, Package, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
 import { useUserRole } from "@/hooks/useUserRole";
+import TaskNotifications from "./TaskNotifications";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -119,6 +120,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
+      
+      <TaskNotifications />
     </div>
   );
 };
