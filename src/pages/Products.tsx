@@ -163,13 +163,13 @@ const Products = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-start mb-8">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            <h2 className="text-4xl font-bold tracking-tight text-foreground">
               Mahsulotlar
             </h2>
             <p className="text-muted-foreground mt-2">
-              Barcha mahsulotlarni boshqaring
+              Barcha mahsulotlar ro'yxati
             </p>
           </div>
           {canManage && (
@@ -177,7 +177,7 @@ const Products = () => {
               <DialogTrigger asChild>
                 <Button 
                   size="lg" 
-                  className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all px-8 py-6 text-lg font-semibold border-2 border-primary/20"
+                  className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all px-6 py-6 text-base font-semibold"
                   onClick={closeDialog}
                 >
                   <Plus className="h-5 w-5 mr-2" />
@@ -267,12 +267,7 @@ const Products = () => {
               <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-muted mb-4">
                 <Plus className="h-10 w-10 text-muted-foreground" />
               </div>
-              <p className="text-muted-foreground text-lg">Mahsulotlar topilmadi</p>
-              {canManage && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  Yangi mahsulot qo'shish uchun yuqoridagi tugmani bosing
-                </p>
-              )}
+              <p className="text-muted-foreground text-lg">Hozircha mahsulot yo'q</p>
             </div>
           ) : (
             products.map((product) => (
