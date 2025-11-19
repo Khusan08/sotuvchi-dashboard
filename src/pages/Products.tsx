@@ -172,10 +172,9 @@ const Products = () => {
               Barcha mahsulotlar ro'yxati
             </p>
           </div>
-          {canManage && (
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button 
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
                   size="lg" 
                   className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all px-6 py-6 text-base font-semibold"
                   onClick={closeDialog}
@@ -183,8 +182,8 @@ const Products = () => {
                   <Plus className="h-5 w-5 mr-2" />
                   Mahsulot qo'shish
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
                   <DialogTitle className="text-2xl">
                     {editingProduct ? "Mahsulotni tahrirlash" : "Yangi mahsulot qo'shish"}
@@ -258,7 +257,6 @@ const Products = () => {
                 </form>
               </DialogContent>
             </Dialog>
-          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
