@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar, Pencil } from "lucide-react";
+import { Plus, Calendar, Pencil, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -38,6 +38,7 @@ const Orders = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<any>(null);
   const [startDate, setStartDate] = useState<Date>();
@@ -375,12 +376,21 @@ const Orders = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
+        <div className="flex justify-between items-center gap-4">
+          <div className="flex-1">
             <h1 className="text-3xl font-bold">Zakazlar (oxirgi 7 kun)</h1>
             <p className="text-muted-foreground mt-1">
               {filteredOrders.length} ta zakaz
             </p>
+          </div>
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Qidirish..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -679,17 +689,41 @@ const Orders = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredOrders.length === 0 ? (
+                  {filteredOrders
+                    .filter((order) => {
+                      if (!searchQuery) return true;
+                      const query = searchQuery.toLowerCase();
+                      return (
+                        order.customer_name.toLowerCase().includes(query) ||
+                        order.customer_phone?.toLowerCase().includes(query) ||
+                        order.region?.toLowerCase().includes(query) ||
+                        order.district?.toLowerCase().includes(query) ||
+                        order.order_number?.toString().includes(query)
+                      );
+                    })
+                    .length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
                         Zakazlar topilmadi
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredOrders.map((order) => (
+                    filteredOrders
+                      .filter((order) => {
+                        if (!searchQuery) return true;
+                        const query = searchQuery.toLowerCase();
+                        return (
+                          order.customer_name.toLowerCase().includes(query) ||
+                          order.customer_phone?.toLowerCase().includes(query) ||
+                          order.region?.toLowerCase().includes(query) ||
+                          order.district?.toLowerCase().includes(query) ||
+                          order.order_number?.toString().includes(query)
+                        );
+                      })
+                      .map((order) => (
                       <TableRow key={order.id}>
-                        <TableCell className="font-mono text-xs">
-                          {order.id.slice(0, 8)}
+                        <TableCell className="font-mono text-sm">
+                          {order.order_number}
                         </TableCell>
                         <TableCell>{format(new Date(order.order_date), "dd.MM.yyyy")}</TableCell>
                         <TableCell>
