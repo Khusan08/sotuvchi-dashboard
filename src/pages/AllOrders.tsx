@@ -22,6 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useUserRoles } from "@/hooks/useUserRoles";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Textarea } from "@/components/ui/textarea";
 import { regions, regionsData } from "@/lib/regions";
 
@@ -74,6 +75,7 @@ const AllOrders = () => {
   const [products, setProducts] = useState<any[]>([]);
   const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
   const { isAdmin } = useUserRoles();
+  const { isSotuvchi } = useUserRole();
 
   useEffect(() => {
     fetchOrders();
@@ -417,50 +419,144 @@ const AllOrders = () => {
             <CardTitle>Filtr</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Boshlanish sanasi</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start">
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {startDate ? format(startDate, "PPP") : "Tanlang"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <CalendarComponent mode="single" selected={startDate} onSelect={setStartDate} />
-                  </PopoverContent>
-                </Popover>
+            <div className="space-y-4">
+              <div>
+                <Label className="mb-2 block">Tezkor filtr</Label>
+                <div className="flex flex-wrap gap-2">
+                  <Button 
+                    variant={!startDate && !endDate ? "default" : "outline"} 
+                    size="sm"
+                    onClick={() => {
+                      setStartDate(undefined);
+                      setEndDate(undefined);
+                    }}
+                  >
+                    Hammasi
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      const today = new Date();
+                      setStartDate(today);
+                      setEndDate(today);
+                    }}
+                  >
+                    Kunlik
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      const today = new Date();
+                      const weekAgo = new Date(today);
+                      weekAgo.setDate(weekAgo.getDate() - 7);
+                      setStartDate(weekAgo);
+                      setEndDate(today);
+                    }}
+                  >
+                    Haftalik
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      const today = new Date();
+                      const tenDaysAgo = new Date(today);
+                      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+                      setStartDate(tenDaysAgo);
+                      setEndDate(today);
+                    }}
+                  >
+                    10 kunlik
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      const today = new Date();
+                      const twentyDaysAgo = new Date(today);
+                      twentyDaysAgo.setDate(twentyDaysAgo.getDate() - 20);
+                      setStartDate(twentyDaysAgo);
+                      setEndDate(today);
+                    }}
+                  >
+                    20 kunlik
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      const today = new Date();
+                      const monthAgo = new Date(today);
+                      monthAgo.setMonth(monthAgo.getMonth() - 1);
+                      setStartDate(monthAgo);
+                      setEndDate(today);
+                    }}
+                  >
+                    Oylik
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      const today = new Date();
+                      const yearAgo = new Date(today);
+                      yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+                      setStartDate(yearAgo);
+                      setEndDate(today);
+                    }}
+                  >
+                    Yillik
+                  </Button>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Tugash sanasi</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start">
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {endDate ? format(endDate, "PPP") : "Tanlang"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <CalendarComponent mode="single" selected={endDate} onSelect={setEndDate} />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="status-filter">Status</Label>
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger id="status-filter">
-                    <SelectValue placeholder="Statusni tanlang" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Hammasi</SelectItem>
-                    <SelectItem value="pending">Kutilmoqda</SelectItem>
-                    <SelectItem value="processing">Tayyorlanmoqda</SelectItem>
-                    <SelectItem value="shipped">Yo'lda</SelectItem>
-                    <SelectItem value="delivered">Yetkazildi</SelectItem>
-                    <SelectItem value="cancelled">Bekor qilindi</SelectItem>
-                  </SelectContent>
-                </Select>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Boshlanish sanasi</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start">
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {startDate ? format(startDate, "PPP") : "Tanlang"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <CalendarComponent mode="single" selected={startDate} onSelect={setStartDate} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-2">
+                  <Label>Tugash sanasi</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start">
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {endDate ? format(endDate, "PPP") : "Tanlang"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <CalendarComponent mode="single" selected={endDate} onSelect={setEndDate} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="status-filter">Status</Label>
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger id="status-filter">
+                      <SelectValue placeholder="Statusni tanlang" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Hammasi</SelectItem>
+                      <SelectItem value="pending">Kutilmoqda</SelectItem>
+                      <SelectItem value="processing">Tayyorlanmoqda</SelectItem>
+                      <SelectItem value="shipped">Yo'lda</SelectItem>
+                      <SelectItem value="delivered">Yetkazildi</SelectItem>
+                      <SelectItem value="cancelled">Bekor qilindi</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
             {(startDate || endDate || filterStatus !== "all") && (
@@ -488,15 +584,17 @@ const AllOrders = () => {
                 <TableHead>Mahsulotlar</TableHead>
                 <TableHead>Manzil</TableHead>
                 <TableHead>Jami summa</TableHead>
+                <TableHead>Avans</TableHead>
+                <TableHead>Qolgan</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Izoh</TableHead>
-                {isAdmin && <TableHead>Amallar</TableHead>}
+                <TableHead>Amallar</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredOrders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={isAdmin ? 9 : 8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={11} className="text-center text-muted-foreground">
                     Zakazlar topilmadi
                   </TableCell>
                 </TableRow>
@@ -529,18 +627,24 @@ const AllOrders = () => {
                     <TableCell className="font-semibold">
                       {Number(order.total_amount).toLocaleString()} so'm
                     </TableCell>
+                    <TableCell className="font-medium text-blue-600">
+                      {Number(order.advance_payment || 0).toLocaleString()} so'm
+                    </TableCell>
+                    <TableCell className="font-medium text-orange-600">
+                      {(Number(order.total_amount) - Number(order.advance_payment || 0)).toLocaleString()} so'm
+                    </TableCell>
                     <TableCell>{getStatusBadge(order.status)}</TableCell>
                     <TableCell className="max-w-[200px] truncate">{order.notes}</TableCell>
-                    {isAdmin && (
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEdit(order)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(order)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        {isAdmin && (
                           <Button
                             size="sm"
                             variant="destructive"
@@ -548,9 +652,9 @@ const AllOrders = () => {
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
-                        </div>
-                      </TableCell>
-                    )}
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
