@@ -14,6 +14,25 @@ import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+
+// Viloyatlar va tumanlar ma'lumotlari
+const regionsData: Record<string, string[]> = {
+  "Toshkent sh.": ["Bektemir", "Chilonzor", "Mirobod", "Olmazor", "Sergeli", "Shayxontohur", "Uchtepa", "Yakkasaroy", "Yashnobod", "Yunusobod", "Yangihayot"],
+  "Toshkent": ["Angren", "Bekobod", "Olmaliq", "Chirchiq", "Yangiyo'l", "Bo'ka", "Bo'stonliq", "Chinoz", "O'rtachirchiq", "Parkent", "Piskent", "Qibray", "Quyichirchiq", "Toshkent", "Ohangaron", "Yuqorichirchiq", "Zangiota"],
+  "Andijon": ["Andijon", "Asaka", "Xonobod", "Andijon", "Asaka", "Baliqchi", "Bo'z", "Buloqboshi", "Izboskan", "Jalolquduq", "Xo'jaobod", "Qo'rg'ontepa", "Marhamat", "Oltinko'l", "Paxtaobod", "Shaxrixon", "Ulug'nor"],
+  "Farg'ona": ["Farg'ona", "Marg'ilon", "Qo'qon", "Quvasoy", "Beshariq", "Bog'dod", "Buvayda", "Dang'ara", "Farg'ona", "Furqat", "O'zbekiston", "Qo'shtepa", "Rishton", "So'x", "Toshloq", "Uchko'prik", "Yozyovon"],
+  "Namangan": ["Namangan", "To'raqo'rg'on", "Chortoq", "Chust", "Kosonsoy", "Mingbuloq", "Namangan", "Norin", "Pop", "To'raqo'rg'on", "Uchqo'rg'on", "Uychi", "Yangiqo'rg'on"],
+  "Samarqand": ["Samarqand", "Kattaqo'rg'on", "Bulung'ur", "Jomboy", "Ishtixon", "Kattaqo'rg'on", "Narpay", "Nurobod", "Oqdaryo", "Paxtachi", "Payariq", "Pastdarg'om", "Qo'shrabot", "Samarqand", "Toyloq", "Urgut"],
+  "Buxoro": ["Buxoro", "Kogon", "Buxoro", "Jondor", "Kogon", "Olot", "Peshku", "Qorakul", "Qorovulbozor", "Romitan", "Shofirkon", "Vobkent", "G'ijduvon"],
+  "Navoiy": ["Navoiy", "Zarafshon", "Konimex", "Karmana", "Qiziltepa", "Xatirchi", "Navbahor", "Nurota", "Tomdi", "Uchquduq"],
+  "Qashqadaryo": ["Qarshi", "Shahrisabz", "Chiroqchi", "Dehqonobod", "G'uzor", "Kasbi", "Kitob", "Koson", "Mirishkor", "Muborak", "Nishon", "Qamashi", "Qarshi", "Shahrisabz", "Yakkabog'"],
+  "Surxondaryo": ["Termiz", "Angor", "Boysun", "Denov", "Jarqo'rg'on", "Qiziriq", "Qumqo'rg'on", "Muzrabot", "Oltinsoy", "Sariosiyo", "Sherobod", "Sho'rchi", "Termiz", "Uzun"],
+  "Jizzax": ["Jizzax", "Arnasoy", "Baxmal", "Do'stlik", "Forish", "G'allaorol", "Jizzax", "Mirzacho'l", "Paxtakor", "Yangiobod", "Zafarobod", "Zarbdor", "Zomin"],
+  "Sirdaryo": ["Guliston", "Boyovut", "Guliston", "Mirzaobod", "Oqoltin", "Sardoba", "Sayxunobod", "Sirdaryo", "Xovos"],
+  "Xorazm": ["Urganch", "Xiva", "Bog'ot", "Gurlan", "Xazorasp", "Xonqa", "Qo'shko'pir", "Shovot", "Urganch", "Xiva", "Yangiariq", "Yangibozor"],
+  "Qoraqalpog'iston": ["Nukus", "Amudaryo", "Beruniy", "Bo'zatov", "Chimboy", "Ellikqal'a", "Kegeyli", "Mo'ynoq", "Nukus", "Qonliko'l", "Qorao'zak", "Qo'ng'irot", "Shumanay", "Taxtako'pir", "To'rtko'l", "Xo'jayli"]
+};
 
 const Orders = () => {
   const [orders, setOrders] = useState<any[]>([]);
@@ -37,7 +56,13 @@ const Orders = () => {
     customer_name: "",
     customer_phone: "",
     advance_payment: "",
+    region: "",
+    district: "",
+    notes: "",
   });
+
+  const [selectedRegion, setSelectedRegion] = useState<string>("");
+  const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
 
   useEffect(() => {
     fetchOrders();
@@ -188,7 +213,14 @@ const Orders = () => {
       customer_name: order.customer_name,
       customer_phone: order.customer_phone || "",
       advance_payment: order.advance_payment?.toString() || "0",
+      region: order.region || "",
+      district: order.district || "",
+      notes: order.notes || "",
     });
+    if (order.region) {
+      setSelectedRegion(order.region);
+      setAvailableDistricts(regionsData[order.region] || []);
+    }
     setItems(order.items.map((item: any) => ({
       product_id: item.product_id || "",
       product_name: item.product_name,
@@ -220,6 +252,9 @@ const Orders = () => {
             customer_phone: formData.customer_phone,
             total_amount: totalAmount,
             advance_payment: advancePayment,
+            region: formData.region,
+            district: formData.district,
+            notes: formData.notes,
           })
           .eq("id", editingOrder.id);
 
@@ -257,6 +292,9 @@ const Orders = () => {
             total_amount: totalAmount,
             advance_payment: advancePayment,
             status: "pending",
+            region: formData.region,
+            district: formData.district,
+            notes: formData.notes,
           })
           .select()
           .single();
@@ -286,7 +324,12 @@ const Orders = () => {
         customer_name: "",
         customer_phone: "",
         advance_payment: "",
+        region: "",
+        district: "",
+        notes: "",
       });
+      setSelectedRegion("");
+      setAvailableDistricts([]);
       setItems([]);
       fetchOrders();
     } catch (error: any) {
@@ -301,7 +344,12 @@ const Orders = () => {
       customer_name: "",
       customer_phone: "",
       advance_payment: "",
+      region: "",
+      district: "",
+      notes: "",
     });
+    setSelectedRegion("");
+    setAvailableDistricts([]);
     setItems([]);
   };
 
@@ -341,9 +389,9 @@ const Orders = () => {
                 Yangi zakaz
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Yangi zakaz qo'shish</DialogTitle>
+                <DialogTitle>{editingOrder ? "Zakazni tahrirlash" : "Yangi zakaz qo'shish"}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
@@ -364,6 +412,51 @@ const Orders = () => {
                   />
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="region">Viloyat</Label>
+                    <Select 
+                      value={formData.region} 
+                      onValueChange={(value) => {
+                        setFormData({ ...formData, region: value, district: "" });
+                        setSelectedRegion(value);
+                        setAvailableDistricts(regionsData[value] || []);
+                      }}
+                    >
+                      <SelectTrigger id="region">
+                        <SelectValue placeholder="Viloyatni tanlang" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.keys(regionsData).map((region) => (
+                          <SelectItem key={region} value={region}>
+                            {region}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="district">Tuman</Label>
+                    <Select 
+                      value={formData.district} 
+                      onValueChange={(value) => setFormData({ ...formData, district: value })}
+                      disabled={!selectedRegion}
+                    >
+                      <SelectTrigger id="district">
+                        <SelectValue placeholder="Tumanni tanlang" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableDistricts.map((district) => (
+                          <SelectItem key={district} value={district}>
+                            {district}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="advance_payment">Avans to'lovi (so'm)</Label>
                   <Input
@@ -374,6 +467,17 @@ const Orders = () => {
                     value={formData.advance_payment}
                     onChange={(e) => setFormData({ ...formData, advance_payment: e.target.value })}
                     placeholder="0"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Izoh</Label>
+                  <Textarea
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    placeholder="Qo'shimcha ma'lumot..."
+                    rows={3}
                   />
                 </div>
 
@@ -561,12 +665,15 @@ const Orders = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>ID</TableHead>
                     <TableHead>Sana</TableHead>
                     <TableHead>Mijoz</TableHead>
+                    <TableHead>Manzil</TableHead>
                     <TableHead>Mahsulotlar</TableHead>
-                    <TableHead>Jami summa</TableHead>
+                    <TableHead>Jami</TableHead>
                     <TableHead>Avans</TableHead>
                     <TableHead>Qolgan</TableHead>
+                    <TableHead>Izoh</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Amallar</TableHead>
                   </TableRow>
@@ -574,13 +681,16 @@ const Orders = () => {
                 <TableBody>
                   {filteredOrders.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
                         Zakazlar topilmadi
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredOrders.map((order) => (
                       <TableRow key={order.id}>
+                        <TableCell className="font-mono text-xs">
+                          {order.id.slice(0, 8)}
+                        </TableCell>
                         <TableCell>{format(new Date(order.order_date), "dd.MM.yyyy")}</TableCell>
                         <TableCell>
                           <div>
@@ -591,45 +701,45 @@ const Orders = () => {
                           </div>
                         </TableCell>
                         <TableCell>
+                          <div className="text-sm">
+                            {order.region && <div className="font-medium">{order.region}</div>}
+                            {order.district && <div className="text-muted-foreground">{order.district}</div>}
+                            {!order.region && !order.district && <span className="text-muted-foreground">-</span>}
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           <div className="space-y-1">
                             {order.items && order.items.length > 0 ? (
                               order.items.map((item: any, idx: number) => (
                                 <div key={idx} className="text-sm">
-                                  {item.product_name} x{item.quantity} = {(item.quantity * item.price).toLocaleString()} so'm
+                                  {item.product_name} x{item.quantity}
                                 </div>
                               ))
                             ) : (
-                              <span className="text-muted-foreground">Ma'lumot yo'q</span>
+                              <span className="text-muted-foreground">-</span>
                             )}
                           </div>
                         </TableCell>
                         <TableCell className="font-medium">
-                          {parseFloat(String(order.total_amount)).toLocaleString()} so'm
+                          {parseFloat(String(order.total_amount)).toLocaleString()}
                         </TableCell>
                         <TableCell>
-                          {parseFloat(String(order.advance_payment || 0)).toLocaleString()} so'm
+                          {parseFloat(String(order.advance_payment || 0)).toLocaleString()}
                         </TableCell>
                         <TableCell className="font-semibold">
-                          {(parseFloat(String(order.total_amount)) - parseFloat(String(order.advance_payment || 0))).toLocaleString()} so'm
+                          {(parseFloat(String(order.total_amount)) - parseFloat(String(order.advance_payment || 0))).toLocaleString()}
                         </TableCell>
                         <TableCell>
-                          <Select 
-                            value={order.status} 
-                            onValueChange={(value) => updateOrderStatus(order.id, value)}
-                          >
-                            <SelectTrigger className="w-[140px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pending">Kutilmoqda</SelectItem>
-                              <SelectItem value="completed">Bajarildi</SelectItem>
-                              <SelectItem value="cancelled">Bekor qilindi</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <div className="text-sm max-w-[200px] truncate">
+                            {order.notes || <span className="text-muted-foreground">-</span>}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {getStatusBadge(order.status)}
                         </TableCell>
                         <TableCell>
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() => handleEdit(order)}
                           >
