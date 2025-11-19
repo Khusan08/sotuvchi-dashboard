@@ -543,7 +543,7 @@ const Orders = () => {
                                 O'chirish
                               </Button>
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-3 gap-2">
                               <div className="space-y-1">
                                 <Label htmlFor={`quantity_${index}`} className="text-xs">Soni</Label>
                                 <Input
@@ -552,6 +552,19 @@ const Orders = () => {
                                   min="1"
                                   value={item.quantity}
                                   onChange={(e) => updateItem(index, "quantity", e.target.value)}
+                                  className="h-8"
+                                  required
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label htmlFor={`price_${index}`} className="text-xs">Narxi</Label>
+                                <Input
+                                  id={`price_${index}`}
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={item.price}
+                                  onChange={(e) => updateItem(index, "price", e.target.value)}
                                   className="h-8"
                                   required
                                 />
@@ -784,13 +797,35 @@ const Orders = () => {
                     ))
                   )}
                 </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </DashboardLayout>
-  );
-};
+                  </Table>
+                </div>
 
-export default Orders;
+                {/* Statistics */}
+                {filteredOrders.length > 0 && (
+                  <Card className="mt-4">
+                    <CardContent className="p-6">
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="flex flex-col">
+                          <span className="text-sm text-muted-foreground mb-1">Jami zakazlar</span>
+                          <span className="text-2xl font-bold text-primary">
+                            {filteredOrders.length} ta
+                          </span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-sm text-muted-foreground mb-1">Jami savdo</span>
+                          <span className="text-2xl font-bold text-primary">
+                            {filteredOrders.reduce((sum, order) => sum + parseFloat(String(order.total_amount)), 0).toLocaleString()} so'm
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </DashboardLayout>
+      );
+    };
+    
+    export default Orders;

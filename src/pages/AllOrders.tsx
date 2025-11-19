@@ -465,9 +465,19 @@ const AllOrders = () => {
         {filteredOrders.length > 0 && (
           <Card>
             <CardContent className="p-6">
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-semibold">Jami savdo:</span>
-                <span className="text-2xl font-bold text-primary">{calculateTotalSales().toLocaleString()} so'm</span>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="flex flex-col">
+                  <span className="text-sm text-muted-foreground mb-1">Jami zakazlar</span>
+                  <span className="text-2xl font-bold text-primary">
+                    {filteredOrders.length} ta
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm text-muted-foreground mb-1">Jami savdo</span>
+                  <span className="text-2xl font-bold text-primary">
+                    {calculateTotalSales().toLocaleString()} so'm
+                  </span>
+                </div>
               </div>
             </CardContent>
           </Card>
