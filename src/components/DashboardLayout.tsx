@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { LogOut, LayoutDashboard, ShoppingCart, User, Shield, Users, Package, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -15,6 +16,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [loading, setLoading] = useState(true);
+  const [overdueTasksCount, setOverdueTasksCount] = useState(0);
   const { isAdmin, isRop } = useUserRole();
 
   useEffect(() => {
@@ -23,6 +25,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         navigate("/auth");
       } else {
         setLoading(false);
+        checkOverdueTasks();
       }
     });
 
@@ -34,6 +37,54 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  useEffect(() => {
+    checkOverdueTasks();
+    
+    // Check every minute
+    const interval = setInterval(checkOverdueTasks, 60000);
+    
+    // Setup realtime subscription for tasks
+    const channel = supabase
+      .channel('tasks-count-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks'
+        },
+        () => {
+          checkOverdueTasks();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const checkOverdueTasks = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const now = new Date();
+      
+      const { data, count } = await supabase
+        .from("tasks")
+        .select("*", { count: 'exact', head: true })
+        .eq("seller_id", user.id)
+        .eq("status", "pending")
+        .lt("due_date", now.toISOString());
+
+      setOverdueTasksCount(count || 0);
+    } catch (error) {
+      console.error("Error checking overdue tasks:", error);
+    }
+  };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -71,15 +122,24 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = location.pathname === item.path;
+                  const showBadge = item.path === "/tasks" && overdueTasksCount > 0;
                   return (
                     <Link key={item.path} to={item.path}>
                       <Button
                         variant={isActive ? "default" : "ghost"}
                         size="sm"
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-2 relative"
                       >
                         <Icon className="h-4 w-4" />
                         {item.label}
+                        {showBadge && (
+                          <Badge 
+                            variant="destructive" 
+                            className="ml-1 px-1.5 py-0 h-5 min-w-[20px] text-xs font-bold"
+                          >
+                            {overdueTasksCount}
+                          </Badge>
+                        )}
                       </Button>
                     </Link>
                   );
@@ -101,15 +161,24 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
+            const showBadge = item.path === "/tasks" && overdueTasksCount > 0;
             return (
               <Link key={item.path} to={item.path}>
                 <Button
                   variant={isActive ? "default" : "ghost"}
                   size="sm"
-                  className="flex flex-col items-center h-auto py-2 px-3"
+                  className="flex flex-col items-center h-auto py-2 px-3 relative"
                 >
                   <Icon className="h-5 w-5" />
                   <span className="text-xs mt-1">{item.label}</span>
+                  {showBadge && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-1 -right-1 px-1 py-0 h-4 min-w-[16px] text-[10px] font-bold"
+                    >
+                      {overdueTasksCount}
+                    </Badge>
+                  )}
                 </Button>
               </Link>
             );
