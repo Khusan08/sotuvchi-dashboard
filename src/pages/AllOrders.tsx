@@ -182,6 +182,48 @@ const AllOrders = () => {
     return filteredOrders.reduce((total, order) => total + Number(order.total_amount), 0);
   };
 
+  const addProductToOrder = (product: any) => {
+    const existingIndex = createFormData.items.findIndex(item => item.product_name === product.name);
+    
+    if (existingIndex >= 0) {
+      // Increase quantity if product already added
+      const newItems = [...createFormData.items];
+      newItems[existingIndex].quantity += 1;
+      const newTotal = newItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+      setCreateFormData({
+        ...createFormData,
+        items: newItems,
+        total_amount: newTotal
+      });
+    } else {
+      // Add new product
+      const newItems = [...createFormData.items.filter(item => item.product_name !== ''), {
+        product_name: product.name,
+        quantity: 1,
+        price: product.price
+      }];
+      const newTotal = newItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+      setCreateFormData({
+        ...createFormData,
+        items: newItems,
+        total_amount: newTotal
+      });
+    }
+  };
+
+  const removeOrderItem = (index: number) => {
+    const newItems = createFormData.items.filter((_, i) => i !== index);
+    if (newItems.length === 0) {
+      newItems.push({ product_name: '', price: 0, quantity: 1 });
+    }
+    const newTotal = newItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+    setCreateFormData({
+      ...createFormData,
+      items: newItems,
+      total_amount: newTotal
+    });
+  };
+
   const handleEdit = (order: Order) => {
     setEditingOrder(order);
     setEditFormData({
@@ -253,12 +295,14 @@ const AllOrders = () => {
         return;
       }
 
-      if (createFormData.items.some(item => !item.product_name.trim())) {
-        toast.error("Barcha mahsulot nomlarini kiriting");
+      const validItems = createFormData.items.filter(item => item.product_name && item.quantity > 0 && item.price > 0);
+      
+      if (validItems.length === 0) {
+        toast.error("Kamida bitta mahsulot tanlang");
         return;
       }
 
-      const totalAmount = createFormData.items.reduce(
+      const totalAmount = validItems.reduce(
         (sum, item) => sum + (item.price * item.quantity), 
         0
       );
@@ -281,7 +325,7 @@ const AllOrders = () => {
 
       if (orderError) throw orderError;
 
-      const orderItems = createFormData.items.map(item => ({
+      const orderItems = validItems.map(item => ({
         order_id: orderData.id,
         product_name: item.product_name,
         price: item.price,
@@ -313,22 +357,11 @@ const AllOrders = () => {
     }
   };
 
-  const addOrderItem = () => {
-    setCreateFormData({
-      ...createFormData,
-      items: [...createFormData.items, { product_name: '', price: 0, quantity: 1 }]
-    });
-  };
-
-  const removeOrderItem = (index: number) => {
-    const newItems = createFormData.items.filter((_, i) => i !== index);
-    setCreateFormData({ ...createFormData, items: newItems });
-  };
-
   const updateOrderItem = (index: number, field: string, value: any) => {
     const newItems = [...createFormData.items];
     newItems[index] = { ...newItems[index], [field]: value };
-    setCreateFormData({ ...createFormData, items: newItems });
+    const newTotal = newItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+    setCreateFormData({ ...createFormData, items: newItems, total_amount: newTotal });
   };
 
   const getStatusBadge = (status: string) => {
