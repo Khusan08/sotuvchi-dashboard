@@ -15,7 +15,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { regions } from "@/lib/regions";
+import { regionsData } from "@/lib/regions";
 
 const Orders = () => {
   const [orders, setOrders] = useState<any[]>([]);
@@ -58,8 +58,7 @@ const Orders = () => {
   // Update districts when region changes
   useEffect(() => {
     if (formData.region) {
-      const regionData = regions[formData.region];
-      setAvailableDistricts(regionData || []);
+      setAvailableDistricts(regionsData[formData.region] || []);
     } else {
       setAvailableDistricts([]);
     }
@@ -209,8 +208,8 @@ const Orders = () => {
       district: order.district || "",
       notes: order.notes || "",
     });
-    if (order.region) {
-      setAvailableDistricts(regions[order.region] || []);
+    if (order.region && regionsData[order.region]) {
+      setAvailableDistricts(regionsData[order.region]);
     }
     setItems(order.items.map((item: any) => ({
       product_id: item.product_id || "",
@@ -319,7 +318,6 @@ const Orders = () => {
         district: "",
         notes: "",
       });
-      setSelectedRegion("");
       setAvailableDistricts([]);
       setItems([]);
       fetchOrders();
@@ -339,7 +337,6 @@ const Orders = () => {
       district: "",
       notes: "",
     });
-    setSelectedRegion("");
     setAvailableDistricts([]);
     setItems([]);
   };
@@ -425,7 +422,7 @@ const Orders = () => {
                         <SelectValue placeholder="Viloyatni tanlang" />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.keys(regions).map((regionName) => (
+                        {Object.keys(regionsData).map((regionName) => (
                           <SelectItem key={regionName} value={regionName}>
                             {regionName}
                           </SelectItem>
