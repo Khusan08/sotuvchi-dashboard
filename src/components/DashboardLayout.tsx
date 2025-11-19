@@ -3,9 +3,9 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, LayoutDashboard, ShoppingCart, User, Shield, Users, Package, CheckSquare } from "lucide-react";
+import { LogOut, LayoutDashboard, ShoppingCart, User, Shield, Users, Package, CheckSquare, UserCog } from "lucide-react";
 import { toast } from "sonner";
-import { useUserRole } from "@/hooks/useUserRole";
+import { useUserRoles } from "@/hooks/useUserRoles";
 import TaskNotifications from "./TaskNotifications";
 
 interface DashboardLayoutProps {
@@ -17,7 +17,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [overdueTasksCount, setOverdueTasksCount] = useState(0);
-  const { isAdmin, isRop } = useUserRole();
+  const { isAdminOrRop } = useUserRoles();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -108,7 +108,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { path: "/all-orders", icon: Package, label: "Barcha zakazlar" },
     { path: "/tasks", icon: CheckSquare, label: "Tasklar" },
     { path: "/profile", icon: User, label: "Profil" },
-    ...((isAdmin || isRop) ? [{ path: "/admin", icon: Shield, label: "Boshqaruv" }] : []),
+    ...(isAdminOrRop ? [
+      { path: "/sellers", icon: UserCog, label: "Hodimlar" },
+      { path: "/admin", icon: Shield, label: "Boshqaruv" }
+    ] : []),
   ];
 
   return (
