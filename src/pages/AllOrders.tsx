@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar, Search, Edit, Trash2 } from "lucide-react";
+import { Calendar, Search, Edit, Trash2, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -58,6 +58,16 @@ const AllOrders = () => {
   const [editFormData, setEditFormData] = useState({
     status: "",
     notes: "",
+  });
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createFormData, setCreateFormData] = useState({
+    customer_name: '',
+    customer_phone: '',
+    region: '',
+    district: '',
+    advance_payment: 0,
+    notes: '',
+    items: [{ product_name: '', price: 0, quantity: 1 }]
   });
   const { isAdmin } = useUserRoles();
 
@@ -197,6 +207,96 @@ const AllOrders = () => {
     }
   };
 
+  const handleCreateOrder = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Tizimga kiring");
+        return;
+      }
+
+      if (!createFormData.customer_name.trim()) {
+        toast.error("Mijoz ismini kiriting");
+        return;
+      }
+
+      if (createFormData.items.some(item => !item.product_name.trim())) {
+        toast.error("Barcha mahsulot nomlarini kiriting");
+        return;
+      }
+
+      const totalAmount = createFormData.items.reduce(
+        (sum, item) => sum + (item.price * item.quantity), 
+        0
+      );
+
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          customer_name: createFormData.customer_name,
+          customer_phone: createFormData.customer_phone,
+          region: createFormData.region,
+          district: createFormData.district,
+          advance_payment: createFormData.advance_payment,
+          notes: createFormData.notes,
+          total_amount: totalAmount,
+          seller_id: user.id,
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      const orderItems = createFormData.items.map(item => ({
+        order_id: orderData.id,
+        product_name: item.product_name,
+        price: item.price,
+        quantity: item.quantity
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      toast.success("Buyurtma muvaffaqiyatli yaratildi");
+      setCreateDialogOpen(false);
+      setCreateFormData({
+        customer_name: '',
+        customer_phone: '',
+        region: '',
+        district: '',
+        advance_payment: 0,
+        notes: '',
+        items: [{ product_name: '', price: 0, quantity: 1 }]
+      });
+      fetchOrders();
+    } catch (error: any) {
+      console.error('Error creating order:', error);
+      toast.error("Buyurtma yaratishda xatolik: " + error.message);
+    }
+  };
+
+  const addOrderItem = () => {
+    setCreateFormData({
+      ...createFormData,
+      items: [...createFormData.items, { product_name: '', price: 0, quantity: 1 }]
+    });
+  };
+
+  const removeOrderItem = (index: number) => {
+    const newItems = createFormData.items.filter((_, i) => i !== index);
+    setCreateFormData({ ...createFormData, items: newItems });
+  };
+
+  const updateOrderItem = (index: number, field: string, value: any) => {
+    const newItems = [...createFormData.items];
+    newItems[index] = { ...newItems[index], [field]: value };
+    setCreateFormData({ ...createFormData, items: newItems });
+  };
+
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
       pending: { label: "Kutilmoqda", variant: "secondary" },
@@ -228,14 +328,20 @@ const AllOrders = () => {
             <h1 className="text-3xl font-bold">Barcha zakazlar</h1>
             <p className="text-muted-foreground">Jami {orders.length} ta zakaz</p>
           </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Qidirish..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 w-[200px] sm:w-[300px]"
-            />
+          <div className="flex gap-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Qidirish..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 w-[200px] sm:w-[300px]"
+              />
+            </div>
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Yaratish
+            </Button>
           </div>
         </div>
 
@@ -448,6 +554,126 @@ const AllOrders = () => {
             </Button>
             <Button onClick={handleUpdateOrder}>
               Saqlash
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Order Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Yangi buyurtma yaratish</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="customer_name">Mijoz ismi *</Label>
+                <Input
+                  id="customer_name"
+                  value={createFormData.customer_name}
+                  onChange={(e) => setCreateFormData({ ...createFormData, customer_name: e.target.value })}
+                  placeholder="Mijoz ismi"
+                />
+              </div>
+              <div>
+                <Label htmlFor="customer_phone">Telefon raqami</Label>
+                <Input
+                  id="customer_phone"
+                  value={createFormData.customer_phone}
+                  onChange={(e) => setCreateFormData({ ...createFormData, customer_phone: e.target.value })}
+                  placeholder="+998 XX XXX XX XX"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="region">Viloyat</Label>
+                <Input
+                  id="region"
+                  value={createFormData.region}
+                  onChange={(e) => setCreateFormData({ ...createFormData, region: e.target.value })}
+                  placeholder="Viloyat"
+                />
+              </div>
+              <div>
+                <Label htmlFor="district">Tuman</Label>
+                <Input
+                  id="district"
+                  value={createFormData.district}
+                  onChange={(e) => setCreateFormData({ ...createFormData, district: e.target.value })}
+                  placeholder="Tuman"
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="advance_payment">Oldindan to'lov</Label>
+              <Input
+                id="advance_payment"
+                type="number"
+                value={createFormData.advance_payment}
+                onChange={(e) => setCreateFormData({ ...createFormData, advance_payment: Number(e.target.value) })}
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <Label>Mahsulotlar *</Label>
+              {createFormData.items.map((item, index) => (
+                <div key={index} className="grid grid-cols-12 gap-2 mb-2">
+                  <Input
+                    className="col-span-5"
+                    value={item.product_name}
+                    onChange={(e) => updateOrderItem(index, 'product_name', e.target.value)}
+                    placeholder="Mahsulot nomi"
+                  />
+                  <Input
+                    className="col-span-3"
+                    type="number"
+                    value={item.price}
+                    onChange={(e) => updateOrderItem(index, 'price', Number(e.target.value))}
+                    placeholder="Narxi"
+                  />
+                  <Input
+                    className="col-span-3"
+                    type="number"
+                    value={item.quantity}
+                    onChange={(e) => updateOrderItem(index, 'quantity', Number(e.target.value))}
+                    placeholder="Soni"
+                    min="1"
+                  />
+                  {createFormData.items.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="col-span-1"
+                      onClick={() => removeOrderItem(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <Button variant="outline" size="sm" onClick={addOrderItem} className="mt-2">
+                <Plus className="mr-2 h-4 w-4" />
+                Mahsulot qo'shish
+              </Button>
+            </div>
+            <div>
+              <Label htmlFor="notes">Izoh</Label>
+              <Textarea
+                id="notes"
+                value={createFormData.notes}
+                onChange={(e) => setCreateFormData({ ...createFormData, notes: e.target.value })}
+                placeholder="Qo'shimcha ma'lumot"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+              Bekor qilish
+            </Button>
+            <Button onClick={handleCreateOrder}>
+              Yaratish
             </Button>
           </DialogFooter>
         </DialogContent>
