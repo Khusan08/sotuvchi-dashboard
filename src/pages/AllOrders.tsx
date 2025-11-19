@@ -14,12 +14,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar, Search } from "lucide-react";
+import { Calendar, Search, Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useUserRoles } from "@/hooks/useUserRoles";
+import { Textarea } from "@/components/ui/textarea";
 
 interface OrderItem {
   product_name: string;
@@ -50,6 +53,13 @@ const AllOrders = () => {
   const [endDate, setEndDate] = useState<Date>();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    status: "",
+    notes: "",
+  });
+  const { isAdmin } = useUserRoles();
 
   useEffect(() => {
     fetchOrders();
@@ -127,6 +137,64 @@ const AllOrders = () => {
 
   const calculateTotalSales = () => {
     return filteredOrders.reduce((total, order) => total + Number(order.total_amount), 0);
+  };
+
+  const handleEdit = (order: Order) => {
+    setEditingOrder(order);
+    setEditFormData({
+      status: order.status,
+      notes: order.notes || "",
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateOrder = async () => {
+    if (!editingOrder) return;
+
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          status: editFormData.status,
+          notes: editFormData.notes,
+        })
+        .eq("id", editingOrder.id);
+
+      if (error) throw error;
+
+      toast.success("Zakaz muvaffaqiyatli yangilandi!");
+      setEditDialogOpen(false);
+      fetchOrders();
+    } catch (error: any) {
+      toast.error("Xatolik: " + error.message);
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!confirm("Haqiqatan ham bu zakazni o'chirmoqchimisiz?")) return;
+
+    try {
+      // First delete order items
+      const { error: itemsError } = await supabase
+        .from("order_items")
+        .delete()
+        .eq("order_id", orderId);
+
+      if (itemsError) throw itemsError;
+
+      // Then delete the order
+      const { error: orderError } = await supabase
+        .from("orders")
+        .delete()
+        .eq("id", orderId);
+
+      if (orderError) throw orderError;
+
+      toast.success("Zakaz muvaffaqiyatli o'chirildi!");
+      fetchOrders();
+    } catch (error: any) {
+      toast.error("Xatolik: " + error.message);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -249,12 +317,13 @@ const AllOrders = () => {
                 <TableHead>Jami summa</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Izoh</TableHead>
+                {isAdmin && <TableHead>Amallar</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredOrders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={isAdmin ? 9 : 8} className="text-center text-muted-foreground">
                     Zakazlar topilmadi
                   </TableCell>
                 </TableRow>
@@ -289,6 +358,26 @@ const AllOrders = () => {
                     </TableCell>
                     <TableCell>{getStatusBadge(order.status)}</TableCell>
                     <TableCell className="max-w-[200px] truncate">{order.notes}</TableCell>
+                    {isAdmin && (
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEdit(order)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDeleteOrder(order.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               )}
@@ -317,6 +406,52 @@ const AllOrders = () => {
           </Card>
         )}
       </div>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Zakazni tahrirlash</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-status">Status</Label>
+              <Select
+                value={editFormData.status}
+                onValueChange={(value) => setEditFormData({ ...editFormData, status: value })}
+              >
+                <SelectTrigger id="edit-status">
+                  <SelectValue placeholder="Statusni tanlang" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Kutilmoqda</SelectItem>
+                  <SelectItem value="processing">Tayyorlanmoqda</SelectItem>
+                  <SelectItem value="shipped">Yo'lda</SelectItem>
+                  <SelectItem value="delivered">Yetkazildi</SelectItem>
+                  <SelectItem value="cancelled">Bekor qilindi</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-notes">Izoh</Label>
+              <Textarea
+                id="edit-notes"
+                value={editFormData.notes}
+                onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                placeholder="Qo'shimcha izoh..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Bekor qilish
+            </Button>
+            <Button onClick={handleUpdateOrder}>
+              Saqlash
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
