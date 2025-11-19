@@ -104,7 +104,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { path: "/", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/leads", icon: Users, label: "Lidlar" },
     { path: "/products", icon: Package, label: "Mahsulotlar" },
-    { path: "/orders", icon: ShoppingCart, label: "Zakazlar (7 kun)" },
     { path: "/all-orders", icon: Package, label: "Barcha zakazlar" },
     { path: "/tasks", icon: CheckSquare, label: "Tasklar" },
     { path: "/profile", icon: User, label: "Profil" },
