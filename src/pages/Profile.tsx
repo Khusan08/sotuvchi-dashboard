@@ -5,11 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { User, Phone, Mail, Calendar, TrendingUp, ShoppingCart } from "lucide-react";
+import { User, Phone, Mail, Calendar, TrendingUp, ShoppingCart, UserPlus, Copy } from "lucide-react";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 const Profile = () => {
+  const { isAdminOrRop } = useUserRoles();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<any>(null);
@@ -21,6 +25,16 @@ const Profile = () => {
   const [formData, setFormData] = useState({
     full_name: "",
     phone: "",
+  });
+  const [createUserDialogOpen, setCreateUserDialogOpen] = useState(false);
+  const [credentialsDialogOpen, setCredentialsDialogOpen] = useState(false);
+  const [createdCredentials, setCreatedCredentials] = useState({ email: "", password: "" });
+  const [newUserData, setNewUserData] = useState({
+    email: "",
+    password: "",
+    full_name: "",
+    phone: "",
+    role: "sotuvchi" as "rop" | "sotuvchi",
   });
 
   useEffect(() => {
@@ -127,6 +141,54 @@ const Profile = () => {
     }
   };
 
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newUserData),
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create user');
+      }
+
+      setCreatedCredentials({
+        email: newUserData.email,
+        password: newUserData.password,
+      });
+      
+      toast.success("Foydalanuvchi yaratildi!");
+      setCreateUserDialogOpen(false);
+      setCredentialsDialogOpen(true);
+      
+      setNewUserData({
+        email: "",
+        password: "",
+        full_name: "",
+        phone: "",
+        role: "sotuvchi",
+      });
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Nusxalandi!");
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -142,12 +204,141 @@ const Profile = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Profil</h2>
-          <p className="text-muted-foreground mt-2">
-            Shaxsiy ma'lumotlar va statistika
-          </p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Profil</h2>
+            <p className="text-muted-foreground mt-2">
+              Shaxsiy ma'lumotlar va statistika
+            </p>
+          </div>
+          {isAdminOrRop && (
+            <Dialog open={createUserDialogOpen} onOpenChange={setCreateUserDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Yangi foydalanuvchi
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Yangi foydalanuvchi yaratish</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleCreateUser} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new_full_name">To'liq ism</Label>
+                    <Input
+                      id="new_full_name"
+                      value={newUserData.full_name}
+                      onChange={(e) => setNewUserData({ ...newUserData, full_name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new_email">Email</Label>
+                    <Input
+                      id="new_email"
+                      type="email"
+                      value={newUserData.email}
+                      onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new_password">Parol</Label>
+                    <Input
+                      id="new_password"
+                      type="password"
+                      value={newUserData.password}
+                      onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })}
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new_phone">Telefon</Label>
+                    <Input
+                      id="new_phone"
+                      value={newUserData.phone}
+                      onChange={(e) => setNewUserData({ ...newUserData, phone: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Rol</Label>
+                    <Select
+                      value={newUserData.role}
+                      onValueChange={(value: "rop" | "sotuvchi") =>
+                        setNewUserData({ ...newUserData, role: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sotuvchi">Sotuvchi</SelectItem>
+                        <SelectItem value="rop">ROP</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button type="submit" className="w-full">
+                    Yaratish
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
+
+        {/* Credentials Display Dialog */}
+        <Dialog open={credentialsDialogOpen} onOpenChange={setCredentialsDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Yangi foydalanuvchi ma'lumotlari</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Email (Login)</Label>
+                <div className="flex items-center gap-2">
+                  <Input 
+                    value={createdCredentials.email} 
+                    readOnly 
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={() => copyToClipboard(createdCredentials.email)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Parol</Label>
+                <div className="flex items-center gap-2">
+                  <Input 
+                    value={createdCredentials.password} 
+                    readOnly 
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={() => copyToClipboard(createdCredentials.password)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="bg-muted p-3 rounded-md">
+                <p className="text-sm text-muted-foreground">
+                  ⚠️ Bu ma'lumotlarni xavfsiz joyda saqlang. Parolni qayta ko'ra olmaysiz.
+                </p>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
