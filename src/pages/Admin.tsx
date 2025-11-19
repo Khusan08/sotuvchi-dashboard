@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Users, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
@@ -27,6 +28,7 @@ const Admin = () => {
     password: "",
     full_name: "",
     phone: "",
+    role: "sotuvchi" as "admin" | "rop" | "sotuvchi",
   });
 
   useEffect(() => {
@@ -90,7 +92,7 @@ const Admin = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-seller`, {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -101,6 +103,7 @@ const Admin = () => {
           password: formData.password,
           full_name: formData.full_name,
           phone: formData.phone,
+          role: formData.role,
         }),
       });
 
@@ -116,7 +119,7 @@ const Admin = () => {
         password: formData.password,
       });
       
-      toast.success("Sotuvchi yaratildi!");
+      toast.success(formData.role === "sotuvchi" ? "Sotuvchi yaratildi!" : formData.role === "rop" ? "ROP yaratildi!" : "Admin yaratildi!");
       setDialogOpen(false);
       setCredentialsDialogOpen(true);
       
@@ -126,10 +129,13 @@ const Admin = () => {
         password: "",
         full_name: "",
         phone: "",
+        role: "sotuvchi",
       });
       fetchSellers();
     } catch (error: any) {
       toast.error(error.message);
+    } finally {
+      setFormData({ email: "", password: "", full_name: "", phone: "", role: "sotuvchi" });
     }
   };
 
@@ -209,6 +215,24 @@ const Admin = () => {
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Rol</Label>
+                  <Select
+                    value={formData.role}
+                    onValueChange={(value: "admin" | "rop" | "sotuvchi") =>
+                      setFormData({ ...formData, role: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="rop">ROP</SelectItem>
+                      <SelectItem value="sotuvchi">Sotuvchi</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <Button type="submit" className="w-full">
                   Yaratish
