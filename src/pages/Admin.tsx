@@ -10,15 +10,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Users, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
-import { useUserRole } from "@/hooks/useUserRole";
+import { useUserRoles } from "@/hooks/useUserRoles";
 import { useNavigate } from "react-router-dom";
+import { Copy } from "lucide-react";
 
 const Admin = () => {
-  const { isAdmin, isRop, loading: roleLoading } = useUserRole();
+  const { isAdminOrRop, loading: roleLoading } = useUserRoles();
   const navigate = useNavigate();
   const [sellers, setSellers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [credentialsDialogOpen, setCredentialsDialogOpen] = useState(false);
+  const [createdCredentials, setCreatedCredentials] = useState({ email: "", password: "" });
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -27,17 +30,17 @@ const Admin = () => {
   });
 
   useEffect(() => {
-    if (!roleLoading && !isAdmin && !isRop) {
+    if (!roleLoading && !isAdminOrRop) {
       navigate("/");
       toast.error("Ruxsat yo'q");
     }
-  }, [isAdmin, isRop, roleLoading, navigate]);
+  }, [isAdminOrRop, roleLoading, navigate]);
 
   useEffect(() => {
-    if (isAdmin || isRop) {
+    if (isAdminOrRop) {
       fetchSellers();
     }
-  }, [isAdmin, isRop]);
+  }, [isAdminOrRop]);
 
   const fetchSellers = async () => {
     try {
@@ -107,8 +110,17 @@ const Admin = () => {
         throw new Error(result.error || 'Failed to create seller');
       }
 
+      // Save credentials to show in dialog
+      setCreatedCredentials({
+        email: formData.email,
+        password: formData.password,
+      });
+      
       toast.success("Sotuvchi yaratildi!");
       setDialogOpen(false);
+      setCredentialsDialogOpen(true);
+      
+      // Reset form
       setFormData({
         email: "",
         password: "",
@@ -121,6 +133,11 @@ const Admin = () => {
     }
   };
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Nusxalandi!");
+  };
+
   if (roleLoading || loading) {
     return (
       <DashboardLayout>
@@ -129,7 +146,7 @@ const Admin = () => {
     );
   }
 
-  if (!isAdmin) {
+  if (!isAdminOrRop) {
     return null;
   }
 
@@ -197,6 +214,58 @@ const Admin = () => {
                   Yaratish
                 </Button>
               </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Credentials Display Dialog */}
+          <Dialog open={credentialsDialogOpen} onOpenChange={setCredentialsDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Yangi sotuvchi ma'lumotlari</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Email (Login)</Label>
+                  <div className="flex items-center gap-2">
+                    <Input 
+                      value={createdCredentials.email} 
+                      readOnly 
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => copyToClipboard(createdCredentials.email)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Parol</Label>
+                  <div className="flex items-center gap-2">
+                    <Input 
+                      value={createdCredentials.password} 
+                      readOnly 
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => copyToClipboard(createdCredentials.password)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="bg-muted p-3 rounded-md">
+                  <p className="text-sm text-muted-foreground">
+                    ⚠️ Bu ma'lumotlarni xavfsiz joyda saqlang. Parolni qayta ko'ra olmaysiz.
+                  </p>
+                </div>
+              </div>
             </DialogContent>
           </Dialog>
         </div>
