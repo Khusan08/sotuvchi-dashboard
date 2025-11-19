@@ -47,8 +47,8 @@ Deno.serve(async (req) => {
     const { email, password, full_name, phone, role } = await req.json()
 
     // Validate role
-    if (!role || !['rop', 'sotuvchi'].includes(role)) {
-      return new Response(JSON.stringify({ error: 'Invalid role. Must be rop or sotuvchi' }), {
+    if (!role || !['admin', 'rop', 'sotuvchi'].includes(role)) {
+      return new Response(JSON.stringify({ error: 'Invalid role. Must be admin, rop or sotuvchi' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       })
