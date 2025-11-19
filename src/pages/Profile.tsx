@@ -34,7 +34,7 @@ const Profile = () => {
     password: "",
     full_name: "",
     phone: "",
-    role: "sotuvchi" as "rop" | "sotuvchi",
+    role: "sotuvchi" as "admin" | "rop" | "sotuvchi",
   });
 
   useEffect(() => {
@@ -266,7 +266,7 @@ const Profile = () => {
                     <Label htmlFor="role">Rol</Label>
                     <Select
                       value={newUserData.role}
-                      onValueChange={(value: "rop" | "sotuvchi") =>
+                      onValueChange={(value: "admin" | "rop" | "sotuvchi") =>
                         setNewUserData({ ...newUserData, role: value })
                       }
                     >
@@ -274,8 +274,9 @@ const Profile = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="sotuvchi">Sotuvchi</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="rop">ROP</SelectItem>
+                        <SelectItem value="sotuvchi">Sotuvchi</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
