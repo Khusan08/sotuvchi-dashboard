@@ -692,68 +692,96 @@ const AllOrders = () => {
                 </Select>
               </div>
             </div>
-            <div>
-              <Label>Mahsulotlar *</Label>
-              {createFormData.items.map((item, index) => (
-                <div key={index} className="grid grid-cols-12 gap-2 mb-2">
-                  <Select
-                    value={item.product_name || undefined}
-                    onValueChange={(value) => {
-                      const selectedProduct = products.find(p => p.name === value);
-                      if (selectedProduct) {
-                        updateOrderItem(index, 'product_name', value);
-                        updateOrderItem(index, 'price', selectedProduct.price);
-                      }
-                    }}
+            <div className="space-y-4 border-t pt-4">
+              <Label>Mahsulotlarni tanlang *</Label>
+              
+              {/* Product selection grid */}
+              <div className="grid grid-cols-2 gap-3 max-h-[300px] overflow-y-auto p-1">
+                {products.map((product) => (
+                  <Card 
+                    key={product.id}
+                    className="cursor-pointer hover:border-primary transition-colors overflow-hidden"
+                    onClick={() => addProductToOrder(product)}
                   >
-                    <SelectTrigger className="col-span-5">
-                      <SelectValue placeholder="Mahsulot tanlang">
-                        {item.product_name || "Mahsulot tanlang"}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="bg-background z-50">
-                      {products.length === 0 ? (
-                        <div className="p-2 text-sm text-muted-foreground">Mahsulotlar topilmadi</div>
-                      ) : (
-                        products.map((product) => (
-                          <SelectItem key={product.id} value={product.name}>
-                            {product.name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    className="col-span-3"
-                    type="number"
-                    value={item.price}
-                    onChange={(e) => updateOrderItem(index, 'price', Number(e.target.value))}
-                    placeholder="Narxi"
-                  />
-                  <Input
-                    className="col-span-3"
-                    type="number"
-                    value={item.quantity}
-                    onChange={(e) => updateOrderItem(index, 'quantity', Number(e.target.value))}
-                    placeholder="Soni"
-                    min="1"
-                  />
-                  {createFormData.items.length > 1 && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="col-span-1"
-                      onClick={() => removeOrderItem(index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
+                    {product.image_url ? (
+                      <div className="aspect-square relative overflow-hidden bg-muted">
+                        <img 
+                          src={product.image_url} 
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="aspect-square bg-muted flex items-center justify-center">
+                        <span className="text-muted-foreground text-xs">Rasm yo'q</span>
+                      </div>
+                    )}
+                    <CardContent className="p-3">
+                      <h4 className="font-medium text-sm line-clamp-1">{product.name}</h4>
+                      <p className="text-xs text-primary font-semibold mt-1">
+                        {product.price.toLocaleString()} so'm
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Selected products */}
+              {createFormData.items.length > 0 && createFormData.items.some(item => item.product_name) && (
+                <div className="space-y-2 border-t pt-4">
+                  <Label>Tanlangan mahsulotlar</Label>
+                  {createFormData.items.filter(item => item.product_name).map((item, index) => (
+                    <Card key={index} className="p-3">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">{item.product_name}</span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removeOrderItem(index)}
+                          >
+                            O'chirish
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="space-y-1">
+                            <Label htmlFor={`quantity_${index}`} className="text-xs">Soni</Label>
+                            <Input
+                              id={`quantity_${index}`}
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) => updateOrderItem(index, "quantity", Number(e.target.value))}
+                              className="h-8"
+                              required
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor={`price_${index}`} className="text-xs">Narxi</Label>
+                            <Input
+                              id={`price_${index}`}
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.price}
+                              onChange={(e) => updateOrderItem(index, "price", Number(e.target.value))}
+                              className="h-8"
+                              required
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Jami</Label>
+                            <div className="h-8 flex items-center text-sm font-semibold">
+                              {(item.quantity * item.price).toLocaleString()} so'm
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
                 </div>
-              ))}
-              <Button variant="outline" size="sm" onClick={addOrderItem} className="mt-2">
-                <Plus className="mr-2 h-4 w-4" />
-                Mahsulot qo'shish
-              </Button>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
