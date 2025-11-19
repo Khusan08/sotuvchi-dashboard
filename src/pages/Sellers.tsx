@@ -129,9 +129,25 @@ const Sellers = () => {
     if (!confirm("Haqiqatan ham bu hodimni o'chirmoqchimisiz?")) return;
 
     try {
-      const { error } = await supabase.auth.admin.deleteUser(sellerId);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: sellerId,
+        }),
+      });
+
+      const result = await response.json();
       
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete user');
+      }
 
       toast.success("Hodim muvaffaqiyatli o'chirildi!");
       fetchSellers();
