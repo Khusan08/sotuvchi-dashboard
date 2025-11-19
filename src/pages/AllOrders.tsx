@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { Textarea } from "@/components/ui/textarea";
+import { regions, regionsData } from "@/lib/regions";
 
 interface OrderItem {
   product_name: string;
@@ -66,18 +67,36 @@ const AllOrders = () => {
     region: '',
     district: '',
     advance_payment: 0,
+    total_amount: 0,
     notes: '',
     items: [{ product_name: '', price: 0, quantity: 1 }]
   });
+  const [products, setProducts] = useState<any[]>([]);
+  const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
   const { isAdmin } = useUserRoles();
 
   useEffect(() => {
     fetchOrders();
+    fetchProducts();
   }, []);
 
   useEffect(() => {
     filterOrders();
   }, [orders, startDate, endDate, searchQuery, filterStatus]);
+
+  useEffect(() => {
+    if (createFormData.region) {
+      setAvailableDistricts(regionsData[createFormData.region] || []);
+      setCreateFormData(prev => ({ ...prev, district: '' }));
+    } else {
+      setAvailableDistricts([]);
+    }
+  }, [createFormData.region]);
+
+  useEffect(() => {
+    const total = createFormData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    setCreateFormData(prev => ({ ...prev, total_amount: total }));
+  }, [createFormData.items]);
 
   const fetchOrders = async () => {
     try {
@@ -111,6 +130,20 @@ const AllOrders = () => {
       toast.error("Xatolik: " + error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .order("name");
+
+      if (error) throw error;
+      setProducts(data || []);
+    } catch (error: any) {
+      toast.error("Mahsulotlarni yuklashda xatolik: " + error.message);
     }
   };
 
@@ -269,6 +302,7 @@ const AllOrders = () => {
         region: '',
         district: '',
         advance_payment: 0,
+        total_amount: 0,
         notes: '',
         items: [{ product_name: '', price: 0, quantity: 1 }]
       });
@@ -589,43 +623,67 @@ const AllOrders = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="region">Viloyat</Label>
-                <Input
-                  id="region"
+                <Select
                   value={createFormData.region}
-                  onChange={(e) => setCreateFormData({ ...createFormData, region: e.target.value })}
-                  placeholder="Viloyat"
-                />
+                  onValueChange={(value) => setCreateFormData({ ...createFormData, region: value })}
+                >
+                  <SelectTrigger id="region">
+                    <SelectValue placeholder="Viloyatni tanlang" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {regions.map((region) => (
+                      <SelectItem key={region} value={region}>
+                        {region}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="district">Tuman</Label>
-                <Input
-                  id="district"
+                <Select
                   value={createFormData.district}
-                  onChange={(e) => setCreateFormData({ ...createFormData, district: e.target.value })}
-                  placeholder="Tuman"
-                />
+                  onValueChange={(value) => setCreateFormData({ ...createFormData, district: value })}
+                  disabled={!createFormData.region}
+                >
+                  <SelectTrigger id="district">
+                    <SelectValue placeholder="Tumanni tanlang" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableDistricts.map((district) => (
+                      <SelectItem key={district} value={district}>
+                        {district}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
-            <div>
-              <Label htmlFor="advance_payment">Oldindan to'lov</Label>
-              <Input
-                id="advance_payment"
-                type="number"
-                value={createFormData.advance_payment}
-                onChange={(e) => setCreateFormData({ ...createFormData, advance_payment: Number(e.target.value) })}
-                placeholder="0"
-              />
             </div>
             <div>
               <Label>Mahsulotlar *</Label>
               {createFormData.items.map((item, index) => (
                 <div key={index} className="grid grid-cols-12 gap-2 mb-2">
-                  <Input
-                    className="col-span-5"
+                  <Select
                     value={item.product_name}
-                    onChange={(e) => updateOrderItem(index, 'product_name', e.target.value)}
-                    placeholder="Mahsulot nomi"
-                  />
+                    onValueChange={(value) => {
+                      const selectedProduct = products.find(p => p.name === value);
+                      if (selectedProduct) {
+                        updateOrderItem(index, 'product_name', value);
+                        updateOrderItem(index, 'price', selectedProduct.price);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="col-span-5">
+                      <SelectValue placeholder="Mahsulot tanlang" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {products.map((product) => (
+                        <SelectItem key={product.id} value={product.name}>
+                          {product.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Input
                     className="col-span-3"
                     type="number"
@@ -657,6 +715,32 @@ const AllOrders = () => {
                 <Plus className="mr-2 h-4 w-4" />
                 Mahsulot qo'shish
               </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="advance_payment">Oldindan to'lov</Label>
+                <Input
+                  id="advance_payment"
+                  type="number"
+                  value={createFormData.advance_payment}
+                  onChange={(e) => setCreateFormData({ ...createFormData, advance_payment: Number(e.target.value) })}
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <Label>Jami summa</Label>
+                <Input
+                  type="number"
+                  value={createFormData.total_amount}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+            </div>
+            <div className="p-3 bg-muted rounded-md">
+              <p className="text-sm font-medium">
+                Qolgan summa: <span className="text-lg font-bold">{(createFormData.total_amount - createFormData.advance_payment).toLocaleString()} so'm</span>
+              </p>
             </div>
             <div>
               <Label htmlFor="notes">Izoh</Label>
