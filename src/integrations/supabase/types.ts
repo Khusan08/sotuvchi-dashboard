@@ -23,6 +23,7 @@ export type Database = {
           customer_phone: string | null
           employee: string | null
           id: string
+          lead_quality: string | null
           lead_type: string | null
           notes: string | null
           price: number | null
@@ -39,6 +40,7 @@ export type Database = {
           customer_phone?: string | null
           employee?: string | null
           id?: string
+          lead_quality?: string | null
           lead_type?: string | null
           notes?: string | null
           price?: number | null
@@ -55,6 +57,7 @@ export type Database = {
           customer_phone?: string | null
           employee?: string | null
           id?: string
+          lead_quality?: string | null
           lead_type?: string | null
           notes?: string | null
           price?: number | null
