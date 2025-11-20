@@ -29,6 +29,15 @@ const ACTIVITY_OPTIONS = [
 
 const LEAD_TYPE_OPTIONS = ["Yangi lid", "Baza"];
 
+const TIME_FILTER_OPTIONS = [
+  { value: "all", label: "Barchasi" },
+  { value: "1week", label: "1 haftalik" },
+  { value: "10days", label: "10 kunlik" },
+  { value: "20days", label: "20 kunlik" },
+  { value: "monthly", label: "Oylik" },
+  { value: "yearly", label: "Yillik" },
+];
+
 const Leads = () => {
   const [leads, setLeads] = useState<any[]>([]);
   const [filteredLeads, setFilteredLeads] = useState<any[]>([]);
@@ -36,6 +45,7 @@ const Leads = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [filterActivity, setFilterActivity] = useState<string>("all");
   const [filterLeadType, setFilterLeadType] = useState<string>("all");
+  const [filterTimeRange, setFilterTimeRange] = useState<string>("all");
   const [sellers, setSellers] = useState<any[]>([]);
   const [reassignDialogOpen, setReassignDialogOpen] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -45,7 +55,6 @@ const Leads = () => {
   const [formData, setFormData] = useState({
     customer_name: "",
     customer_phone: "",
-    customer_email: "",
     activity: "",
     employee: "",
     lead_type: "Yangi lid",
@@ -60,7 +69,7 @@ const Leads = () => {
 
   useEffect(() => {
     filterLeads();
-  }, [leads, filterActivity, filterLeadType]);
+  }, [leads, filterActivity, filterLeadType, filterTimeRange]);
 
   const fetchLeads = async () => {
     try {
@@ -109,6 +118,31 @@ const Leads = () => {
       filtered = filtered.filter(lead => lead.lead_type === filterLeadType);
     }
 
+    if (filterTimeRange !== "all") {
+      const now = new Date();
+      let startDate = new Date();
+
+      switch (filterTimeRange) {
+        case "1week":
+          startDate.setDate(now.getDate() - 7);
+          break;
+        case "10days":
+          startDate.setDate(now.getDate() - 10);
+          break;
+        case "20days":
+          startDate.setDate(now.getDate() - 20);
+          break;
+        case "monthly":
+          startDate.setMonth(now.getMonth() - 1);
+          break;
+        case "yearly":
+          startDate.setFullYear(now.getFullYear() - 1);
+          break;
+      }
+
+      filtered = filtered.filter(lead => new Date(lead.created_at) >= startDate);
+    }
+
     setFilteredLeads(filtered);
   };
 
@@ -125,7 +159,6 @@ const Leads = () => {
         seller_id: formData.employee,
         customer_name: formData.customer_name,
         customer_phone: formData.customer_phone,
-        customer_email: formData.customer_email || null,
         activity: formData.activity,
         employee: sellers.find(s => s.id === formData.employee)?.full_name || "",
         lead_type: formData.lead_type,
@@ -140,7 +173,6 @@ const Leads = () => {
       setFormData({
         customer_name: "",
         customer_phone: "",
-        customer_email: "",
         activity: "",
         employee: "",
         lead_type: "Yangi lid",
@@ -255,15 +287,6 @@ const Leads = () => {
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="customer_email">Email</Label>
-                <Input
-                  id="customer_email"
-                  type="email"
-                  value={formData.customer_email}
-                  onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })}
-                />
-              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -358,6 +381,20 @@ const Leads = () => {
 
         <div className="flex gap-2 items-center flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
+          
+          <Select value={filterTimeRange} onValueChange={setFilterTimeRange}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Vaqt bo'yicha" />
+            </SelectTrigger>
+            <SelectContent>
+              {TIME_FILTER_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Select value={filterActivity} onValueChange={setFilterActivity}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Amal bo'yicha" />
@@ -397,7 +434,6 @@ const Leads = () => {
                   <TableHead>Sana</TableHead>
                   <TableHead>Mijoz ismi</TableHead>
                   <TableHead>Telefon</TableHead>
-                  <TableHead>Email</TableHead>
                   <TableHead>Xodim</TableHead>
                   <TableHead>Lead turi</TableHead>
                   <TableHead>Amal</TableHead>
@@ -409,7 +445,7 @@ const Leads = () => {
               <TableBody>
                 {filteredLeads.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={isAdminOrRop ? 10 : 9} className="text-center text-muted-foreground">
+                    <TableCell colSpan={isAdminOrRop ? 9 : 8} className="text-center text-muted-foreground">
                       Lidlar topilmadi
                     </TableCell>
                   </TableRow>
@@ -419,8 +455,7 @@ const Leads = () => {
                       <TableCell>{format(new Date(lead.created_at), "dd.MM.yyyy")}</TableCell>
                       <TableCell className="font-medium">{lead.customer_name}</TableCell>
                       <TableCell>{lead.customer_phone}</TableCell>
-                      <TableCell>{lead.customer_email || "-"}</TableCell>
-                      <TableCell>{lead.employee || "-"}</TableCell>
+                      <TableCell>{lead.profiles?.full_name || lead.employee || "-"}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{lead.lead_type}</Badge>
                       </TableCell>
@@ -428,7 +463,7 @@ const Leads = () => {
                         {lead.activity ? getActivityBadge(lead.activity) : "-"}
                       </TableCell>
                       <TableCell>
-                        {lead.activity === "Sotildi" && lead.price 
+                        {lead.price 
                           ? `${lead.price.toLocaleString()} so'm` 
                           : "-"}
                       </TableCell>
