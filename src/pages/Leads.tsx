@@ -264,6 +264,25 @@ const Leads = () => {
     }
   };
 
+  const handleLeadTypeUpdate = async (leadId: string, newLeadType: string) => {
+    try {
+      const { error } = await supabase
+        .from("leads")
+        .update({
+          lead_type: newLeadType,
+        })
+        .eq("id", leadId);
+
+      if (error) throw error;
+
+      toast.success("Lead turi muvaffaqiyatli yangilandi!");
+      fetchLeads();
+    } catch (error) {
+      console.error("Error updating lead type:", error);
+      toast.error("Lead turi yangilashda xato");
+    }
+  };
+
   const getActivityBadge = (activity: string) => {
     const colors: { [key: string]: string } = {
       "Sotildi": "bg-green-500",
@@ -501,7 +520,21 @@ const Leads = () => {
                       <TableCell>{lead.customer_phone}</TableCell>
                       <TableCell>{lead.profiles?.full_name || lead.employee || "-"}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{lead.lead_type}</Badge>
+                        <Select
+                          value={lead.lead_type || "Yangi lid"}
+                          onValueChange={(value) => handleLeadTypeUpdate(lead.id, value)}
+                        >
+                          <SelectTrigger className="w-[140px] bg-background border border-input">
+                            <SelectValue placeholder="Yangi lid" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {LEAD_TYPE_OPTIONS.map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {type}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
                         <Select
