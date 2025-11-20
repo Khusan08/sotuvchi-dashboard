@@ -15,6 +15,7 @@ interface SellerStats {
   total_revenue: number;
   completed_orders: number;
   cancelled_orders: number;
+  in_progress_orders: number;
   conversion_rate: number;
   average_order_value: number;
 }
@@ -25,13 +26,22 @@ const Statistics = () => {
   const [stats, setStats] = useState<SellerStats[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { isAdmin, isRop } = useUserRoles();
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const { isAdmin, isRop, isSotuvchi } = useUserRoles();
 
   useEffect(() => {
+    fetchCurrentUser();
     if (isAdmin || isRop) {
       fetchSellers();
     }
   }, [isAdmin, isRop]);
+
+  const fetchCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setCurrentUserId(user.id);
+    }
+  };
 
   useEffect(() => {
     fetchStatistics();
@@ -62,7 +72,10 @@ const Statistics = () => {
           profiles!orders_seller_id_fkey(full_name)
         `);
 
-      if (selectedSeller !== "all") {
+      // If seller role, only show their own stats
+      if (isSotuvchi && currentUserId) {
+        ordersQuery = ordersQuery.eq("seller_id", currentUserId);
+      } else if (selectedSeller !== "all") {
         ordersQuery = ordersQuery.eq("seller_id", selectedSeller);
       }
 
@@ -98,6 +111,8 @@ const Statistics = () => {
           seller.completed_orders++;
         } else if (order.status === "cancelled") {
           seller.cancelled_orders++;
+        } else if (order.status === "pending") {
+          seller.in_progress_orders++;
         }
       });
 
@@ -108,6 +123,7 @@ const Statistics = () => {
         total_revenue: seller.total_revenue,
         completed_orders: seller.completed_orders,
         cancelled_orders: seller.cancelled_orders,
+        in_progress_orders: seller.in_progress_orders || 0,
         conversion_rate: seller.total_orders > 0 
           ? (seller.completed_orders / seller.total_orders) * 100 
           : 0,
@@ -125,6 +141,7 @@ const Statistics = () => {
         daromad: Math.round(seller.total_revenue / 1000), // in thousands
         tugallandi: seller.completed_orders,
         bekorqilindi: seller.cancelled_orders,
+        jarayonda: seller.in_progress_orders,
       }));
 
       setChartData(chartData);
@@ -135,15 +152,6 @@ const Statistics = () => {
     }
   };
 
-  if (!isAdmin && !isRop) {
-    return (
-      <DashboardLayout>
-        <div className="text-center text-muted-foreground">
-          Bu sahifaga kirish huquqingiz yo'q
-        </div>
-      </DashboardLayout>
-    );
-  }
 
   if (loading) {
     return (
@@ -160,25 +168,27 @@ const Statistics = () => {
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Statistika</h2>
             <p className="text-muted-foreground mt-2">
-              Hodimlar bo'yicha batafsil statistika
+            {isAdmin || isRop ? "Hodimlar bo'yicha batafsil statistika" : "Mening statistikam"}
             </p>
           </div>
-          <div className="w-[250px]">
-            <Label>Sotuvchi</Label>
-            <Select value={selectedSeller} onValueChange={setSelectedSeller}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sotuvchini tanlang" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Barcha sotuvchilar</SelectItem>
-                {sellers.map((seller) => (
-                  <SelectItem key={seller.id} value={seller.id}>
-                    {seller.full_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {(isAdmin || isRop) && (
+            <div className="w-[250px]">
+              <Label>Sotuvchi</Label>
+              <Select value={selectedSeller} onValueChange={setSelectedSeller}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sotuvchini tanlang" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Barcha sotuvchilar</SelectItem>
+                  {sellers.map((seller) => (
+                    <SelectItem key={seller.id} value={seller.id}>
+                      {seller.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         {/* Stats Cards */}
@@ -198,6 +208,10 @@ const Statistics = () => {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Jami savdo:</span>
                   <span className="font-semibold">{stat.total_revenue.toLocaleString()} so'm</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Jarayonda:</span>
+                  <span className="font-semibold text-blue-600">{stat.in_progress_orders}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Tugallandi:</span>
