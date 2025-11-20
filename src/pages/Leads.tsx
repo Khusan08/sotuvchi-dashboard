@@ -216,6 +216,52 @@ const Leads = () => {
     }
   };
 
+  const handleActivityUpdate = async (leadId: string, newActivity: string, currentPrice: number | null) => {
+    try {
+      const updateData: any = {
+        activity: newActivity,
+      };
+
+      // If changing to "Sotildi" and no price, keep current price
+      // If changing away from "Sotildi", keep the price as is
+      if (newActivity === "Sotildi" && !currentPrice) {
+        // Optionally, you can prompt for price or keep it null
+      }
+
+      const { error } = await supabase
+        .from("leads")
+        .update(updateData)
+        .eq("id", leadId);
+
+      if (error) throw error;
+
+      toast.success("Amal muvaffaqiyatli yangilandi!");
+      fetchLeads();
+    } catch (error) {
+      console.error("Error updating activity:", error);
+      toast.error("Amal yangilashda xato");
+    }
+  };
+
+  const handlePriceUpdate = async (leadId: string, newPrice: string) => {
+    try {
+      const { error } = await supabase
+        .from("leads")
+        .update({
+          price: newPrice ? parseFloat(newPrice) : null,
+        })
+        .eq("id", leadId);
+
+      if (error) throw error;
+
+      toast.success("Narx muvaffaqiyatli yangilandi!");
+      fetchLeads();
+    } catch (error) {
+      console.error("Error updating price:", error);
+      toast.error("Narx yangilashda xato");
+    }
+  };
+
   const getActivityBadge = (activity: string) => {
     const colors: { [key: string]: string } = {
       "Sotildi": "bg-green-500",
@@ -229,11 +275,7 @@ const Leads = () => {
       "Sotib olib bo'lgan": "bg-pink-500",
     };
 
-    return (
-      <Badge className={colors[activity] || "bg-gray-500"}>
-        {activity}
-      </Badge>
-    );
+    return colors[activity] || "bg-gray-500";
   };
 
   if (loading) {
@@ -460,12 +502,39 @@ const Leads = () => {
                         <Badge variant="outline">{lead.lead_type}</Badge>
                       </TableCell>
                       <TableCell>
-                        {lead.activity ? getActivityBadge(lead.activity) : "-"}
+                        <Select
+                          value={lead.activity || ""}
+                          onValueChange={(value) => handleActivityUpdate(lead.id, value, lead.price)}
+                        >
+                          <SelectTrigger className={`w-[200px] ${lead.activity ? getActivityBadge(lead.activity) : ""} text-white border-0`}>
+                            <SelectValue placeholder="Amalni tanlang" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ACTIVITY_OPTIONS.map((activity) => (
+                              <SelectItem key={activity} value={activity}>
+                                {activity}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
-                        {lead.price 
-                          ? `${lead.price.toLocaleString()} so'm` 
-                          : "-"}
+                        <Input
+                          type="number"
+                          value={lead.price || ""}
+                          onChange={(e) => {
+                            const newPrice = e.target.value;
+                            // Update immediately on blur or Enter
+                          }}
+                          onBlur={(e) => handlePriceUpdate(lead.id, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handlePriceUpdate(lead.id, (e.target as HTMLInputElement).value);
+                            }
+                          }}
+                          placeholder="Narx"
+                          className="w-[120px]"
+                        />
                       </TableCell>
                       <TableCell className="max-w-xs truncate">{lead.notes || "-"}</TableCell>
                       {isAdminOrRop && (
