@@ -525,7 +525,7 @@ const Leads = () => {
                           onValueChange={(value) => handleLeadTypeUpdate(lead.id, value)}
                         >
                           <SelectTrigger className="w-[140px] bg-background border border-input">
-                            <SelectValue placeholder="Yangi lid" />
+                            <span>Yangi lid</span>
                           </SelectTrigger>
                           <SelectContent>
                             {LEAD_TYPE_OPTIONS.map((type) => (
