@@ -25,6 +25,8 @@ const ACTIVITY_OPTIONS = [
   "Qimatlik qildi",
   "Keyin oladi",
   "Sotib olib bo'lgan",
+  "Ko'tarmadi",
+  "O'chirilgan",
 ];
 
 const LEAD_TYPE_OPTIONS = ["Yangi lid", "Baza"];
@@ -506,8 +508,8 @@ const Leads = () => {
                           value={lead.activity || ""}
                           onValueChange={(value) => handleActivityUpdate(lead.id, value, lead.price)}
                         >
-                          <SelectTrigger className={`w-[200px] ${lead.activity ? getActivityBadge(lead.activity) : ""} text-white border-0`}>
-                            <SelectValue placeholder="Amalni tanlang" />
+                          <SelectTrigger className="w-[200px] bg-background border border-input">
+                            <SelectValue placeholder="Lid sifati" />
                           </SelectTrigger>
                           <SelectContent>
                             {ACTIVITY_OPTIONS.map((activity) => (
