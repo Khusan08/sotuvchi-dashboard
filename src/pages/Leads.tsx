@@ -13,24 +13,44 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useUserRoles } from "@/hooks/useUserRoles";
+
+const ACTIVITY_OPTIONS = [
+  "Sotildi",
+  "Telegramdan malumot",
+  "Sifatsiz",
+  "Qayta aloqa",
+  "Hozir gaplasha olmaydi",
+  "Tadbirkor emas",
+  "Qimatlik qildi",
+  "Keyin oladi",
+  "Sotib olib bo'lgan",
+];
+
+const LEAD_TYPE_OPTIONS = ["Yangi lid", "Baza"];
 
 const Leads = () => {
   const [leads, setLeads] = useState<any[]>([]);
   const [filteredLeads, setFilteredLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterSource, setFilterSource] = useState<string>("all");
+  const [filterActivity, setFilterActivity] = useState<string>("all");
+  const [filterLeadType, setFilterLeadType] = useState<string>("all");
   const [sellers, setSellers] = useState<any[]>([]);
+  const [reassignDialogOpen, setReassignDialogOpen] = useState(false);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [newSellerId, setNewSellerId] = useState<string>("");
+  const { isAdminOrRop } = useUserRoles();
   
   const [formData, setFormData] = useState({
     customer_name: "",
     customer_phone: "",
+    customer_email: "",
     activity: "",
     employee: "",
-    lead_type: "",
-    notes: "",
+    lead_type: "Yangi lid",
     price: "",
+    notes: "",
   });
 
   useEffect(() => {
@@ -40,17 +60,18 @@ const Leads = () => {
 
   useEffect(() => {
     filterLeads();
-  }, [leads, filterStatus, filterSource]);
+  }, [leads, filterActivity, filterLeadType]);
 
   const fetchLeads = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const { data, error } = await supabase
         .from("leads")
-        .select("*")
-        .eq("seller_id", user.id)
+        .select(`
+          *,
+          profiles:seller_id (
+            full_name
+          )
+        `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -80,12 +101,12 @@ const Leads = () => {
   const filterLeads = () => {
     let filtered = [...leads];
 
-    if (filterStatus !== "all") {
-      filtered = filtered.filter(lead => lead.status === filterStatus);
+    if (filterActivity !== "all") {
+      filtered = filtered.filter(lead => lead.activity === filterActivity);
     }
 
-    if (filterSource !== "all") {
-      filtered = filtered.filter(lead => lead.source === filterSource);
+    if (filterLeadType !== "all") {
+      filtered = filtered.filter(lead => lead.lead_type === filterLeadType);
     }
 
     setFilteredLeads(filtered);
@@ -94,20 +115,22 @@ const Leads = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    if (!formData.employee) {
+      toast.error("Iltimos, xodimni tanlang");
+      return;
+    }
 
+    try {
       const { error } = await supabase.from("leads").insert({
-        seller_id: user.id,
+        seller_id: formData.employee,
         customer_name: formData.customer_name,
         customer_phone: formData.customer_phone,
+        customer_email: formData.customer_email || null,
         activity: formData.activity,
-        employee: formData.employee,
+        employee: sellers.find(s => s.id === formData.employee)?.full_name || "",
         lead_type: formData.lead_type,
-        notes: formData.notes,
+        notes: formData.notes || null,
         price: formData.price ? parseFloat(formData.price) : null,
-        status: "new",
       });
 
       if (error) throw error;
@@ -117,79 +140,103 @@ const Leads = () => {
       setFormData({
         customer_name: "",
         customer_phone: "",
+        customer_email: "",
         activity: "",
         employee: "",
-        lead_type: "",
-        notes: "",
+        lead_type: "Yangi lid",
         price: "",
+        notes: "",
       });
       fetchLeads();
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error) {
+      console.error("Error creating lead:", error);
+      toast.error("Lid qo'shishda xato");
     }
   };
 
-  const updateLeadStatus = async (leadId: string, newStatus: string) => {
+  const handleReassign = async () => {
+    if (!selectedLeadId || !newSellerId) {
+      toast.error("Iltimos, xodimni tanlang");
+      return;
+    }
+
     try {
+      const sellerName = sellers.find(s => s.id === newSellerId)?.full_name || "";
+      
       const { error } = await supabase
         .from("leads")
-        .update({ status: newStatus })
-        .eq("id", leadId);
+        .update({
+          seller_id: newSellerId,
+          employee: sellerName,
+        })
+        .eq("id", selectedLeadId);
 
       if (error) throw error;
 
-      toast.success("Lid statusi yangilandi!");
+      toast.success("Lid muvaffaqiyatli o'tkazildi!");
+      setReassignDialogOpen(false);
+      setSelectedLeadId(null);
+      setNewSellerId("");
       fetchLeads();
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error) {
+      console.error("Error reassigning lead:", error);
+      toast.error("Lidni o'tkazishda xato");
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, any> = {
-      new: { variant: "secondary", label: "Yangi" },
-      contacted: { variant: "default", label: "Bog'lanildi" },
-      qualified: { variant: "default", label: "Malakali" },
-      converted: { variant: "default", label: "Konvert" },
-      lost: { variant: "destructive", label: "Yo'qoldi" },
+  const getActivityBadge = (activity: string) => {
+    const colors: { [key: string]: string } = {
+      "Sotildi": "bg-green-500",
+      "Telegramdan malumot": "bg-blue-500",
+      "Sifatsiz": "bg-red-500",
+      "Qayta aloqa": "bg-yellow-500",
+      "Hozir gaplasha olmaydi": "bg-orange-500",
+      "Tadbirkor emas": "bg-gray-500",
+      "Qimatlik qildi": "bg-purple-500",
+      "Keyin oladi": "bg-indigo-500",
+      "Sotib olib bo'lgan": "bg-pink-500",
     };
-    
-    const config = variants[status] || variants.new;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+
+    return (
+      <Badge className={colors[activity] || "bg-gray-500"}>
+        {activity}
+      </Badge>
+    );
   };
 
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="text-center text-muted-foreground">Yuklanmoqda...</div>
+        <div className="flex justify-center items-center h-64">
+          <div className="text-lg">Yuklanmoqda...</div>
+        </div>
       </DashboardLayout>
     );
   }
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">Lidlar</h2>
-            <p className="text-muted-foreground mt-2">
-              Barcha lidlaringizni boshqaring
-            </p>
-          </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Yangi lid
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Yangi lid qo'shish</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="customer_name">Ism</Label>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold mb-2">Lidlar</h1>
+        <p className="text-muted-foreground">Barcha lidlarni boshqarish</p>
+      </div>
+
+      <div className="flex gap-4 mb-6 flex-wrap items-center">
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Yangi lid
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Yangi lid qo'shish</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="customer_name">Mijoz ismi *</Label>
                   <Input
                     id="customer_name"
                     value={formData.customer_name}
@@ -197,30 +244,36 @@ const Leads = () => {
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="customer_phone">Nomer</Label>
+                <div>
+                  <Label htmlFor="customer_phone">Telefon raqami *</Label>
                   <Input
                     id="customer_phone"
                     value={formData.customer_phone}
                     onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
+                    required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="activity">Faoliyat</Label>
-                  <Input
-                    id="activity"
-                    value={formData.activity}
-                    onChange={(e) => setFormData({ ...formData, activity: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="employee">Hodim</Label>
+              </div>
+
+              <div>
+                <Label htmlFor="customer_email">Email</Label>
+                <Input
+                  id="customer_email"
+                  type="email"
+                  value={formData.customer_email}
+                  onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="employee">Xodim *</Label>
                   <Select
                     value={formData.employee}
                     onValueChange={(value) => setFormData({ ...formData, employee: value })}
                   >
-                    <SelectTrigger id="employee">
-                      <SelectValue placeholder="Hodimni tanlang" />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Xodimni tanlang" />
                     </SelectTrigger>
                     <SelectContent>
                       {sellers.map((seller) => (
@@ -231,16 +284,49 @@ const Leads = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lead_type">Lead</Label>
-                  <Input
-                    id="lead_type"
+
+                <div>
+                  <Label htmlFor="lead_type">Lead turi *</Label>
+                  <Select
                     value={formData.lead_type}
-                    onChange={(e) => setFormData({ ...formData, lead_type: e.target.value })}
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, lead_type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LEAD_TYPE_OPTIONS.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price">Narx</Label>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="activity">Amal</Label>
+                  <Select
+                    value={formData.activity}
+                    onValueChange={(value) => setFormData({ ...formData, activity: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Amalni tanlang" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ACTIVITY_OPTIONS.map((activity) => (
+                        <SelectItem key={activity} value={activity}>
+                          {activity}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="price">Narx (so'm)</Label>
                   <Input
                     id="price"
                     type="number"
@@ -248,116 +334,166 @@ const Leads = () => {
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Izoh</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    rows={3}
-                  />
-                </div>
-                <Button type="submit" className="w-full">
-                  Saqlash
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4 mb-4">
-              <Filter className="h-5 w-5 text-muted-foreground" />
-              <div className="flex gap-4 flex-1">
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Barcha statuslar</SelectItem>
-                    <SelectItem value="new">Yangi</SelectItem>
-                    <SelectItem value="contacted">Bog'landi</SelectItem>
-                    <SelectItem value="qualified">Malakali</SelectItem>
-                    <SelectItem value="converted">O'tkazildi</SelectItem>
-                    <SelectItem value="lost">Yo'qoldi</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {filterStatus !== "all" && (
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setFilterStatus("all")}
-                  >
-                    Tozalash
-                  </Button>
-                )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ism</TableHead>
-                    <TableHead>Nomer</TableHead>
-                    <TableHead>Faoliyat</TableHead>
-                    <TableHead>Xodim</TableHead>
-                    <TableHead>Lead</TableHead>
-                    <TableHead>Izoh</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Narx</TableHead>
-                    <TableHead>Amallar</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLeads.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                        Lidlar topilmadi
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredLeads.map((lead) => (
-                      <TableRow key={lead.id}>
-                        <TableCell className="font-medium">{lead.customer_name}</TableCell>
-                        <TableCell>{lead.customer_phone || "-"}</TableCell>
-                        <TableCell>{lead.activity || "-"}</TableCell>
-                        <TableCell>{lead.employee || "-"}</TableCell>
-                        <TableCell>{lead.lead_type || "-"}</TableCell>
-                        <TableCell className="max-w-xs truncate">{lead.notes || "-"}</TableCell>
-                        <TableCell>{getStatusBadge(lead.status)}</TableCell>
-                        <TableCell>{lead.price ? `${Number(lead.price).toLocaleString()} so'm` : "-"}</TableCell>
-                        <TableCell>
-                          <Select 
-                            value={lead.status} 
-                            onValueChange={(value) => updateLeadStatus(lead.id, value)}
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="new">Yangi</SelectItem>
-                              <SelectItem value="contacted">Bog'landi</SelectItem>
-                              <SelectItem value="qualified">Malakali</SelectItem>
-                              <SelectItem value="converted">O'tkazildi</SelectItem>
-                              <SelectItem value="lost">Yo'qoldi</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+              <div>
+                <Label htmlFor="notes">Izoh</Label>
+                <Textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                  Bekor qilish
+                </Button>
+                <Button type="submit">Saqlash</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <div className="flex gap-2 items-center flex-wrap">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={filterActivity} onValueChange={setFilterActivity}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Amal bo'yicha" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Barchasi</SelectItem>
+              {ACTIVITY_OPTIONS.map((activity) => (
+                <SelectItem key={activity} value={activity}>
+                  {activity}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filterLeadType} onValueChange={setFilterLeadType}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Lead turi" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Barchasi</SelectItem>
+              {LEAD_TYPE_OPTIONS.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {type}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+
+      <Card>
+        <CardContent className="p-6">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Sana</TableHead>
+                  <TableHead>Mijoz ismi</TableHead>
+                  <TableHead>Telefon</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Xodim</TableHead>
+                  <TableHead>Lead turi</TableHead>
+                  <TableHead>Amal</TableHead>
+                  <TableHead>Narx</TableHead>
+                  <TableHead>Izoh</TableHead>
+                  {isAdminOrRop && <TableHead>Amallar</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredLeads.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={isAdminOrRop ? 10 : 9} className="text-center text-muted-foreground">
+                      Lidlar topilmadi
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredLeads.map((lead) => (
+                    <TableRow key={lead.id}>
+                      <TableCell>{format(new Date(lead.created_at), "dd.MM.yyyy")}</TableCell>
+                      <TableCell className="font-medium">{lead.customer_name}</TableCell>
+                      <TableCell>{lead.customer_phone}</TableCell>
+                      <TableCell>{lead.customer_email || "-"}</TableCell>
+                      <TableCell>{lead.employee || "-"}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{lead.lead_type}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {lead.activity ? getActivityBadge(lead.activity) : "-"}
+                      </TableCell>
+                      <TableCell>
+                        {lead.activity === "Sotildi" && lead.price 
+                          ? `${lead.price.toLocaleString()} so'm` 
+                          : "-"}
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate">{lead.notes || "-"}</TableCell>
+                      {isAdminOrRop && (
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedLeadId(lead.id);
+                              setReassignDialogOpen(true);
+                            }}
+                          >
+                            O'tkazish
+                          </Button>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={reassignDialogOpen} onOpenChange={setReassignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Lidni boshqa xodimga o'tkazish</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="new_seller">Yangi xodim</Label>
+              <Select value={newSellerId} onValueChange={setNewSellerId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Xodimni tanlang" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sellers.map((seller) => (
+                    <SelectItem key={seller.id} value={seller.id}>
+                      {seller.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setReassignDialogOpen(false);
+                  setSelectedLeadId(null);
+                  setNewSellerId("");
+                }}
+              >
+                Bekor qilish
+              </Button>
+              <Button onClick={handleReassign}>O'tkazish</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
