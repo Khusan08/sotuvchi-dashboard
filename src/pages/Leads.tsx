@@ -29,6 +29,8 @@ const ACTIVITY_OPTIONS = [
 
 const LEAD_TYPE_OPTIONS = ["Yangi lid", "Baza"];
 
+const LEAD_QUALITY_OPTIONS = ["Lid sifati", "Ko'tarmadi", "O'chirilgan"];
+
 const TIME_FILTER_OPTIONS = [
   { value: "all", label: "Barchasi" },
   { value: "1week", label: "1 haftalik" },
@@ -58,6 +60,7 @@ const Leads = () => {
     activity: "",
     employee: "",
     lead_type: "Yangi lid",
+    lead_quality: "Lid sifati",
     price: "",
     notes: "",
   });
@@ -162,6 +165,7 @@ const Leads = () => {
         activity: formData.activity,
         employee: sellers.find(s => s.id === formData.employee)?.full_name || "",
         lead_type: formData.lead_type,
+        lead_quality: formData.lead_quality,
         notes: formData.notes || null,
         price: formData.price ? parseFloat(formData.price) : null,
       });
@@ -176,6 +180,7 @@ const Leads = () => {
         activity: "",
         employee: "",
         lead_type: "Yangi lid",
+        lead_quality: "Lid sifati",
         price: "",
         notes: "",
       });
@@ -259,6 +264,25 @@ const Leads = () => {
     } catch (error) {
       console.error("Error updating price:", error);
       toast.error("Narx yangilashda xato");
+    }
+  };
+
+  const handleLeadQualityUpdate = async (leadId: string, newQuality: string) => {
+    try {
+      const { error } = await supabase
+        .from("leads")
+        .update({
+          lead_quality: newQuality,
+        })
+        .eq("id", leadId);
+
+      if (error) throw error;
+
+      toast.success("Lid sifati muvaffaqiyatli yangilandi!");
+      fetchLeads();
+    } catch (error) {
+      console.error("Error updating lead quality:", error);
+      toast.error("Lid sifati yangilashda xato");
     }
   };
 
@@ -478,6 +502,7 @@ const Leads = () => {
                   <TableHead>Telefon</TableHead>
                   <TableHead>Xodim</TableHead>
                   <TableHead>Lead turi</TableHead>
+                  <TableHead>Lid sifati</TableHead>
                   <TableHead>Amal</TableHead>
                   <TableHead>Narx</TableHead>
                   <TableHead>Izoh</TableHead>
@@ -487,7 +512,7 @@ const Leads = () => {
               <TableBody>
                 {filteredLeads.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={isAdminOrRop ? 9 : 8} className="text-center text-muted-foreground">
+                    <TableCell colSpan={isAdminOrRop ? 10 : 9} className="text-center text-muted-foreground">
                       Lidlar topilmadi
                     </TableCell>
                   </TableRow>
@@ -500,6 +525,23 @@ const Leads = () => {
                       <TableCell>{lead.profiles?.full_name || lead.employee || "-"}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{lead.lead_type}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={lead.lead_quality || "Lid sifati"}
+                          onValueChange={(value) => handleLeadQualityUpdate(lead.id, value)}
+                        >
+                          <SelectTrigger className="w-[200px] bg-white">
+                            <SelectValue placeholder="Lid sifati" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white">
+                            {LEAD_QUALITY_OPTIONS.map((quality) => (
+                              <SelectItem key={quality} value={quality}>
+                                {quality}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
                         <Select
