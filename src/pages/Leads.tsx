@@ -283,6 +283,27 @@ const Leads = () => {
     }
   };
 
+  const handleEmployeeUpdate = async (leadId: string, sellerId: string) => {
+    try {
+      const seller = sellers.find(s => s.id === sellerId);
+      const { error } = await supabase
+        .from("leads")
+        .update({
+          seller_id: sellerId,
+          employee: seller?.full_name || null,
+        })
+        .eq("id", leadId);
+
+      if (error) throw error;
+
+      toast.success("Xodim muvaffaqiyatli yangilandi!");
+      fetchLeads();
+    } catch (error) {
+      console.error("Error updating employee:", error);
+      toast.error("Xodim yangilashda xato");
+    }
+  };
+
   const getActivityBadge = (activity: string) => {
     const colors: { [key: string]: string } = {
       "Sotildi": "bg-green-500",
@@ -518,7 +539,23 @@ const Leads = () => {
                       <TableCell>{format(new Date(lead.created_at), "dd.MM.yyyy")}</TableCell>
                       <TableCell className="font-medium">{lead.customer_name}</TableCell>
                       <TableCell>{lead.customer_phone}</TableCell>
-                      <TableCell>{lead.profiles?.full_name || lead.employee || "-"}</TableCell>
+                      <TableCell>
+                        <Select
+                          value={lead.seller_id || ""}
+                          onValueChange={(value) => handleEmployeeUpdate(lead.id, value)}
+                        >
+                          <SelectTrigger className="w-[180px] bg-background border border-input">
+                            <span>Xodimni tanlang</span>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {sellers.map((seller) => (
+                              <SelectItem key={seller.id} value={seller.id}>
+                                {seller.full_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
                       <TableCell>
                         <Select
                           value={lead.lead_type || "Yangi lid"}
