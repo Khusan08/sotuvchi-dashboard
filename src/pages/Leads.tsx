@@ -509,7 +509,7 @@ const Leads = () => {
                           onValueChange={(value) => handleActivityUpdate(lead.id, value, lead.price)}
                         >
                           <SelectTrigger className="w-[200px] bg-background border border-input">
-                            <SelectValue placeholder="Lid sifati" />
+                            <span>Lid sifati</span>
                           </SelectTrigger>
                           <SelectContent>
                             {ACTIVITY_OPTIONS.map((activity) => (
