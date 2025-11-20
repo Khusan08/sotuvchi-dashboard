@@ -106,10 +106,12 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { path: "/products", icon: Package, label: "Mahsulotlar" },
     { path: "/all-orders", icon: Package, label: "Barcha zakazlar" },
     { path: "/tasks", icon: CheckSquare, label: "Tasklar" },
-    { path: "/profile", icon: User, label: "Profil" },
     ...(isAdminOrRop ? [
       { path: "/statistics", icon: BarChart3, label: "Statistika" },
       { path: "/sellers", icon: UserCog, label: "Hodimlar" },
+    ] : []),
+    { path: "/profile", icon: User, label: "Profil" },
+    ...(isAdminOrRop ? [
       { path: "/admin", icon: Shield, label: "Boshqaruv" }
     ] : []),
   ];

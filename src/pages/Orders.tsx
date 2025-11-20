@@ -361,8 +361,8 @@ const Orders = () => {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, any> = {
-      pending: { variant: "secondary", label: "Kutilmoqda" },
-      completed: { variant: "default", label: "Bajarildi" },
+      pending: { variant: "secondary", label: "Jarayonda" },
+      delivered: { variant: "default", label: "Tugallandi" },
       cancelled: { variant: "destructive", label: "Bekor qilindi" },
     };
     
@@ -662,8 +662,8 @@ const Orders = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Barchasi</SelectItem>
-                    <SelectItem value="pending">Kutilmoqda</SelectItem>
-                    <SelectItem value="completed">Bajarildi</SelectItem>
+                    <SelectItem value="pending">Jarayonda</SelectItem>
+                    <SelectItem value="delivered">Tugallandi</SelectItem>
                     <SelectItem value="cancelled">Bekor qilindi</SelectItem>
                   </SelectContent>
                 </Select>
@@ -794,8 +794,8 @@ const Orders = () => {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="processing">Jarayonda</SelectItem>
-                                <SelectItem value="delivered">Tugalandi</SelectItem>
+                                <SelectItem value="pending">Jarayonda</SelectItem>
+                                <SelectItem value="delivered">Tugallandi</SelectItem>
                                 <SelectItem value="cancelled">Bekor qilindi</SelectItem>
                               </SelectContent>
                             </Select>

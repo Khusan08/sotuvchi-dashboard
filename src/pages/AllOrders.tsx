@@ -403,10 +403,8 @@ const AllOrders = () => {
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-      pending: { label: "Kutilmoqda", variant: "secondary" },
-      processing: { label: "Tayyorlanmoqda", variant: "default" },
-      shipped: { label: "Yo'lda", variant: "outline" },
-      delivered: { label: "Yetkazildi", variant: "default" },
+      pending: { label: "Jarayonda", variant: "secondary" },
+      delivered: { label: "Tugallandi", variant: "default" },
       cancelled: { label: "Bekor qilindi", variant: "destructive" },
     };
     
@@ -584,10 +582,8 @@ const AllOrders = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Hammasi</SelectItem>
-                      <SelectItem value="pending">Kutilmoqda</SelectItem>
-                      <SelectItem value="processing">Tayyorlanmoqda</SelectItem>
-                      <SelectItem value="shipped">Yo'lda</SelectItem>
-                      <SelectItem value="delivered">Yetkazildi</SelectItem>
+                      <SelectItem value="pending">Jarayonda</SelectItem>
+                      <SelectItem value="delivered">Tugallandi</SelectItem>
                       <SelectItem value="cancelled">Bekor qilindi</SelectItem>
                     </SelectContent>
                   </Select>
@@ -685,8 +681,8 @@ const AllOrders = () => {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="processing">Jarayonda</SelectItem>
-                            <SelectItem value="delivered">Tugalandi</SelectItem>
+                            <SelectItem value="pending">Jarayonda</SelectItem>
+                            <SelectItem value="delivered">Tugallandi</SelectItem>
                             <SelectItem value="cancelled">Bekor qilindi</SelectItem>
                           </SelectContent>
                         </Select>
@@ -761,8 +757,8 @@ const AllOrders = () => {
                     <SelectValue placeholder="Statusni tanlang" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="processing">Jarayonda</SelectItem>
-                    <SelectItem value="delivered">Tugalandi</SelectItem>
+                    <SelectItem value="pending">Jarayonda</SelectItem>
+                    <SelectItem value="delivered">Tugallandi</SelectItem>
                     <SelectItem value="cancelled">Bekor qilindi</SelectItem>
                   </SelectContent>
                 </Select>
