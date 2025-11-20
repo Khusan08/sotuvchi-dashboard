@@ -545,7 +545,7 @@ const Leads = () => {
                           onValueChange={(value) => handleEmployeeUpdate(lead.id, value)}
                         >
                           <SelectTrigger className="w-[180px] bg-background border border-input">
-                            <span>Xodimni tanlang</span>
+                            <SelectValue placeholder="Xodimni tanlang" />
                           </SelectTrigger>
                           <SelectContent>
                             {sellers.map((seller) => (
