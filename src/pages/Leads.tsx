@@ -264,6 +264,25 @@ const Leads = () => {
     }
   };
 
+  const handleNotesUpdate = async (leadId: string, newNotes: string) => {
+    try {
+      const { error } = await supabase
+        .from("leads")
+        .update({
+          notes: newNotes || null,
+        })
+        .eq("id", leadId);
+
+      if (error) throw error;
+
+      toast.success("Izoh muvaffaqiyatli yangilandi!");
+      fetchLeads();
+    } catch (error) {
+      console.error("Error updating notes:", error);
+      toast.error("Izoh yangilashda xato");
+    }
+  };
+
   const handleLeadTypeUpdate = async (leadId: string, newLeadType: string) => {
     try {
       const { error } = await supabase
@@ -608,7 +627,22 @@ const Leads = () => {
                           className="w-[120px]"
                         />
                       </TableCell>
-                      <TableCell className="max-w-xs truncate">{lead.notes || "-"}</TableCell>
+                      <TableCell>
+                        <Textarea
+                          value={lead.notes || ""}
+                          onChange={(e) => {
+                            // Update locally for immediate feedback
+                            const updatedLeads = leads.map(l => 
+                              l.id === lead.id ? { ...l, notes: e.target.value } : l
+                            );
+                            setLeads(updatedLeads);
+                          }}
+                          onBlur={(e) => handleNotesUpdate(lead.id, e.target.value)}
+                          placeholder="Izoh yozing..."
+                          className="w-[200px] min-h-[60px]"
+                          rows={2}
+                        />
+                      </TableCell>
                       {isAdminOrRop && (
                         <TableCell>
                           <Button
