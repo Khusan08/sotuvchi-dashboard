@@ -575,21 +575,101 @@ const Leads = () => {
                   </div>
                 </div>
 
-                <div className="bg-background p-4 rounded-md space-y-3">
-                  <h4 className="font-medium text-sm">Facebook Lead Ads sozlash:</h4>
-                  <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-                    <li>Facebook Business Manager'da Lead Ads formangizni oching</li>
-                    <li>Settings → Lead Setup → Integrations bo'limiga o'ting</li>
-                    <li>"CRM Integration" yoki "Webhook" tanlang</li>
-                    <li>Yuqoridagi Webhook URL'ni joylashtiring</li>
-                    <li>Verify Token: <code className="bg-muted px-1 py-0.5 rounded">lovable_crm_verify_token_2024</code></li>
-                    <li>"Test" tugmasini bosing va tasdiqlang</li>
-                  </ol>
-                  <div className="mt-4">
-                    <p className="text-xs text-muted-foreground">
-                      <strong>Eslatma:</strong> Facebook avtomatik ravishda har bir yangi lid uchun sizning webhook'ingizga ma'lumot yuboradi. 
-                      Form maydonlari (ism, telefon, email) avtomatik ravishda lidga biriktiriladi.
+                <div className="bg-background p-4 rounded-md space-y-4">
+                  <div>
+                    <h4 className="font-semibold text-sm mb-3">📋 Facebook Lead Ads integratsiyasini sozlash:</h4>
+                    <ol className="list-decimal list-inside space-y-3 text-sm">
+                      <li className="text-foreground">
+                        <strong>Meta Business Suite</strong>ga kiring: 
+                        <a href="https://business.facebook.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-1">
+                          business.facebook.com
+                        </a>
+                      </li>
+                      
+                      <li className="text-foreground">
+                        <strong>Instant Forms</strong> (yoki Lead forms) sahifasiga o'ting
+                      </li>
+                      
+                      <li className="text-foreground">
+                        O'zingizning formangizni tanlang (masalan: "daraja new", "DarajaLid" va h.k.)
+                      </li>
+                      
+                      <li className="text-foreground">
+                        <strong>"Lead Integration"</strong> yoki <strong>"Integrations"</strong> bo'limini oching
+                      </li>
+                      
+                      <li className="text-foreground">
+                        <strong>"New integration"</strong> tugmasini bosing
+                      </li>
+                      
+                      <li className="text-foreground">
+                        <strong>"CRM"</strong> yoki <strong>"Webhook"</strong> turini tanlang
+                      </li>
+                      
+                      <li className="text-foreground">
+                        Quyidagi ma'lumotlarni kiriting:
+                        <div className="mt-2 ml-6 space-y-2 bg-muted p-3 rounded">
+                          <div>
+                            <span className="text-muted-foreground">Webhook URL:</span>
+                            <code className="block bg-background px-2 py-1 rounded text-xs mt-1 break-all">
+                              {facebookWebhookUrl}
+                            </code>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Verify Token:</span>
+                            <code className="block bg-background px-2 py-1 rounded text-xs mt-1">
+                              lovable_crm_verify_token_2024
+                            </code>
+                          </div>
+                        </div>
+                      </li>
+                      
+                      <li className="text-foreground">
+                        <strong>"Test"</strong> tugmasini bosing va test muvaffaqiyatli bo'lishini tekshiring
+                      </li>
+                      
+                      <li className="text-foreground">
+                        Integratsiyani <strong>"Save"</strong> qiling va faollashtiring
+                      </li>
+                    </ol>
+                  </div>
+
+                  <div className="border-t pt-4 space-y-2">
+                    <h5 className="font-medium text-sm">✅ Qanday ishlaydi:</h5>
+                    <ul className="space-y-1.5 text-sm text-muted-foreground">
+                      <li>• Foydalanuvchi Facebook/Instagram reklamangizda forma to'ldiradi</li>
+                      <li>• Ma'lumotlar avtomatik ravishda bizning tizimga yuboriladi</li>
+                      <li>• Lid avtomatik ravishda admin/rop foydalanuvchiga tayinlanadi</li>
+                      <li>• Siz darhol Lidlar jadvalida yangi lidni ko'rishingiz mumkin</li>
+                    </ul>
+                  </div>
+
+                  <div className="border-t pt-4 space-y-2">
+                    <h5 className="font-medium text-sm">📊 Qabul qilinadigan maydonlar:</h5>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                      <div>• full_name / ism</div>
+                      <div>• phone_number / telefon</div>
+                      <div>• email</div>
+                      <div>• activity / amal</div>
+                      <div>• price / narx</div>
+                      <div>• notes / izoh</div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      <strong>Muhim:</strong> Facebook formangizda ushbu maydon nomlari bo'lishi kerak (masalan: full_name, phone_number, email).
+                      Tizim avtomatik ravishda ularni to'g'ri joyga joylashtiradi.
                     </p>
+                  </div>
+
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-md p-3 mt-4">
+                    <p className="text-xs text-foreground">
+                      <strong>💡 Maslahat:</strong> Agar integratsiya ishlamasa:
+                    </p>
+                    <ul className="text-xs text-muted-foreground mt-1 ml-4 space-y-1">
+                      <li>1. Webhook URL to'g'ri ko'chirilganligini tekshiring</li>
+                      <li>2. Verify token xatosiz kiritilganligini tasdiqlang</li>
+                      <li>3. Test natijasini qayta sinab ko'ring</li>
+                      <li>4. Facebook formangizda test lid yarating va Lidlar jadvalida paydo bo'lishini kuting</li>
+                    </ul>
                   </div>
                 </div>
               </div>
