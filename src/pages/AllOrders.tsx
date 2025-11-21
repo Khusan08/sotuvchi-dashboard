@@ -76,13 +76,15 @@ const AllOrders = () => {
   });
   const [products, setProducts] = useState<any[]>([]);
   const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
-  const { isAdmin, isRop } = useUserRoles();
+  const { isAdmin, isRop, loading: rolesLoading } = useUserRoles();
   const { isSotuvchi } = useUserRole();
 
   useEffect(() => {
-    fetchOrders();
-    fetchProducts();
-  }, []);
+    if (!rolesLoading) {
+      fetchOrders();
+      fetchProducts();
+    }
+  }, [rolesLoading, isAdmin, isRop]);
 
   useEffect(() => {
     filterOrders();
@@ -412,7 +414,7 @@ const AllOrders = () => {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  if (loading) {
+  if (loading || rolesLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
