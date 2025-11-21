@@ -578,6 +578,17 @@ const Leads = () => {
                 <div className="bg-background p-4 rounded-md space-y-4">
                   <div>
                     <h4 className="font-semibold text-sm mb-3">📋 Facebook Lead Ads integratsiyasini sozlash:</h4>
+                    
+                    <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border border-yellow-300 dark:border-yellow-700 mb-4">
+                      <p className="text-sm font-bold text-yellow-900 dark:text-yellow-200 mb-1">⚠️ MUHIM:</p>
+                      <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                        Agar sizda <strong>"Google Sheets"</strong> integratsiyasi oynasi ochilgan bo'lsa - 
+                        <strong className="text-red-600 dark:text-red-400"> UNI YOPING!</strong>
+                        <br/>
+                        Bizga Google Sheets kerak emas. <strong className="text-green-700 dark:text-green-400">WEBHOOK</strong> ni tanlashingiz kerak.
+                      </p>
+                    </div>
+                    
                     <ol className="list-decimal list-inside space-y-3 text-sm">
                       <li className="text-foreground">
                         <strong>Meta Business Suite</strong>ga kiring: 
@@ -591,32 +602,42 @@ const Leads = () => {
                       </li>
                       
                       <li className="text-foreground">
-                        O'zingizning formangizni tanlang (masalan: "daraja new", "DarajaLid" va h.k.)
+                        O'zingizning formangizni tanlang (masalan: "Daraja lid")
                       </li>
                       
                       <li className="text-foreground">
-                        <strong>"Lead Integration"</strong> yoki <strong>"Integrations"</strong> bo'limini oching
+                        <strong>"CRM Settings"</strong> yoki <strong>"Lead Integration"</strong> tugmasini qidiring va bosing
+                        <div className="text-muted-foreground text-xs mt-1 ml-6">
+                          (Bu tugma formaning yuqori qismida yoki "Settings" ichida bo'lishi mumkin)
+                        </div>
                       </li>
                       
                       <li className="text-foreground">
-                        <strong>"New integration"</strong> tugmasini bosing
+                        <strong>"Add a CRM integration"</strong> yoki <strong>"+ New integration"</strong> tugmasini bosing
                       </li>
                       
                       <li className="text-foreground">
-                        <strong>"CRM"</strong> yoki <strong>"Webhook"</strong> turini tanlang
+                        <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-200 dark:border-blue-800 mt-1">
+                          <strong className="text-blue-900 dark:text-blue-200">WEBHOOK TANLANG:</strong>
+                          <ul className="text-xs mt-1 space-y-1 text-blue-800 dark:text-blue-300 ml-4">
+                            <li>• <strong>"Webhook"</strong> variantini qidiring</li>
+                            <li>• Yoki <strong>"Custom"</strong> / <strong>"Other CRM"</strong> ni tanlang</li>
+                            <li>• <strong className="text-red-600 dark:text-red-400">GOOGLE SHEETS NI EMAS!</strong></li>
+                          </ul>
+                        </div>
                       </li>
                       
                       <li className="text-foreground">
-                        Quyidagi ma'lumotlarni kiriting:
+                        Webhook ma'lumotlarini kiriting:
                         <div className="mt-2 ml-6 space-y-2 bg-muted p-3 rounded">
                           <div>
-                            <span className="text-muted-foreground">Webhook URL:</span>
+                            <span className="text-muted-foreground font-medium">Callback URL / Webhook URL:</span>
                             <code className="block bg-background px-2 py-1 rounded text-xs mt-1 break-all">
                               {facebookWebhookUrl}
                             </code>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Verify Token:</span>
+                            <span className="text-muted-foreground font-medium">Verify Token:</span>
                             <code className="block bg-background px-2 py-1 rounded text-xs mt-1">
                               lovable_crm_verify_token_2024
                             </code>
@@ -625,11 +646,15 @@ const Leads = () => {
                       </li>
                       
                       <li className="text-foreground">
-                        <strong>"Test"</strong> tugmasini bosing va test muvaffaqiyatli bo'lishini tekshiring
+                        <strong>"Test"</strong> tugmasini bosing - agar ✅ chiqsa, hammasi to'g'ri
                       </li>
                       
                       <li className="text-foreground">
-                        Integratsiyani <strong>"Save"</strong> qiling va faollashtiring
+                        <strong>"Save"</strong> yoki <strong>"Confirm"</strong> tugmasini bosing va integratsiyani faollashtiring
+                      </li>
+                      
+                      <li className="text-foreground">
+                        Reklamangiz orqali test lid jo'nating va bu yerda paydo bo'lishini tekshiring! 🎉
                       </li>
                     </ol>
                   </div>
