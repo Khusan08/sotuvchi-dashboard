@@ -55,10 +55,10 @@ const Leads = () => {
   const { isAdminOrRop } = useUserRoles();
   const [showWebhookInfo, setShowWebhookInfo] = useState(false);
   
-  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/import-lead-from-sheets`;
+  const facebookWebhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/facebook-leads-webhook`;
 
   const copyWebhookUrl = () => {
-    navigator.clipboard.writeText(webhookUrl);
+    navigator.clipboard.writeText(facebookWebhookUrl);
     toast.success("Webhook URL ko'chirildi!");
   };
   
@@ -541,9 +541,9 @@ const Leads = () => {
           <CardContent className="p-6">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h3 className="text-lg font-semibold mb-1">Google Sheets Integratsiyasi</h3>
+                <h3 className="text-lg font-semibold mb-1">Facebook Lead Ads Integratsiyasi</h3>
                 <p className="text-sm text-muted-foreground">
-                  Google Sheets'dan lidlarni avtomatik import qilish uchun Zapier yoki Make.com ishlatishingiz mumkin
+                  Facebook Lead Ads'dan lidlarni avtomatik import qilish
                 </p>
               </div>
               <Button 
@@ -561,7 +561,7 @@ const Leads = () => {
                   <Label className="text-sm font-medium mb-2 block">Webhook URL</Label>
                   <div className="flex gap-2">
                     <Input 
-                      value={webhookUrl} 
+                      value={facebookWebhookUrl} 
                       readOnly 
                       className="font-mono text-sm bg-background"
                     />
@@ -576,25 +576,20 @@ const Leads = () => {
                 </div>
 
                 <div className="bg-background p-4 rounded-md space-y-3">
-                  <h4 className="font-medium text-sm">Zapier orqali sozlash:</h4>
+                  <h4 className="font-medium text-sm">Facebook Lead Ads sozlash:</h4>
                   <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-                    <li>Zapier.com'da yangi Zap yarating</li>
-                    <li>Trigger sifatida "Google Sheets" - "New Spreadsheet Row" tanlang</li>
-                    <li>Action sifatida "Webhooks by Zapier" - "POST" tanlang</li>
+                    <li>Facebook Business Manager'da Lead Ads formangizni oching</li>
+                    <li>Settings → Lead Setup → Integrations bo'limiga o'ting</li>
+                    <li>"CRM Integration" yoki "Webhook" tanlang</li>
                     <li>Yuqoridagi Webhook URL'ni joylashtiring</li>
-                    <li>Quyidagi maydonlarni ulang (Google Sheets ustunlari bilan):</li>
+                    <li>Verify Token: <code className="bg-muted px-1 py-0.5 rounded">lovable_crm_verify_token_2024</code></li>
+                    <li>"Test" tugmasini bosing va tasdiqlang</li>
                   </ol>
-                  <div className="ml-6 mt-2">
-                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                      <li><code className="bg-muted px-1 py-0.5 rounded">customer_name</code> - Mijoz ismi (majburiy)</li>
-                      <li><code className="bg-muted px-1 py-0.5 rounded">customer_phone</code> - Telefon raqami</li>
-                      <li><code className="bg-muted px-1 py-0.5 rounded">customer_email</code> - Email</li>
-                      <li><code className="bg-muted px-1 py-0.5 rounded">lead_type</code> - Lead turi (Yangi lid/Baza)</li>
-                      <li><code className="bg-muted px-1 py-0.5 rounded">activity</code> - Amal (Ko'tarmadi, Sotildi, va h.k.)</li>
-                      <li><code className="bg-muted px-1 py-0.5 rounded">source</code> - Manba</li>
-                      <li><code className="bg-muted px-1 py-0.5 rounded">notes</code> - Izoh</li>
-                      <li><code className="bg-muted px-1 py-0.5 rounded">price</code> - Narx</li>
-                    </ul>
+                  <div className="mt-4">
+                    <p className="text-xs text-muted-foreground">
+                      <strong>Eslatma:</strong> Facebook avtomatik ravishda har bir yangi lid uchun sizning webhook'ingizga ma'lumot yuboradi. 
+                      Form maydonlari (ism, telefon, email) avtomatik ravishda lidga biriktiriladi.
+                    </p>
                   </div>
                 </div>
               </div>
