@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Filter } from "lucide-react";
+import { Plus, Filter, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useUserRoles } from "@/hooks/useUserRoles";
@@ -53,6 +53,14 @@ const Leads = () => {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [newSellerId, setNewSellerId] = useState<string>("");
   const { isAdminOrRop } = useUserRoles();
+  const [showWebhookInfo, setShowWebhookInfo] = useState(false);
+  
+  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/import-lead-from-sheets`;
+
+  const copyWebhookUrl = () => {
+    navigator.clipboard.writeText(webhookUrl);
+    toast.success("Webhook URL ko'chirildi!");
+  };
   
   const [formData, setFormData] = useState({
     customer_name: "",
@@ -527,6 +535,73 @@ const Leads = () => {
           </Select>
         </div>
       </div>
+
+      {isAdminOrRop && (
+        <Card className="mb-6 bg-muted/50">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold mb-1">Google Sheets Integratsiyasi</h3>
+                <p className="text-sm text-muted-foreground">
+                  Google Sheets'dan lidlarni avtomatik import qilish uchun Zapier yoki Make.com ishlatishingiz mumkin
+                </p>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowWebhookInfo(!showWebhookInfo)}
+              >
+                {showWebhookInfo ? "Yashirish" : "Ko'rsatish"}
+              </Button>
+            </div>
+
+            {showWebhookInfo && (
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">Webhook URL</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={webhookUrl} 
+                      readOnly 
+                      className="font-mono text-sm bg-background"
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      onClick={copyWebhookUrl}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="bg-background p-4 rounded-md space-y-3">
+                  <h4 className="font-medium text-sm">Zapier orqali sozlash:</h4>
+                  <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+                    <li>Zapier.com'da yangi Zap yarating</li>
+                    <li>Trigger sifatida "Google Sheets" - "New Spreadsheet Row" tanlang</li>
+                    <li>Action sifatida "Webhooks by Zapier" - "POST" tanlang</li>
+                    <li>Yuqoridagi Webhook URL'ni joylashtiring</li>
+                    <li>Quyidagi maydonlarni ulang (Google Sheets ustunlari bilan):</li>
+                  </ol>
+                  <div className="ml-6 mt-2">
+                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                      <li><code className="bg-muted px-1 py-0.5 rounded">customer_name</code> - Mijoz ismi (majburiy)</li>
+                      <li><code className="bg-muted px-1 py-0.5 rounded">customer_phone</code> - Telefon raqami</li>
+                      <li><code className="bg-muted px-1 py-0.5 rounded">customer_email</code> - Email</li>
+                      <li><code className="bg-muted px-1 py-0.5 rounded">lead_type</code> - Lead turi (Yangi lid/Baza)</li>
+                      <li><code className="bg-muted px-1 py-0.5 rounded">activity</code> - Amal (Ko'tarmadi, Sotildi, va h.k.)</li>
+                      <li><code className="bg-muted px-1 py-0.5 rounded">source</code> - Manba</li>
+                      <li><code className="bg-muted px-1 py-0.5 rounded">notes</code> - Izoh</li>
+                      <li><code className="bg-muted px-1 py-0.5 rounded">price</code> - Narx</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="p-6">
