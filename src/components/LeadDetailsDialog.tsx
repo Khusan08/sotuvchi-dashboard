@@ -29,6 +29,7 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState("");
   const [selectedSeller, setSelectedSeller] = useState(lead?.seller_id || "");
+  const [price, setPrice] = useState(lead?.price?.toString() || "");
   const [taskForm, setTaskForm] = useState({
     title: "",
     description: "",
@@ -41,6 +42,7 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
       fetchTasks();
       fetchComments();
       setSelectedSeller(lead.seller_id);
+      setPrice(lead.price?.toString() || "");
     }
   }, [open, lead]);
 
@@ -154,6 +156,29 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
     }
   };
 
+  const handleUpdatePrice = async () => {
+    const isSoldStage = currentStage?.name === "Sotildi";
+    if (isSoldStage && !price) {
+      toast.error("Sotildi bosqichida narx kiritish majburiy");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("leads")
+        .update({ price: price ? parseFloat(price) : null })
+        .eq("id", lead.id);
+
+      if (error) throw error;
+
+      toast.success("Narx saqlandi");
+      onUpdate();
+    } catch (error) {
+      console.error("Error updating price:", error);
+      toast.error("Narxni saqlashda xato");
+    }
+  };
+
   const handleToggleTask = async (taskId: string, currentStatus: string) => {
     const newStatus = currentStatus === "completed" ? "pending" : "completed";
     
@@ -174,6 +199,7 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
   };
 
   const currentStage = stages.find(s => s.id === lead?.stage);
+  const isSoldStage = currentStage?.name === "Sotildi";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -190,6 +216,31 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Price Section - Prominent if sold */}
+          <div className={`${isSoldStage ? 'p-4 bg-success/10 border-2 border-success rounded-lg' : ''}`}>
+            <Label className={isSoldStage ? 'text-lg font-semibold' : ''}>
+              Narx (so'm) {isSoldStage && <span className="text-destructive">*</span>}
+            </Label>
+            <div className="flex gap-2 mt-2">
+              <Input
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="Kelishilgan summa"
+                className={isSoldStage ? 'text-lg font-semibold' : ''}
+                required={isSoldStage}
+              />
+              {price !== (lead?.price?.toString() || "") && (
+                <Button onClick={handleUpdatePrice} size="sm">
+                  Saqlash
+                </Button>
+              )}
+            </div>
+            {isSoldStage && !price && (
+              <p className="text-sm text-destructive mt-1">Sotildi bosqichida narx kiritish majburiy</p>
+            )}
+          </div>
+
           {/* Lead Information */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-3">
