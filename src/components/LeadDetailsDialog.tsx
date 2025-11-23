@@ -138,7 +138,9 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
 
     try {
       const seller = sellers.find(s => s.id === selectedSeller);
-      const { error } = await supabase
+      
+      // Update lead seller
+      const { error: leadError } = await supabase
         .from("leads")
         .update({ 
           seller_id: selectedSeller,
@@ -146,10 +148,19 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
         })
         .eq("id", lead.id);
 
-      if (error) throw error;
+      if (leadError) throw leadError;
 
-      toast.success("Xodim o'zgartirildi");
+      // Transfer all tasks to new seller
+      const { error: tasksError } = await supabase
+        .from("tasks")
+        .update({ seller_id: selectedSeller })
+        .eq("lead_id", lead.id);
+
+      if (tasksError) throw tasksError;
+
+      toast.success("Xodim, vazifalar va izohlar o'zgartirildi");
       onUpdate();
+      fetchTasks();
     } catch (error) {
       console.error("Error updating seller:", error);
       toast.error("Xodimni o'zgartirishda xato");

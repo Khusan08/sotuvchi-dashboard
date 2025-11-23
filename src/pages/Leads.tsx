@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Filter } from "lucide-react";
+import { Plus, Filter, Search } from "lucide-react";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
@@ -33,6 +33,7 @@ const Leads = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [filterLeadType, setFilterLeadType] = useState<string>("all");
   const [filterTimeRange, setFilterTimeRange] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [sellers, setSellers] = useState<any[]>([]);
   const [stages, setStages] = useState<any[]>([]);
   const { isAdminOrRop } = useUserRoles();
@@ -116,6 +117,20 @@ const Leads = () => {
 
   const getFilteredLeads = () => {
     let filtered = [...leads];
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(lead => 
+        lead.customer_name?.toLowerCase().includes(query) ||
+        lead.customer_phone?.toLowerCase().includes(query) ||
+        lead.customer_email?.toLowerCase().includes(query) ||
+        lead.employee?.toLowerCase().includes(query) ||
+        lead.notes?.toLowerCase().includes(query) ||
+        lead.activity?.toLowerCase().includes(query) ||
+        lead.lead_type?.toLowerCase().includes(query)
+      );
+    }
 
     if (filterLeadType !== "all") {
       filtered = filtered.filter(lead => lead.lead_type === filterLeadType);
@@ -246,6 +261,16 @@ const Leads = () => {
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Lidlar Voronkasi</h1>
         <p className="text-muted-foreground">Lidlarni boshqarish va kuzatish</p>
+      </div>
+
+      {/* Search Bar */}
+      <div className="mb-4">
+        <Input
+          placeholder="Qidirish (ism, telefon, email, izoh, faoliyat...)"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="max-w-md"
+        />
       </div>
 
       <div className="flex gap-4 mb-6 flex-wrap items-center">

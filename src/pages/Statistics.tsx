@@ -2,28 +2,25 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { toast } from "sonner";
 
-interface SellerStats {
+interface OrderStatusData {
   seller_id: string;
   seller_name: string;
-  total_orders: number;
-  total_revenue: number;
-  completed_orders: number;
-  cancelled_orders: number;
-  in_progress_orders: number;
-  conversion_rate: number;
-  average_order_value: number;
+  pending: number;
+  delivered: number;
+  cancelled: number;
+  total: number;
 }
 
 const Statistics = () => {
   const [sellers, setSellers] = useState<any[]>([]);
   const [selectedSeller, setSelectedSeller] = useState<string>("all");
-  const [stats, setStats] = useState<SellerStats[]>([]);
+  const [statusData, setStatusData] = useState<OrderStatusData[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string>("");
@@ -45,7 +42,7 @@ const Statistics = () => {
 
   useEffect(() => {
     fetchStatistics();
-  }, [selectedSeller]);
+  }, [selectedSeller, currentUserId]);
 
   const fetchSellers = async () => {
     try {
@@ -63,6 +60,8 @@ const Statistics = () => {
   };
 
   const fetchStatistics = async () => {
+    if (!currentUserId && isSotuvchi) return;
+    
     try {
       setLoading(true);
       let ordersQuery = supabase
@@ -94,54 +93,34 @@ const Statistics = () => {
           sellerMap.set(sellerId, {
             seller_id: sellerId,
             seller_name: sellerName,
-            total_orders: 0,
-            total_revenue: 0,
-            completed_orders: 0,
-            cancelled_orders: 0,
-            orders: [],
+            pending: 0,
+            delivered: 0,
+            cancelled: 0,
+            total: 0,
           });
         }
 
         const seller = sellerMap.get(sellerId);
-        seller.total_orders++;
-        seller.total_revenue += Number(order.total_amount);
-        seller.orders.push(order);
+        seller.total++;
         
-        if (order.status === "delivered") {
-          seller.completed_orders++;
+        if (order.status === "pending") {
+          seller.pending++;
+        } else if (order.status === "delivered") {
+          seller.delivered++;
         } else if (order.status === "cancelled") {
-          seller.cancelled_orders++;
-        } else if (order.status === "pending") {
-          seller.in_progress_orders++;
+          seller.cancelled++;
         }
       });
 
-      const sellerStats: SellerStats[] = Array.from(sellerMap.values()).map((seller) => ({
-        seller_id: seller.seller_id,
-        seller_name: seller.seller_name,
-        total_orders: seller.total_orders,
-        total_revenue: seller.total_revenue,
-        completed_orders: seller.completed_orders,
-        cancelled_orders: seller.cancelled_orders,
-        in_progress_orders: seller.in_progress_orders || 0,
-        conversion_rate: seller.total_orders > 0 
-          ? (seller.completed_orders / seller.total_orders) * 100 
-          : 0,
-        average_order_value: seller.total_orders > 0 
-          ? seller.total_revenue / seller.total_orders 
-          : 0,
-      }));
-
-      setStats(sellerStats);
+      const statsArray: OrderStatusData[] = Array.from(sellerMap.values());
+      setStatusData(statsArray);
 
       // Prepare chart data
-      const chartData = sellerStats.map((seller) => ({
+      const chartData = statsArray.map((seller) => ({
         name: seller.seller_name,
-        zakazlar: seller.total_orders,
-        daromad: Math.round(seller.total_revenue / 1000), // in thousands
-        tugallandi: seller.completed_orders,
-        bekorqilindi: seller.cancelled_orders,
-        jarayonda: seller.in_progress_orders,
+        "Kutilmoqda": seller.pending,
+        "Yetkazildi": seller.delivered,
+        "Bekor qilindi": seller.cancelled,
       }));
 
       setChartData(chartData);
@@ -151,7 +130,6 @@ const Statistics = () => {
       setLoading(false);
     }
   };
-
 
   if (loading) {
     return (
@@ -168,7 +146,7 @@ const Statistics = () => {
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Statistika</h2>
             <p className="text-muted-foreground mt-2">
-            {isAdmin || isRop ? "Hodimlar bo'yicha batafsil statistika" : "Mening statistikam"}
+              {isAdmin || isRop ? "Hodimlar bo'yicha zakaz holati statistikasi" : "Mening zakaz statistikam"}
             </p>
           </div>
           {(isAdmin || isRop) && (
@@ -192,96 +170,53 @@ const Statistics = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat) => (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {statusData.map((stat) => (
             <Card key={stat.seller_id}>
               <CardHeader>
-                <CardTitle className="text-sm font-medium">
+                <CardTitle className="text-lg font-semibold">
                   {stat.seller_name}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Jami zakazlar:</span>
-                  <span className="font-semibold">{stat.total_orders}</span>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between items-center p-2 bg-muted/50 rounded">
+                  <span className="text-sm font-medium">Jami zakazlar:</span>
+                  <span className="text-lg font-bold">{stat.total}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Jami savdo:</span>
-                  <span className="font-semibold">{stat.total_revenue.toLocaleString()} so'm</span>
+                <div className="flex justify-between items-center p-2 bg-blue-500/10 rounded">
+                  <span className="text-sm font-medium text-blue-600">Kutilmoqda:</span>
+                  <span className="text-lg font-bold text-blue-600">{stat.pending}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Jarayonda:</span>
-                  <span className="font-semibold text-blue-600">{stat.in_progress_orders}</span>
+                <div className="flex justify-between items-center p-2 bg-green-500/10 rounded">
+                  <span className="text-sm font-medium text-green-600">Yetkazildi:</span>
+                  <span className="text-lg font-bold text-green-600">{stat.delivered}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Tugallandi:</span>
-                  <span className="font-semibold text-green-600">{stat.completed_orders}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Bekor qilindi:</span>
-                  <span className="font-semibold text-red-600">{stat.cancelled_orders}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Konversiya:</span>
-                  <span className="font-semibold">{stat.conversion_rate.toFixed(1)}%</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">O'rtacha zakaz:</span>
-                  <span className="font-semibold">{Math.round(stat.average_order_value).toLocaleString()} so'm</span>
+                <div className="flex justify-between items-center p-2 bg-red-500/10 rounded">
+                  <span className="text-sm font-medium text-red-600">Bekor qilindi:</span>
+                  <span className="text-lg font-bold text-red-600">{stat.cancelled}</span>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        {/* Bar Chart */}
+        {/* Bar Chart - Order Status by Seller */}
         <Card>
           <CardHeader>
-            <CardTitle>Zakazlar va daromad (ming so'mda)</CardTitle>
+            <CardTitle>Hodimlar bo'yicha zakaz holati</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
+            <ResponsiveContainer width="100%" height={400}>
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="zakazlar" fill="#8884d8" name="Zakazlar" />
-                <Bar dataKey="daromad" fill="#82ca9d" name="Daromad (ming so'm)" />
+                <Bar dataKey="Kutilmoqda" fill="#3b82f6" />
+                <Bar dataKey="Yetkazildi" fill="#22c55e" />
+                <Bar dataKey="Bekor qilindi" fill="#ef4444" />
               </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Line Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Tugallangan va bekor qilingan zakazlar</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="tugallandi" 
-                  stroke="#22c55e" 
-                  strokeWidth={2}
-                  name="Tugallandi"
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="bekorqilindi" 
-                  stroke="#ef4444" 
-                  strokeWidth={2}
-                  name="Bekor qilindi"
-                />
-              </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
