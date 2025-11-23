@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      lead_comments: {
+        Row: {
+          comment: string
+          created_at: string
+          id: string
+          lead_id: string
+          user_id: string
+        }
+        Insert: {
+          comment: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          user_id: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_comments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           activity: string | null
@@ -233,12 +265,40 @@ export type Database = {
         }
         Relationships: []
       }
+      stages: {
+        Row: {
+          color: string
+          created_at: string
+          display_order: number
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          display_order: number
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           created_at: string
           description: string | null
           due_date: string
           id: string
+          lead_id: string | null
           seller_id: string
           status: string
           title: string
@@ -249,6 +309,7 @@ export type Database = {
           description?: string | null
           due_date: string
           id?: string
+          lead_id?: string | null
           seller_id: string
           status?: string
           title: string
@@ -259,12 +320,20 @@ export type Database = {
           description?: string | null
           due_date?: string
           id?: string
+          lead_id?: string | null
           seller_id?: string
           status?: string
           title?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_seller_id_fkey"
             columns: ["seller_id"]

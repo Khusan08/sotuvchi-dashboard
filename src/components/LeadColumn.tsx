@@ -9,9 +9,11 @@ interface LeadColumnProps {
   title: string;
   leads: any[];
   color: string;
+  onLeadClick?: (lead: any) => void;
+  stageData?: any;
 }
 
-const LeadColumn = ({ stage, title, leads, color }: LeadColumnProps) => {
+const LeadColumn = ({ stage, title, leads, color, onLeadClick, stageData }: LeadColumnProps) => {
   const { setNodeRef } = useDroppable({ id: stage });
 
   return (
@@ -33,7 +35,12 @@ const LeadColumn = ({ stage, title, leads, color }: LeadColumnProps) => {
         >
           <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
             {leads.map((lead) => (
-              <SortableLeadCard key={lead.id} lead={lead} />
+              <SortableLeadCard 
+                key={lead.id} 
+                lead={lead}
+                onClick={() => onLeadClick?.(lead)}
+                stage={stageData}
+              />
             ))}
           </SortableContext>
           
