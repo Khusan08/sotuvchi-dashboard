@@ -4,9 +4,11 @@ import LeadCard from "./LeadCard";
 
 interface SortableLeadCardProps {
   lead: any;
+  onClick?: () => void;
+  stage?: any;
 }
 
-const SortableLeadCard = ({ lead }: SortableLeadCardProps) => {
+const SortableLeadCard = ({ lead, onClick, stage }: SortableLeadCardProps) => {
   const {
     attributes,
     listeners,
@@ -22,8 +24,17 @@ const SortableLeadCard = ({ lead }: SortableLeadCardProps) => {
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <LeadCard lead={lead} isDragging={isDragging} />
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      {...attributes} 
+      {...listeners}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick?.();
+      }}
+    >
+      <LeadCard lead={lead} isDragging={isDragging} onClick={onClick} stage={stage} />
     </div>
   );
 };

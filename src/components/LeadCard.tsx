@@ -1,29 +1,46 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Phone, User, DollarSign } from "lucide-react";
+import { Phone, User, DollarSign, Facebook } from "lucide-react";
 import { format } from "date-fns";
 
 interface LeadCardProps {
   lead: any;
   isDragging?: boolean;
+  onClick?: () => void;
+  stage?: any;
 }
 
-const LeadCard = ({ lead, isDragging }: LeadCardProps) => {
+const LeadCard = ({ lead, isDragging, onClick, stage }: LeadCardProps) => {
   return (
-    <Card className={`cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-50' : ''}`}>
+    <Card 
+      className={`cursor-pointer hover:shadow-lg transition-shadow ${isDragging ? 'opacity-50' : ''}`}
+      onClick={onClick}
+    >
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <h3 className="font-semibold text-base">{lead.customer_name}</h3>
-            <p className="text-xs text-muted-foreground mt-1">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-semibold text-base">{lead.customer_name}</h3>
+              {lead.source?.toLowerCase().includes('facebook') && (
+                <Facebook className="h-4 w-4 text-blue-600" />
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
               {format(new Date(lead.created_at), 'dd.MM.yyyy HH:mm')}
             </p>
           </div>
-          {lead.lead_type && (
-            <Badge variant="outline" className="text-xs">
-              {lead.lead_type}
-            </Badge>
-          )}
+          <div className="flex flex-col gap-1 items-end">
+            {lead.lead_type && (
+              <Badge variant="outline" className="text-xs">
+                {lead.lead_type}
+              </Badge>
+            )}
+            {stage && (
+              <Badge className={`${stage.color} text-white border-0 text-xs`}>
+                {stage.name}
+              </Badge>
+            )}
+          </div>
         </div>
 
         {lead.customer_phone && (

@@ -1,0 +1,433 @@
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useUserRoles } from "@/hooks/useUserRoles";
+import { format } from "date-fns";
+import { CalendarIcon, User, Phone, DollarSign, Facebook, CheckCircle2, Clock, Plus, MessageSquare } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+interface LeadDetailsDialogProps {
+  lead: any;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onUpdate: () => void;
+  sellers: any[];
+  stages: any[];
+}
+
+const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages }: LeadDetailsDialogProps) => {
+  const { isAdminOrRop } = useUserRoles();
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [selectedSeller, setSelectedSeller] = useState(lead?.seller_id || "");
+  const [taskForm, setTaskForm] = useState({
+    title: "",
+    description: "",
+    due_date: new Date(),
+    showForm: false
+  });
+
+  useEffect(() => {
+    if (open && lead) {
+      fetchTasks();
+      fetchComments();
+      setSelectedSeller(lead.seller_id);
+    }
+  }, [open, lead]);
+
+  const fetchTasks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("lead_id", lead.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setTasks(data || []);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+    }
+  };
+
+  const fetchComments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("lead_comments")
+        .select(`
+          *,
+          profiles:user_id (full_name)
+        `)
+        .eq("lead_id", lead.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setComments(data || []);
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+    }
+  };
+
+  const handleAddTask = async () => {
+    if (!taskForm.title) {
+      toast.error("Vazifa nomini kiriting");
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not found");
+
+      const { error } = await supabase.from("tasks").insert({
+        title: taskForm.title,
+        description: taskForm.description,
+        due_date: taskForm.due_date.toISOString(),
+        seller_id: lead.seller_id,
+        lead_id: lead.id,
+        status: "pending"
+      });
+
+      if (error) throw error;
+
+      toast.success("Vazifa qo'shildi");
+      setTaskForm({ title: "", description: "", due_date: new Date(), showForm: false });
+      fetchTasks();
+    } catch (error) {
+      console.error("Error adding task:", error);
+      toast.error("Vazifa qo'shishda xato");
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim()) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not found");
+
+      const { error } = await supabase.from("lead_comments").insert({
+        lead_id: lead.id,
+        user_id: user.id,
+        comment: newComment
+      });
+
+      if (error) throw error;
+
+      toast.success("Izoh qo'shildi");
+      setNewComment("");
+      fetchComments();
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      toast.error("Izoh qo'shishda xato");
+    }
+  };
+
+  const handleUpdateSeller = async () => {
+    if (!isAdminOrRop || selectedSeller === lead.seller_id) return;
+
+    try {
+      const seller = sellers.find(s => s.id === selectedSeller);
+      const { error } = await supabase
+        .from("leads")
+        .update({ 
+          seller_id: selectedSeller,
+          employee: seller?.full_name || ""
+        })
+        .eq("id", lead.id);
+
+      if (error) throw error;
+
+      toast.success("Xodim o'zgartirildi");
+      onUpdate();
+    } catch (error) {
+      console.error("Error updating seller:", error);
+      toast.error("Xodimni o'zgartirishda xato");
+    }
+  };
+
+  const handleToggleTask = async (taskId: string, currentStatus: string) => {
+    const newStatus = currentStatus === "completed" ? "pending" : "completed";
+    
+    try {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ status: newStatus })
+        .eq("id", taskId);
+
+      if (error) throw error;
+
+      toast.success(newStatus === "completed" ? "Vazifa bajarildi" : "Vazifa qayta ochildi");
+      fetchTasks();
+    } catch (error) {
+      console.error("Error updating task:", error);
+      toast.error("Vazifa holatini o'zgartirishda xato");
+    }
+  };
+
+  const currentStage = stages.find(s => s.id === lead?.stage);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-2xl">{lead?.customer_name}</DialogTitle>
+            {currentStage && (
+              <Badge className={`${currentStage.color} text-white border-0`}>
+                {currentStage.name}
+              </Badge>
+            )}
+          </div>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          {/* Lead Information */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm">
+                <Phone className="h-4 w-4 text-muted-foreground" />
+                <span>{lead?.customer_phone || "—"}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span>{lead?.profiles?.full_name || "—"}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <span>{lead?.price ? `${lead.price.toLocaleString()} so'm` : "—"}</span>
+              </div>
+              {lead?.lead_type && (
+                <Badge variant="outline">{lead.lead_type}</Badge>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <div className="text-sm">
+                <p className="text-muted-foreground mb-1">Yaratilgan sana</p>
+                <p className="font-medium">{format(new Date(lead?.created_at), 'dd.MM.yyyy HH:mm')}</p>
+              </div>
+              <div className="text-sm">
+                <p className="text-muted-foreground mb-1">Oxirgi yangilanish</p>
+                <p className="font-medium">{format(new Date(lead?.updated_at), 'dd.MM.yyyy HH:mm')}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Facebook Ads Data */}
+          {lead?.source?.toLowerCase().includes('facebook') && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center gap-2 mb-2">
+                <Facebook className="h-5 w-5 text-blue-600" />
+                <h3 className="font-semibold text-blue-900 dark:text-blue-100">Facebook Ads</h3>
+              </div>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                Bu lid Facebook reklamadan kelgan
+              </p>
+              {lead?.source && (
+                <p className="text-xs text-muted-foreground mt-1">Manba: {lead.source}</p>
+              )}
+            </div>
+          )}
+
+          {/* Seller Selection (Admin/ROP only) */}
+          {isAdminOrRop && (
+            <div>
+              <Label>Xodim</Label>
+              <div className="flex gap-2 mt-1">
+                <Select value={selectedSeller} onValueChange={setSelectedSeller}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sellers.map((seller) => (
+                      <SelectItem key={seller.id} value={seller.id}>
+                        {seller.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedSeller !== lead.seller_id && (
+                  <Button onClick={handleUpdateSeller} size="sm">
+                    Saqlash
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          {lead?.notes && (
+            <div>
+              <Label>Izoh</Label>
+              <p className="text-sm text-muted-foreground mt-1 p-3 bg-muted rounded-md">
+                {lead.notes}
+              </p>
+            </div>
+          )}
+
+          {/* Tasks Section */}
+          <div className="border-t pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Vazifalar
+              </h3>
+              {!taskForm.showForm && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setTaskForm({ ...taskForm, showForm: true })}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Vazifa qo'shish
+                </Button>
+              )}
+            </div>
+
+            {taskForm.showForm && (
+              <div className="p-4 bg-muted rounded-lg mb-4 space-y-3">
+                <div>
+                  <Label>Vazifa nomi *</Label>
+                  <Input
+                    value={taskForm.title}
+                    onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                    placeholder="Vazifa nomini kiriting"
+                  />
+                </div>
+                <div>
+                  <Label>Tavsif</Label>
+                  <Textarea
+                    value={taskForm.description}
+                    onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
+                    placeholder="Vazifa tavsifini kiriting"
+                    rows={2}
+                  />
+                </div>
+                <div>
+                  <Label>Muddat</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {format(taskForm.due_date, 'dd.MM.yyyy')}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={taskForm.due_date}
+                        onSelect={(date) => date && setTaskForm({ ...taskForm, due_date: date })}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTaskForm({ ...taskForm, showForm: false, title: "", description: "" })}
+                  >
+                    Bekor qilish
+                  </Button>
+                  <Button size="sm" onClick={handleAddTask}>
+                    Saqlash
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {tasks.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Vazifalar yo'q
+                </p>
+              ) : (
+                tasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="flex items-start gap-3 p-3 bg-card rounded-lg border hover:bg-accent/50 transition-colors"
+                  >
+                    <button
+                      onClick={() => handleToggleTask(task.id, task.status)}
+                      className="mt-1"
+                    >
+                      <CheckCircle2
+                        className={`h-5 w-5 ${
+                          task.status === 'completed'
+                            ? 'text-success'
+                            : 'text-muted-foreground'
+                        }`}
+                      />
+                    </button>
+                    <div className="flex-1">
+                      <p className={`font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
+                        {task.title}
+                      </p>
+                      {task.description && (
+                        <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Muddat: {format(new Date(task.due_date), 'dd.MM.yyyy')}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Comments Section */}
+          <div className="border-t pt-4">
+            <h3 className="font-semibold flex items-center gap-2 mb-3">
+              <MessageSquare className="h-5 w-5" />
+              Izohlar
+            </h3>
+
+            <div className="space-y-3 mb-4">
+              {comments.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Izohlar yo'q
+                </p>
+              ) : (
+                comments.map((comment) => (
+                  <div key={comment.id} className="p-3 bg-muted rounded-lg">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-medium">{comment.profiles?.full_name || "Foydalanuvchi"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(comment.created_at), 'dd.MM.yyyy HH:mm')}
+                      </p>
+                    </div>
+                    <p className="text-sm">{comment.comment}</p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <Textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Izoh yozing..."
+                rows={2}
+              />
+              <Button onClick={handleAddComment} disabled={!newComment.trim()}>
+                Yuborish
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default LeadDetailsDialog;

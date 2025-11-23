@@ -13,13 +13,8 @@ import { useUserRoles } from "@/hooks/useUserRoles";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import LeadColumn from "@/components/LeadColumn";
 import LeadCard from "@/components/LeadCard";
-
-const STAGES = [
-  { id: 'yengi_mijoz', title: 'Yengi Mijoz', color: 'bg-blue-500' },
-  { id: 'kotarmagan', title: "Ko'tarmagan", color: 'bg-orange-500' },
-  { id: 'malumot_berildi', title: "Ma'lumot berildi", color: 'bg-purple-500' },
-  { id: 'sotildi', title: 'Sotildi', color: 'bg-green-500' },
-];
+import LeadDetailsDialog from "@/components/LeadDetailsDialog";
+import StageManagement from "@/components/StageManagement";
 
 const LEAD_TYPE_OPTIONS = ["Yangi lid", "Baza"];
 
@@ -39,8 +34,11 @@ const Leads = () => {
   const [filterLeadType, setFilterLeadType] = useState<string>("all");
   const [filterTimeRange, setFilterTimeRange] = useState<string>("all");
   const [sellers, setSellers] = useState<any[]>([]);
+  const [stages, setStages] = useState<any[]>([]);
   const { isAdminOrRop } = useUserRoles();
   const [activeLead, setActiveLead] = useState<any>(null);
+  const [selectedLead, setSelectedLead] = useState<any>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -63,6 +61,7 @@ const Leads = () => {
   useEffect(() => {
     fetchLeads();
     fetchSellers();
+    fetchStages();
   }, []);
 
   const fetchLeads = async () => {
@@ -98,6 +97,20 @@ const Leads = () => {
       setSellers(data || []);
     } catch (error) {
       console.error("Error fetching sellers:", error);
+    }
+  };
+
+  const fetchStages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("stages")
+        .select("*")
+        .order("display_order");
+
+      if (error) throw error;
+      setStages(data || []);
+    } catch (error) {
+      console.error("Error fetching stages:", error);
     }
   };
 
@@ -237,7 +250,8 @@ const Leads = () => {
 
       <div className="flex gap-4 mb-6 flex-wrap items-center">
         {isAdminOrRop && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
@@ -321,9 +335,9 @@ const Leads = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {STAGES.map((stage) => (
+                        {stages.map((stage) => (
                           <SelectItem key={stage.id} value={stage.id}>
-                            {stage.title}
+                            {stage.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -360,6 +374,9 @@ const Leads = () => {
               </form>
             </DialogContent>
           </Dialog>
+
+            <StageManagement onUpdate={fetchStages} />
+          </>
         )}
 
         <div className="flex gap-2 items-center flex-wrap">
@@ -400,21 +417,37 @@ const Leads = () => {
         onDragEnd={handleDragEnd}
       >
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {STAGES.map((stage) => (
+          {stages.map((stage) => (
             <LeadColumn
               key={stage.id}
               stage={stage.id}
-              title={stage.title}
+              title={stage.name}
               leads={getLeadsByStage(stage.id)}
               color={stage.color}
+              onLeadClick={(lead) => {
+                setSelectedLead(lead);
+                setDetailsDialogOpen(true);
+              }}
+              stageData={stage}
             />
           ))}
         </div>
 
         <DragOverlay>
-          {activeLead ? <LeadCard lead={activeLead} isDragging /> : null}
+          {activeLead ? <LeadCard lead={activeLead} isDragging stage={stages.find(s => s.id === activeLead.stage)} /> : null}
         </DragOverlay>
       </DndContext>
+
+      {selectedLead && (
+        <LeadDetailsDialog
+          lead={selectedLead}
+          open={detailsDialogOpen}
+          onOpenChange={setDetailsDialogOpen}
+          onUpdate={fetchLeads}
+          sellers={sellers}
+          stages={stages}
+        />
+      )}
 
       {!isAdminOrRop && (
         <div className="mt-4 p-4 bg-muted rounded-lg">
