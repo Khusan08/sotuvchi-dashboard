@@ -53,7 +53,7 @@ const Leads = () => {
     customer_phone: "",
     employee: "",
     lead_type: "Yangi lid",
-    price: "",
+    activity: "",
     notes: "",
     stage: "yengi_mijoz",
   });
@@ -174,7 +174,7 @@ const Leads = () => {
         employee: sellers.find(s => s.id === formData.employee)?.full_name || "",
         lead_type: formData.lead_type,
         notes: formData.notes || null,
-        price: formData.price ? parseFloat(formData.price) : null,
+        activity: formData.activity || null,
         stage: formData.stage,
       });
 
@@ -187,7 +187,7 @@ const Leads = () => {
         customer_phone: "",
         employee: "",
         lead_type: "Yangi lid",
-        price: "",
+        activity: "",
         notes: "",
         stage: "yengi_mijoz",
       });
@@ -345,12 +345,13 @@ const Leads = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="price">Narx (so'm)</Label>
+                    <Label htmlFor="activity">Faoliyat turi</Label>
                     <Input
-                      id="price"
-                      type="number"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      id="activity"
+                      type="text"
+                      value={formData.activity}
+                      onChange={(e) => setFormData({ ...formData, activity: e.target.value })}
+                      placeholder="Masalan: Konsultatsiya, Savdo"
                     />
                   </div>
                 </div>

@@ -201,10 +201,12 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
                 <User className="h-4 w-4 text-muted-foreground" />
                 <span>{lead?.profiles?.full_name || "—"}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-                <span>{lead?.price ? `${lead.price.toLocaleString()} so'm` : "—"}</span>
-              </div>
+              {lead?.activity && (
+                <div className="flex items-center gap-2 text-sm">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <span>Faoliyat: {lead.activity}</span>
+                </div>
+              )}
               {lead?.lead_type && (
                 <Badge variant="outline">{lead.lead_type}</Badge>
               )}
@@ -416,8 +418,15 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
               <Textarea
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Izoh yozing..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleAddComment();
+                  }
+                }}
+                placeholder="Izoh yozing... (Enter yuborish uchun)"
                 rows={2}
+                className="flex-1"
               />
               <Button onClick={handleAddComment} disabled={!newComment.trim()}>
                 Yuborish
