@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell, LabelList } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useUserRoles } from "@/hooks/useUserRoles";
@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import StatsCard from "@/components/StatsCard";
+import { ShoppingCart, TrendingUp, DollarSign, Target } from "lucide-react";
 
 interface OrderStatusData {
   seller_id: string;
@@ -32,6 +34,13 @@ const Statistics = () => {
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const { isAdmin, isRop, isSotuvchi } = useUserRoles();
+  
+  // Summary statistics
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [totalLeads, setTotalLeads] = useState(0);
+  const [totalSales, setTotalSales] = useState(0);
+  const [averageCheck, setAverageCheck] = useState(0);
+  const [conversionRate, setConversionRate] = useState(0);
   
   // Orders dialog state
   const [ordersDialogOpen, setOrdersDialogOpen] = useState(false);
@@ -83,16 +92,37 @@ const Statistics = () => {
           profiles!orders_seller_id_fkey(full_name)
         `);
 
+      let leadsQuery = supabase.from("leads").select("id", { count: "exact", head: true });
+
       // If seller role, only show their own stats
       if (isSotuvchi && currentUserId) {
         ordersQuery = ordersQuery.eq("seller_id", currentUserId);
+        leadsQuery = leadsQuery.eq("seller_id", currentUserId);
       } else if (selectedSeller !== "all") {
         ordersQuery = ordersQuery.eq("seller_id", selectedSeller);
+        leadsQuery = leadsQuery.eq("seller_id", selectedSeller);
       }
 
-      const { data: orders, error } = await ordersQuery;
+      const [{ data: orders, error: ordersError }, { count: leadsCount, error: leadsError }] = await Promise.all([
+        ordersQuery,
+        leadsQuery
+      ]);
 
-      if (error) throw error;
+      if (ordersError) throw ordersError;
+      if (leadsError) throw leadsError;
+
+      // Calculate summary statistics
+      const totalOrdersCount = orders?.length || 0;
+      const totalLeadsCount = leadsCount || 0;
+      const totalSalesAmount = orders?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
+      const avgCheck = totalOrdersCount > 0 ? totalSalesAmount / totalOrdersCount : 0;
+      const conversion = totalLeadsCount > 0 ? (totalOrdersCount / totalLeadsCount) * 100 : 0;
+
+      setTotalOrders(totalOrdersCount);
+      setTotalLeads(totalLeadsCount);
+      setTotalSales(totalSalesAmount);
+      setAverageCheck(avgCheck);
+      setConversionRate(conversion);
 
       // Group by seller
       const sellerMap = new Map<string, any>();
@@ -135,13 +165,36 @@ const Statistics = () => {
       
       setStatusData(statsArray);
 
-      // Prepare chart data
-      const chartData = statsArray.map((seller) => ({
-        name: seller.seller_name,
-        "Kutilmoqda": seller.pending,
-        "Yetkazildi": seller.delivered,
-        "Bekor qilindi": seller.cancelled,
-      }));
+      // Prepare chart data with all 3 bars for each seller
+      const chartData = statsArray.flatMap((seller) => [
+        {
+          name: seller.seller_name,
+          status: "Kutilmoqda",
+          value: seller.pending,
+          percent: seller.pendingPercent,
+          sellerId: seller.seller_id,
+          statusKey: "pending",
+          fill: "#3b82f6"
+        },
+        {
+          name: seller.seller_name,
+          status: "Yetkazildi",
+          value: seller.delivered,
+          percent: seller.deliveredPercent,
+          sellerId: seller.seller_id,
+          statusKey: "delivered",
+          fill: "#22c55e"
+        },
+        {
+          name: seller.seller_name,
+          status: "Bekor qilindi",
+          value: seller.cancelled,
+          percent: seller.cancelledPercent,
+          sellerId: seller.seller_id,
+          statusKey: "cancelled",
+          fill: "#ef4444"
+        }
+      ]);
 
       setChartData(chartData);
     } catch (error: any) {
@@ -243,53 +296,32 @@ const Statistics = () => {
           )}
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {statusData.map((stat) => (
-            <Card key={stat.seller_id}>
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold">
-                  {stat.seller_name}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between items-center p-2 bg-muted/50 rounded">
-                  <span className="text-sm font-medium">Jami zakazlar:</span>
-                  <span className="text-lg font-bold">{stat.total}</span>
-                </div>
-                <button
-                  onClick={() => handleViewOrders(stat.seller_id, stat.seller_name, "pending")}
-                  className="w-full flex justify-between items-center p-2 bg-blue-500/10 rounded hover:bg-blue-500/20 transition-colors cursor-pointer"
-                >
-                  <span className="text-sm font-medium text-blue-600">Kutilmoqda:</span>
-                  <div className="text-right">
-                    <span className="text-lg font-bold text-blue-600">{stat.pending}</span>
-                    <span className="text-xs text-blue-600 ml-2">({stat.pendingPercent}%)</span>
-                  </div>
-                </button>
-                <button
-                  onClick={() => handleViewOrders(stat.seller_id, stat.seller_name, "delivered")}
-                  className="w-full flex justify-between items-center p-2 bg-green-500/10 rounded hover:bg-green-500/20 transition-colors cursor-pointer"
-                >
-                  <span className="text-sm font-medium text-green-600">Yetkazildi:</span>
-                  <div className="text-right">
-                    <span className="text-lg font-bold text-green-600">{stat.delivered}</span>
-                    <span className="text-xs text-green-600 ml-2">({stat.deliveredPercent}%)</span>
-                  </div>
-                </button>
-                <button
-                  onClick={() => handleViewOrders(stat.seller_id, stat.seller_name, "cancelled")}
-                  className="w-full flex justify-between items-center p-2 bg-red-500/10 rounded hover:bg-red-500/20 transition-colors cursor-pointer"
-                >
-                  <span className="text-sm font-medium text-red-600">Bekor qilindi:</span>
-                  <div className="text-right">
-                    <span className="text-lg font-bold text-red-600">{stat.cancelled}</span>
-                    <span className="text-xs text-red-600 ml-2">({stat.cancelledPercent}%)</span>
-                  </div>
-                </button>
-              </CardContent>
-            </Card>
-          ))}
+        {/* Summary Statistics */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <StatsCard
+            title="Jami zakazlar"
+            value={totalOrders}
+            icon={ShoppingCart}
+            description="Umumiy buyurtmalar soni"
+          />
+          <StatsCard
+            title="Jami lidlar"
+            value={totalLeads}
+            icon={Target}
+            description="Umumiy lidlar soni"
+          />
+          <StatsCard
+            title="Jami savdo"
+            value={`${totalSales.toLocaleString()} so'm`}
+            icon={DollarSign}
+            description="Umumiy savdo hajmi"
+          />
+          <StatsCard
+            title="O'rtacha chek"
+            value={`${Math.round(averageCheck).toLocaleString()} so'm`}
+            icon={TrendingUp}
+            description={`Konversiya: ${conversionRate.toFixed(1)}%`}
+          />
         </div>
 
         {/* Bar Chart - Order Status by Seller */}
@@ -303,11 +335,32 @@ const Statistics = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="Kutilmoqda" fill="#3b82f6" />
-                <Bar dataKey="Yetkazildi" fill="#22c55e" />
-                <Bar dataKey="Bekor qilindi" fill="#ef4444" />
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-background border rounded p-2 shadow-lg">
+                          <p className="font-semibold">{payload[0].payload.name}</p>
+                          <p className="text-sm">
+                            {payload[0].payload.status}: {payload[0].payload.value} ({payload[0].payload.percent}%)
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Bar dataKey="value" onClick={(data) => handleViewOrders(data.sellerId, data.name, data.statusKey)} cursor="pointer">
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                  <LabelList
+                    dataKey="percent"
+                    position="top"
+                    formatter={(value: number) => `${value}%`}
+                    style={{ fontSize: '12px', fontWeight: 'bold' }}
+                  />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
