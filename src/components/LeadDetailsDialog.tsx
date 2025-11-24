@@ -30,6 +30,7 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
   const [newComment, setNewComment] = useState("");
   const [selectedSeller, setSelectedSeller] = useState(lead?.seller_id || "");
   const [price, setPrice] = useState(lead?.price?.toString() || "");
+  const [notes, setNotes] = useState(lead?.notes || "");
   const [taskForm, setTaskForm] = useState({
     title: "",
     description: "",
@@ -43,6 +44,7 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
       fetchComments();
       setSelectedSeller(lead.seller_id);
       setPrice(lead.price?.toString() || "");
+      setNotes(lead.notes || "");
     }
   }, [open, lead]);
 
@@ -190,6 +192,23 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
     }
   };
 
+  const handleUpdateNotes = async () => {
+    try {
+      const { error } = await supabase
+        .from("leads")
+        .update({ notes: notes })
+        .eq("id", lead.id);
+
+      if (error) throw error;
+
+      toast.success("Izoh saqlandi");
+      onUpdate();
+    } catch (error) {
+      console.error("Error updating notes:", error);
+      toast.error("Izohni saqlashda xato");
+    }
+  };
+
   const handleToggleTask = async (taskId: string, currentStatus: string) => {
     const newStatus = currentStatus === "completed" ? "pending" : "completed";
     
@@ -329,14 +348,23 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
           )}
 
           {/* Notes */}
-          {lead?.notes && (
-            <div>
-              <Label>Izoh</Label>
-              <p className="text-sm text-muted-foreground mt-1 p-3 bg-muted rounded-md">
-                {lead.notes}
-              </p>
+          <div>
+            <Label>Izoh</Label>
+            <div className="flex gap-2 mt-1">
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Izoh yozing..."
+                rows={3}
+                className="flex-1"
+              />
+              {notes !== (lead?.notes || "") && (
+                <Button onClick={handleUpdateNotes} size="sm">
+                  Saqlash
+                </Button>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Tasks Section */}
           <div className="border-t pt-4">
