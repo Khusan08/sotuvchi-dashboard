@@ -7,6 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
 
 interface OrderStatusData {
   seller_id: string;
@@ -15,6 +19,9 @@ interface OrderStatusData {
   delivered: number;
   cancelled: number;
   total: number;
+  pendingPercent: number;
+  deliveredPercent: number;
+  cancelledPercent: number;
 }
 
 const Statistics = () => {
@@ -25,6 +32,11 @@ const Statistics = () => {
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const { isAdmin, isRop, isSotuvchi } = useUserRoles();
+  
+  // Orders dialog state
+  const [ordersDialogOpen, setOrdersDialogOpen] = useState(false);
+  const [selectedOrders, setSelectedOrders] = useState<any[]>([]);
+  const [dialogTitle, setDialogTitle] = useState("");
 
   useEffect(() => {
     fetchCurrentUser();
@@ -97,11 +109,13 @@ const Statistics = () => {
             delivered: 0,
             cancelled: 0,
             total: 0,
+            orders: []
           });
         }
 
         const seller = sellerMap.get(sellerId);
         seller.total++;
+        seller.orders.push(order);
         
         if (order.status === "pending") {
           seller.pending++;
@@ -112,7 +126,13 @@ const Statistics = () => {
         }
       });
 
-      const statsArray: OrderStatusData[] = Array.from(sellerMap.values());
+      const statsArray: OrderStatusData[] = Array.from(sellerMap.values()).map((seller) => ({
+        ...seller,
+        pendingPercent: seller.total > 0 ? Math.round((seller.pending / seller.total) * 100) : 0,
+        deliveredPercent: seller.total > 0 ? Math.round((seller.delivered / seller.total) * 100) : 0,
+        cancelledPercent: seller.total > 0 ? Math.round((seller.cancelled / seller.total) * 100) : 0,
+      }));
+      
       setStatusData(statsArray);
 
       // Prepare chart data
@@ -128,6 +148,60 @@ const Statistics = () => {
       toast.error("Statistikani yuklashda xatolik: " + error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleViewOrders = async (sellerId: string, sellerName: string, status: string) => {
+    try {
+      const { data: orders, error } = await supabase
+        .from("orders")
+        .select(`
+          *,
+          order_items(*)
+        `)
+        .eq("seller_id", sellerId)
+        .eq("status", status)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const statusLabels: Record<string, string> = {
+        pending: "Kutilmoqda",
+        delivered: "Yetkazildi",
+        cancelled: "Bekor qilindi"
+      };
+
+      setSelectedOrders(orders || []);
+      setDialogTitle(`${sellerName} - ${statusLabels[status]} zakazlar`);
+      setOrdersDialogOpen(true);
+    } catch (error: any) {
+      toast.error("Zakazlarni yuklashda xatolik: " + error.message);
+    }
+  };
+
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "default";
+      case "delivered":
+        return "secondary";
+      case "cancelled":
+        return "destructive";
+      default:
+        return "outline";
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "Kutilmoqda";
+      case "delivered":
+        return "Yetkazildi";
+      case "cancelled":
+        return "Bekor qilindi";
+      default:
+        return status;
     }
   };
 
@@ -183,18 +257,36 @@ const Statistics = () => {
                   <span className="text-sm font-medium">Jami zakazlar:</span>
                   <span className="text-lg font-bold">{stat.total}</span>
                 </div>
-                <div className="flex justify-between items-center p-2 bg-blue-500/10 rounded">
+                <button
+                  onClick={() => handleViewOrders(stat.seller_id, stat.seller_name, "pending")}
+                  className="w-full flex justify-between items-center p-2 bg-blue-500/10 rounded hover:bg-blue-500/20 transition-colors cursor-pointer"
+                >
                   <span className="text-sm font-medium text-blue-600">Kutilmoqda:</span>
-                  <span className="text-lg font-bold text-blue-600">{stat.pending}</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-green-500/10 rounded">
+                  <div className="text-right">
+                    <span className="text-lg font-bold text-blue-600">{stat.pending}</span>
+                    <span className="text-xs text-blue-600 ml-2">({stat.pendingPercent}%)</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleViewOrders(stat.seller_id, stat.seller_name, "delivered")}
+                  className="w-full flex justify-between items-center p-2 bg-green-500/10 rounded hover:bg-green-500/20 transition-colors cursor-pointer"
+                >
                   <span className="text-sm font-medium text-green-600">Yetkazildi:</span>
-                  <span className="text-lg font-bold text-green-600">{stat.delivered}</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-red-500/10 rounded">
+                  <div className="text-right">
+                    <span className="text-lg font-bold text-green-600">{stat.delivered}</span>
+                    <span className="text-xs text-green-600 ml-2">({stat.deliveredPercent}%)</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleViewOrders(stat.seller_id, stat.seller_name, "cancelled")}
+                  className="w-full flex justify-between items-center p-2 bg-red-500/10 rounded hover:bg-red-500/20 transition-colors cursor-pointer"
+                >
                   <span className="text-sm font-medium text-red-600">Bekor qilindi:</span>
-                  <span className="text-lg font-bold text-red-600">{stat.cancelled}</span>
-                </div>
+                  <div className="text-right">
+                    <span className="text-lg font-bold text-red-600">{stat.cancelled}</span>
+                    <span className="text-xs text-red-600 ml-2">({stat.cancelledPercent}%)</span>
+                  </div>
+                </button>
               </CardContent>
             </Card>
           ))}
@@ -220,6 +312,59 @@ const Statistics = () => {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+
+        {/* Orders Dialog */}
+        <Dialog open={ordersDialogOpen} onOpenChange={setOrdersDialogOpen}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{dialogTitle}</DialogTitle>
+            </DialogHeader>
+            <div className="mt-4">
+              {selectedOrders.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Zakazlar topilmadi</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Zakaz №</TableHead>
+                      <TableHead>Mijoz</TableHead>
+                      <TableHead>Telefon</TableHead>
+                      <TableHead>Manzil</TableHead>
+                      <TableHead>Summa</TableHead>
+                      <TableHead>Holat</TableHead>
+                      <TableHead>Sana</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedOrders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-medium">#{order.order_number}</TableCell>
+                        <TableCell>{order.customer_name}</TableCell>
+                        <TableCell>{order.customer_phone || "—"}</TableCell>
+                        <TableCell>
+                          {order.region && order.district
+                            ? `${order.region}, ${order.district}`
+                            : "—"}
+                        </TableCell>
+                        <TableCell className="font-semibold">
+                          {order.total_amount.toLocaleString()} so'm
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusBadgeVariant(order.status)}>
+                            {getStatusLabel(order.status)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(order.order_date), "dd.MM.yyyy")}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
