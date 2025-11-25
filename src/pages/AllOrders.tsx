@@ -792,51 +792,64 @@ const AllOrders = () => {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="customer_name">Mijoz ismi *</Label>
+                <Label htmlFor="create_customer_name">Mijoz ismi *</Label>
                 <Input
-                  id="customer_name"
+                  id="create_customer_name"
                   value={createFormData.customer_name}
                   onChange={(e) => setCreateFormData({ ...createFormData, customer_name: e.target.value })}
-                  placeholder="Mijoz ismi"
+                  placeholder="Ism Familiya"
+                  required
                 />
               </div>
-              <div>
-                <Label htmlFor="customer_phone">Telefon raqami</Label>
-                <Input
-                  id="customer_phone"
-                  value={createFormData.customer_phone}
-                  onChange={(e) => setCreateFormData({ ...createFormData, customer_phone: e.target.value })}
-                  placeholder="+998 XX XXX XX XX"
-                />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="create_customer_phone">Telefon 1</Label>
+                  <Input
+                    id="create_customer_phone"
+                    value={createFormData.customer_phone}
+                    onChange={(e) => setCreateFormData({ ...createFormData, customer_phone: e.target.value })}
+                    placeholder="+998 XX XXX XX XX"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="create_customer_phone2">Telefon 2</Label>
+                  <Input
+                    id="create_customer_phone2"
+                    value={createFormData.customer_phone2}
+                    onChange={(e) => setCreateFormData({ ...createFormData, customer_phone2: e.target.value })}
+                    placeholder="+998 XX XXX XX XX"
+                  />
+                </div>
               </div>
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="region">Viloyat</Label>
+                <Label htmlFor="create_region">Viloyat</Label>
                 <Select
                   value={createFormData.region}
-                  onValueChange={(value) => setCreateFormData({ ...createFormData, region: value })}
+                  onValueChange={(value) => setCreateFormData({ ...createFormData, region: value, district: '' })}
                 >
-                  <SelectTrigger id="region">
+                  <SelectTrigger id="create_region">
                     <SelectValue placeholder="Viloyatni tanlang" />
                   </SelectTrigger>
                   <SelectContent>
-                    {regions.map((region) => (
-                      <SelectItem key={region} value={region}>
-                        {region}
+                    {Object.keys(regionsData).map((regionName) => (
+                      <SelectItem key={regionName} value={regionName}>
+                        {regionName}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="district">Tuman</Label>
+                <Label htmlFor="create_district">Tuman</Label>
                 <Select
                   value={createFormData.district}
                   onValueChange={(value) => setCreateFormData({ ...createFormData, district: value })}
                   disabled={!createFormData.region}
                 >
-                  <SelectTrigger id="district">
+                  <SelectTrigger id="create_district">
                     <SelectValue placeholder="Tumanni tanlang" />
                   </SelectTrigger>
                   <SelectContent>
@@ -849,35 +862,23 @@ const AllOrders = () => {
                 </Select>
               </div>
             </div>
+
             <div className="space-y-4 border-t pt-4">
-              <Label>Mahsulotlarni tanlang *</Label>
+              <div>
+                <Label>Mahsulotlarni tanlang *</Label>
+                <p className="text-xs text-muted-foreground mb-2">Mahsulotni tanlang yoki qo'lda kiriting</p>
+              </div>
               
               {/* Product selection grid */}
-              <div className="grid grid-cols-2 gap-3 max-h-[300px] overflow-y-auto p-1">
+              <div className="grid grid-cols-2 gap-3 max-h-[200px] overflow-y-auto p-1 border rounded-md">
                 {products.map((product) => (
                   <Card 
                     key={product.id}
                     className="cursor-pointer hover:border-primary transition-colors overflow-hidden"
                     onClick={() => addProductToOrder(product)}
                   >
-                    {product.image_url ? (
-                      <div className="aspect-square relative overflow-hidden bg-muted">
-                        <img 
-                          src={product.image_url} 
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ) : (
-                      <div className="aspect-square bg-muted flex items-center justify-center">
-                        <span className="text-muted-foreground text-xs">Rasm yo'q</span>
-                      </div>
-                    )}
                     <CardContent className="p-3">
                       <h4 className="font-medium text-sm line-clamp-1">{product.name}</h4>
-                      <p className="text-xs text-primary font-semibold mt-1">
-                        {product.price.toLocaleString()} so'm
-                      </p>
                     </CardContent>
                   </Card>
                 ))}
@@ -888,84 +889,94 @@ const AllOrders = () => {
                 <div className="space-y-2 border-t pt-4">
                   <Label>Tanlangan mahsulotlar</Label>
                   {createFormData.items.filter(item => item.product_name).map((item, index) => (
-                    <Card key={index} className="p-3">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">{item.product_name}</span>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => removeOrderItem(index)}
-                          >
-                            O'chirish
-                          </Button>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="space-y-1">
-                            <Label htmlFor={`quantity_${index}`} className="text-xs">Soni</Label>
-                            <Input
-                              id={`quantity_${index}`}
-                              type="number"
-                              min="1"
-                              value={item.quantity}
-                              onChange={(e) => updateOrderItem(index, "quantity", Number(e.target.value))}
-                              className="h-8"
-                              required
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label htmlFor={`price_${index}`} className="text-xs">Narxi</Label>
-                            <Input
-                              id={`price_${index}`}
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={item.price}
-                              onChange={(e) => updateOrderItem(index, "price", Number(e.target.value))}
-                              className="h-8"
-                              required
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Jami</Label>
-                            <div className="h-8 flex items-center text-sm font-semibold">
-                              {(item.quantity * item.price).toLocaleString()} so'm
-                            </div>
-                          </div>
-                        </div>
+                    <div key={index} className="flex gap-2 items-center">
+                      <div className="flex-1">
+                        <Input
+                          placeholder="Mahsulot nomi"
+                          value={item.product_name}
+                          onChange={(e) => updateOrderItem(index, 'product_name', e.target.value)}
+                        />
                       </div>
-                    </Card>
+                      <div className="w-24">
+                        <Input
+                          type="number"
+                          placeholder="Soni"
+                          value={item.quantity}
+                          onChange={(e) => updateOrderItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                          min="1"
+                        />
+                      </div>
+                      {createFormData.items.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => removeOrderItem(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCreateFormData({
+                      ...createFormData,
+                      items: [...createFormData.items, { product_name: '', quantity: 1 }]
+                    })}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Mahsulot qo'shish
+                  </Button>
                 </div>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="advance_payment">Oldindan to'lov</Label>
-                <Input
-                  id="advance_payment"
-                  type="number"
-                  value={createFormData.advance_payment}
-                  onChange={(e) => setCreateFormData({ ...createFormData, advance_payment: Number(e.target.value) })}
-                  placeholder="0"
-                />
-              </div>
-              <div>
-                <Label>Jami summa</Label>
-                <Input
-                  type="number"
-                  value={createFormData.total_amount}
-                  onChange={(e) => setCreateFormData({ ...createFormData, total_amount: Number(e.target.value) })}
-                  placeholder="0"
-                />
-              </div>
+
+            <div>
+              <Label htmlFor="total_amount">Umumiy summa (so'm) *</Label>
+              <Input
+                id="total_amount"
+                type="number"
+                value={createFormData.total_amount}
+                onChange={(e) => setCreateFormData({ ...createFormData, total_amount: parseFloat(e.target.value) || 0 })}
+                placeholder="Umumiy summani kiriting"
+                min="0"
+                required
+              />
+              {createFormData.total_amount > 0 && createFormData.items.filter(i => i.product_name).length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Har bir mahsulot narxi: {calculateItemPrice().toLocaleString()} so'm
+                </p>
+              )}
             </div>
-            <div className="p-3 bg-muted rounded-md">
-              <p className="text-sm font-medium">
-                Qolgan summa: <span className="text-lg font-bold">{(createFormData.total_amount - createFormData.advance_payment).toLocaleString()} so'm</span>
-              </p>
+
+            <div>
+              <Label htmlFor="advance_payment">Oldindan to'lov</Label>
+              <Input
+                id="advance_payment"
+                type="number"
+                value={createFormData.advance_payment}
+                onChange={(e) => setCreateFormData({ ...createFormData, advance_payment: Number(e.target.value) })}
+                placeholder="0"
+              />
             </div>
+
+            {createFormData.total_amount > 0 && (
+              <div className="p-3 bg-muted rounded-md">
+                <p className="text-sm font-medium">
+                  Jami: {createFormData.total_amount.toLocaleString()} so'm
+                </p>
+                {createFormData.advance_payment > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Qoldiq: {(createFormData.total_amount - createFormData.advance_payment).toLocaleString()} so'm
+                  </p>
+                )}
+              </div>
+            )}
+
             <div>
               <Label htmlFor="notes">Izoh</Label>
               <Textarea
@@ -973,14 +984,15 @@ const AllOrders = () => {
                 value={createFormData.notes}
                 onChange={(e) => setCreateFormData({ ...createFormData, notes: e.target.value })}
                 placeholder="Qo'shimcha ma'lumot"
+                rows={3}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
               Bekor qilish
             </Button>
-            <Button onClick={handleCreateOrder}>
+            <Button type="button" onClick={handleCreateOrder}>
               Yaratish
             </Button>
           </DialogFooter>
