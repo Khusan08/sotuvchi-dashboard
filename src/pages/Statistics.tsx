@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import StatsCard from "@/components/StatsCard";
+import EmployeeStatsCard from "@/components/EmployeeStatsCard";
 import { ShoppingCart, TrendingUp, DollarSign, Target } from "lucide-react";
 
 interface OrderStatusData {
@@ -24,6 +25,10 @@ interface OrderStatusData {
   pendingPercent: number;
   deliveredPercent: number;
   cancelledPercent: number;
+  totalSales: number;
+  averageCheck: number;
+  totalLeads: number;
+  conversionRate: number;
 }
 
 const Statistics = () => {
@@ -124,6 +129,25 @@ const Statistics = () => {
       setAverageCheck(avgCheck);
       setConversionRate(conversion);
 
+      // Get leads data for conversion calculation
+      let leadsMap = new Map<string, number>();
+      
+      // Fetch leads for all sellers or specific seller
+      let leadsQueryBuilder = supabase.from("leads").select("seller_id, id");
+      
+      if (isSotuvchi && currentUserId) {
+        leadsQueryBuilder = leadsQueryBuilder.eq("seller_id", currentUserId);
+      } else if (selectedSeller !== "all") {
+        leadsQueryBuilder = leadsQueryBuilder.eq("seller_id", selectedSeller);
+      }
+      
+      const { data: leadsData } = await leadsQueryBuilder;
+      
+      leadsData?.forEach((lead) => {
+        const count = leadsMap.get(lead.seller_id) || 0;
+        leadsMap.set(lead.seller_id, count + 1);
+      });
+
       // Group by seller
       const sellerMap = new Map<string, any>();
       
@@ -139,12 +163,14 @@ const Statistics = () => {
             delivered: 0,
             cancelled: 0,
             total: 0,
+            totalSales: 0,
             orders: []
           });
         }
 
         const seller = sellerMap.get(sellerId);
         seller.total++;
+        seller.totalSales += Number(order.total_amount);
         seller.orders.push(order);
         
         if (order.status === "pending") {
@@ -156,12 +182,20 @@ const Statistics = () => {
         }
       });
 
-      const statsArray: OrderStatusData[] = Array.from(sellerMap.values()).map((seller) => ({
-        ...seller,
-        pendingPercent: seller.total > 0 ? Math.round((seller.pending / seller.total) * 100) : 0,
-        deliveredPercent: seller.total > 0 ? Math.round((seller.delivered / seller.total) * 100) : 0,
-        cancelledPercent: seller.total > 0 ? Math.round((seller.cancelled / seller.total) * 100) : 0,
-      }));
+      const statsArray: OrderStatusData[] = Array.from(sellerMap.values()).map((seller) => {
+        const sellerLeads = leadsMap.get(seller.seller_id) || 0;
+        const conversionRate = sellerLeads > 0 ? (seller.total / sellerLeads) * 100 : 0;
+        
+        return {
+          ...seller,
+          pendingPercent: seller.total > 0 ? Math.round((seller.pending / seller.total) * 100) : 0,
+          deliveredPercent: seller.total > 0 ? Math.round((seller.delivered / seller.total) * 100) : 0,
+          cancelledPercent: seller.total > 0 ? Math.round((seller.cancelled / seller.total) * 100) : 0,
+          averageCheck: seller.total > 0 ? seller.totalSales / seller.total : 0,
+          totalLeads: sellerLeads,
+          conversionRate: conversionRate
+        };
+      });
       
       setStatusData(statsArray);
 
@@ -322,6 +356,28 @@ const Statistics = () => {
             icon={TrendingUp}
             description={`Konversiya: ${conversionRate.toFixed(1)}%`}
           />
+        </div>
+
+        {/* Employee Stats Cards */}
+        <div>
+          <h3 className="text-xl font-semibold mb-4">Hodimlar statistikasi</h3>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {statusData.map((seller) => (
+              <EmployeeStatsCard
+                key={seller.seller_id}
+                sellerName={seller.seller_name}
+                totalOrders={seller.total}
+                totalLeads={seller.totalLeads}
+                totalSales={seller.totalSales}
+                averageCheck={seller.averageCheck}
+                conversionRate={seller.conversionRate}
+                pendingOrders={seller.pending}
+                deliveredOrders={seller.delivered}
+                cancelledOrders={seller.cancelled}
+                onViewOrders={(status) => handleViewOrders(seller.seller_id, seller.seller_name, status)}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Bar Chart - Order Status by Seller */}

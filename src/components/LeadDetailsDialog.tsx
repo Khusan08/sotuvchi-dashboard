@@ -35,6 +35,7 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
     title: "",
     description: "",
     due_date: new Date(),
+    due_time: "12:00",
     showForm: false
   });
 
@@ -91,10 +92,15 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not found");
 
+      // Combine date and time
+      const [hours, minutes] = taskForm.due_time.split(':');
+      const dueDateTime = new Date(taskForm.due_date);
+      dueDateTime.setHours(parseInt(hours), parseInt(minutes));
+
       const { error } = await supabase.from("tasks").insert({
         title: taskForm.title,
         description: taskForm.description,
-        due_date: taskForm.due_date.toISOString(),
+        due_date: dueDateTime.toISOString(),
         seller_id: lead.seller_id,
         lead_id: lead.id,
         status: "pending"
@@ -103,7 +109,7 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
       if (error) throw error;
 
       toast.success("Vazifa qo'shildi");
-      setTaskForm({ title: "", description: "", due_date: new Date(), showForm: false });
+      setTaskForm({ title: "", description: "", due_date: new Date(), due_time: "12:00", showForm: false });
       fetchTasks();
     } catch (error) {
       console.error("Error adding task:", error);
@@ -404,23 +410,33 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
                     rows={2}
                   />
                 </div>
-                <div>
-                  <Label>Muddat</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {format(taskForm.due_date, 'dd.MM.yyyy')}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={taskForm.due_date}
-                        onSelect={(date) => date && setTaskForm({ ...taskForm, due_date: date })}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Muddat (Sana)</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-start">
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {format(taskForm.due_date, 'dd.MM.yyyy')}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={taskForm.due_date}
+                          onSelect={(date) => date && setTaskForm({ ...taskForm, due_date: date })}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div>
+                    <Label>Vaqt</Label>
+                    <Input
+                      type="time"
+                      value={taskForm.due_time}
+                      onChange={(e) => setTaskForm({ ...taskForm, due_time: e.target.value })}
+                    />
+                  </div>
                 </div>
                 <div className="flex gap-2 justify-end">
                   <Button
@@ -468,7 +484,7 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
                         <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
                       )}
                       <p className="text-xs text-muted-foreground mt-1">
-                        Muddat: {format(new Date(task.due_date), 'dd.MM.yyyy')}
+                        Muddat: {format(new Date(task.due_date), 'dd.MM.yyyy HH:mm')}
                       </p>
                     </div>
                   </div>

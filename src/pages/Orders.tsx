@@ -42,6 +42,7 @@ const Orders = () => {
   const [formData, setFormData] = useState({
     customer_name: "",
     customer_phone: "",
+    customer_phone2: "",
     advance_payment: "",
     region: "",
     district: "",
@@ -205,6 +206,7 @@ const Orders = () => {
     setFormData({
       customer_name: order.customer_name,
       customer_phone: order.customer_phone || "",
+      customer_phone2: order.customer_phone2 || "",
       advance_payment: order.advance_payment?.toString() || "0",
       region: order.region || "",
       district: order.district || "",
@@ -258,6 +260,7 @@ const Orders = () => {
           .update({
             customer_name: formData.customer_name,
             customer_phone: formData.customer_phone,
+            customer_phone2: formData.customer_phone2,
             total_amount: totalAmount,
             advance_payment: advancePayment,
             region: formData.region,
@@ -297,6 +300,7 @@ const Orders = () => {
             seller_id: user.id,
             customer_name: formData.customer_name,
             customer_phone: formData.customer_phone,
+            customer_phone2: formData.customer_phone2,
             total_amount: totalAmount,
             advance_payment: advancePayment,
             status: "pending",
@@ -331,6 +335,7 @@ const Orders = () => {
       setFormData({
         customer_name: "",
         customer_phone: "",
+        customer_phone2: "",
         advance_payment: "",
         region: "",
         district: "",
@@ -350,6 +355,7 @@ const Orders = () => {
     setFormData({
       customer_name: "",
       customer_phone: "",
+      customer_phone2: "",
       advance_payment: "",
       region: "",
       district: "",
@@ -418,13 +424,23 @@ const Orders = () => {
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="customer_phone">Telefon</Label>
-                  <Input
-                    id="customer_phone"
-                    value={formData.customer_phone}
-                    onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="customer_phone">Telefon 1</Label>
+                    <Input
+                      id="customer_phone"
+                      value={formData.customer_phone}
+                      onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="customer_phone2">Telefon 2</Label>
+                    <Input
+                      id="customer_phone2"
+                      value={formData.customer_phone2}
+                      onChange={(e) => setFormData({ ...formData, customer_phone2: e.target.value })}
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
