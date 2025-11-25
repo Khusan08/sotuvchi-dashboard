@@ -67,12 +67,13 @@ const AllOrders = () => {
   const [createFormData, setCreateFormData] = useState({
     customer_name: '',
     customer_phone: '',
+    customer_phone2: '',
     region: '',
     district: '',
     advance_payment: 0,
     total_amount: 0,
     notes: '',
-    items: [{ product_name: '', price: 0, quantity: 1 }]
+    items: [{ product_name: '', quantity: 1 }] as Array<{ product_name: string; quantity: number }>
   });
   const [products, setProducts] = useState<any[]>([]);
   const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
@@ -99,10 +100,10 @@ const AllOrders = () => {
     }
   }, [createFormData.region]);
 
-  useEffect(() => {
-    const total = createFormData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    setCreateFormData(prev => ({ ...prev, total_amount: total }));
-  }, [createFormData.items]);
+  const calculateItemPrice = () => {
+    const totalQuantity = createFormData.items.reduce((sum, item) => sum + item.quantity, 0);
+    return totalQuantity > 0 ? createFormData.total_amount / totalQuantity : 0;
+  };
 
   const fetchOrders = async () => {
     try {
@@ -204,27 +205,20 @@ const AllOrders = () => {
     const existingIndex = createFormData.items.findIndex(item => item.product_name === product.name);
     
     if (existingIndex >= 0) {
-      // Increase quantity if product already added
       const newItems = [...createFormData.items];
       newItems[existingIndex].quantity += 1;
-      const newTotal = newItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
       setCreateFormData({
         ...createFormData,
-        items: newItems,
-        total_amount: newTotal
+        items: newItems
       });
     } else {
-      // Add new product
       const newItems = [...createFormData.items.filter(item => item.product_name !== ''), {
         product_name: product.name,
-        quantity: 1,
-        price: product.price
+        quantity: 1
       }];
-      const newTotal = newItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
       setCreateFormData({
         ...createFormData,
-        items: newItems,
-        total_amount: newTotal
+        items: newItems
       });
     }
   };
@@ -232,13 +226,11 @@ const AllOrders = () => {
   const removeOrderItem = (index: number) => {
     const newItems = createFormData.items.filter((_, i) => i !== index);
     if (newItems.length === 0) {
-      newItems.push({ product_name: '', price: 0, quantity: 1 });
+      newItems.push({ product_name: '', quantity: 1 });
     }
-    const newTotal = newItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
     setCreateFormData({
       ...createFormData,
-      items: newItems,
-      total_amount: newTotal
+      items: newItems
     });
   };
 
@@ -334,28 +326,31 @@ const AllOrders = () => {
         return;
       }
 
-      const validItems = createFormData.items.filter(item => item.product_name && item.quantity > 0 && item.price > 0);
+      if (!createFormData.total_amount || createFormData.total_amount <= 0) {
+        toast.error("Umumiy summani kiriting");
+        return;
+      }
+
+      const validItems = createFormData.items.filter(item => item.product_name && item.quantity > 0);
       
       if (validItems.length === 0) {
         toast.error("Kamida bitta mahsulot tanlang");
         return;
       }
 
-      const totalAmount = validItems.reduce(
-        (sum, item) => sum + (item.price * item.quantity), 
-        0
-      );
+      const itemPrice = calculateItemPrice();
 
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
           customer_name: createFormData.customer_name,
           customer_phone: createFormData.customer_phone,
+          customer_phone2: createFormData.customer_phone2,
           region: createFormData.region,
           district: createFormData.district,
           advance_payment: createFormData.advance_payment,
           notes: createFormData.notes,
-          total_amount: totalAmount,
+          total_amount: createFormData.total_amount,
           seller_id: user.id,
           status: 'pending'
         })
@@ -367,7 +362,7 @@ const AllOrders = () => {
       const orderItems = validItems.map(item => ({
         order_id: orderData.id,
         product_name: item.product_name,
-        price: item.price,
+        price: itemPrice,
         quantity: item.quantity
       }));
 
@@ -382,12 +377,13 @@ const AllOrders = () => {
       setCreateFormData({
         customer_name: '',
         customer_phone: '',
+        customer_phone2: '',
         region: '',
         district: '',
         advance_payment: 0,
         total_amount: 0,
         notes: '',
-        items: [{ product_name: '', price: 0, quantity: 1 }]
+        items: [{ product_name: '', quantity: 1 }]
       });
       fetchOrders();
     } catch (error: any) {
@@ -399,8 +395,7 @@ const AllOrders = () => {
   const updateOrderItem = (index: number, field: string, value: any) => {
     const newItems = [...createFormData.items];
     newItems[index] = { ...newItems[index], [field]: value };
-    const newTotal = newItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-    setCreateFormData({ ...createFormData, items: newItems, total_amount: newTotal });
+    setCreateFormData({ ...createFormData, items: newItems });
   };
 
   const getStatusBadge = (status: string) => {

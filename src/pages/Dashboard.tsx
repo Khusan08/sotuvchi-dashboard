@@ -31,14 +31,23 @@ const Dashboard = () => {
       const monthStart = startOfMonth(new Date());
       const monthEnd = endOfMonth(new Date());
 
-      const { data: orders, error } = await supabase
+      // Fetch orders for current month
+      const { data: orders, error: ordersError } = await supabase
         .from("orders")
         .select("*")
         .eq("seller_id", user.id)
         .gte("order_date", format(monthStart, "yyyy-MM-dd"))
         .lte("order_date", format(monthEnd, "yyyy-MM-dd"));
 
-      if (error) throw error;
+      if (ordersError) throw ordersError;
+
+      // Fetch leads count
+      const { count: leadsCount, error: leadsError } = await supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("seller_id", user.id);
+
+      if (leadsError) throw leadsError;
 
       const totalOrders = orders?.length || 0;
       const totalRevenue = orders?.reduce((sum, order) => sum + parseFloat(String(order.total_amount)), 0) || 0;
