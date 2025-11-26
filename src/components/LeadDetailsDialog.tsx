@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { format } from "date-fns";
-import { CalendarIcon, User, Phone, DollarSign, Facebook, CheckCircle2, Clock, Plus, MessageSquare } from "lucide-react";
+import { CalendarIcon, User, Phone, DollarSign, Facebook, CheckCircle2, Clock, Plus, MessageSquare, Trash2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -24,7 +24,7 @@ interface LeadDetailsDialogProps {
 }
 
 const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages }: LeadDetailsDialogProps) => {
-  const { isAdminOrRop } = useUserRoles();
+  const { isAdminOrRop, isAdmin } = useUserRoles();
   const [tasks, setTasks] = useState<any[]>([]);
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState("");
@@ -234,6 +234,26 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
     }
   };
 
+  const handleDeleteLead = async () => {
+    if (!confirm("Haqiqatan ham bu lidni o'chirmoqchimisiz?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("leads")
+        .delete()
+        .eq("id", lead.id);
+
+      if (error) throw error;
+
+      toast.success("Lid muvaffaqiyatli o'chirildi");
+      onOpenChange(false);
+      onUpdate();
+    } catch (error: any) {
+      console.error("Error deleting lead:", error);
+      toast.error("Lidni o'chirishda xato: " + error.message);
+    }
+  };
+
   const currentStage = stages.find(s => s.id === lead?.stage);
   const isSoldStage = currentStage?.name === "Sotildi";
 
@@ -242,11 +262,23 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-2xl">{lead?.customer_name}</DialogTitle>
-            {currentStage && (
-              <Badge className={`${currentStage.color} text-white border-0`}>
-                {currentStage.name}
-              </Badge>
+            <div className="flex items-center gap-3">
+              <DialogTitle className="text-2xl">{lead?.customer_name}</DialogTitle>
+              {currentStage && (
+                <Badge className={`${currentStage.color} text-white border-0`}>
+                  {currentStage.name}
+                </Badge>
+              )}
+            </div>
+            {isAdmin && (
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={handleDeleteLead}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                O'chirish
+              </Button>
             )}
           </div>
         </DialogHeader>
