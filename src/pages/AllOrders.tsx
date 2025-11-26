@@ -646,7 +646,7 @@ const AllOrders = () => {
                       <div className="space-y-1">
                         {order.items.map((item, idx) => (
                           <div key={idx} className="text-sm">
-                            {item.product_name} x{item.quantity} = {(item.quantity * item.price).toLocaleString()} so'm
+                            {item.product_name}
                           </div>
                         ))}
                       </div>
