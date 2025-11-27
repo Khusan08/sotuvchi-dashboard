@@ -2,15 +2,24 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, User, DollarSign, Facebook } from "lucide-react";
 import { format } from "date-fns";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface LeadCardProps {
   lead: any;
   isDragging?: boolean;
   onClick?: () => void;
   stage?: any;
+  stages?: any[];
+  onStageChange?: (leadId: string, newStageId: string) => void;
 }
 
-const LeadCard = ({ lead, isDragging, onClick, stage }: LeadCardProps) => {
+const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange }: LeadCardProps) => {
+  const handleStageChange = (newStageId: string) => {
+    if (onStageChange) {
+      onStageChange(lead.id, newStageId);
+    }
+  };
+
   return (
     <Card 
       className={`cursor-pointer hover:shadow-lg transition-shadow ${isDragging ? 'opacity-50' : ''}`}
@@ -35,13 +44,28 @@ const LeadCard = ({ lead, isDragging, onClick, stage }: LeadCardProps) => {
                 {lead.lead_type}
               </Badge>
             )}
-            {stage && (
-              <Badge className={`${stage.color} text-white border-0 text-xs`}>
-                {stage.name}
-              </Badge>
-            )}
           </div>
         </div>
+
+        {stages && stages.length > 0 && (
+          <div onClick={(e) => e.stopPropagation()}>
+            <Select value={lead.stage} onValueChange={handleStageChange}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {stages.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded-full ${s.color}`} />
+                      {s.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {lead.customer_phone && (
           <div className="flex items-center gap-2 text-sm">
