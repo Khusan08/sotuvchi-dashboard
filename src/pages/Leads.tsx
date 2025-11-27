@@ -246,6 +246,26 @@ const Leads = () => {
     }
   };
 
+  const handleStageChange = async (leadId: string, newStageId: string) => {
+    const lead = leads.find(l => l.id === leadId);
+    if (!lead || lead.stage === newStageId) return;
+
+    try {
+      const { error } = await supabase
+        .from("leads")
+        .update({ stage: newStageId })
+        .eq("id", leadId);
+
+      if (error) throw error;
+
+      toast.success("Lid bosqichi yangilandi!");
+      fetchLeads();
+    } catch (error) {
+      console.error("Error updating lead stage:", error);
+      toast.error("Lid bosqichini yangilashda xato");
+    }
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -455,6 +475,8 @@ const Leads = () => {
                 setDetailsDialogOpen(true);
               }}
               stageData={stage}
+              stages={stages}
+              onStageChange={handleStageChange}
             />
           ))}
         </div>
