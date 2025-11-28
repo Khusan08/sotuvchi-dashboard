@@ -10,10 +10,15 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { format, subDays, subMonths, subYears, startOfDay, endOfDay } from "date-fns";
 import StatsCard from "@/components/StatsCard";
 import EmployeeStatsCard from "@/components/EmployeeStatsCard";
-import { ShoppingCart, TrendingUp, DollarSign, Target } from "lucide-react";
+import { ShoppingCart, TrendingUp, DollarSign, Target, CalendarIcon, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 
 interface OrderStatusData {
   seller_id: string;
@@ -29,6 +34,7 @@ interface OrderStatusData {
   averageCheck: number;
   totalLeads: number;
   conversionRate: number;
+  orders?: any[];
   leadStages?: { [stageId: string]: { count: number; percent: number; stageName: string; leads: any[] } };
 }
 
@@ -40,6 +46,11 @@ const Statistics = () => {
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const { isAdmin, isRop, isSotuvchi } = useUserRoles();
+  
+  // Date range states
+  const [startDate, setStartDate] = useState<Date | undefined>(subMonths(new Date(), 1));
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+  const [searchTerm, setSearchTerm] = useState("");
   
   // Summary statistics
   const [totalOrders, setTotalOrders] = useState(0);
@@ -90,7 +101,21 @@ const Statistics = () => {
 
   useEffect(() => {
     fetchStatistics();
-  }, [selectedSeller, currentUserId]);
+  }, [selectedSeller, currentUserId, startDate, endDate]);
+
+  const setQuickFilter = (days: number | 'year') => {
+    const end = new Date();
+    let start: Date;
+    
+    if (days === 'year') {
+      start = subYears(end, 1);
+    } else {
+      start = subDays(end, days);
+    }
+    
+    setStartDate(start);
+    setEndDate(end);
+  };
 
   const fetchSellers = async () => {
     try {
@@ -120,6 +145,19 @@ const Statistics = () => {
         `);
 
       let leadsQuery = supabase.from("leads").select("id", { count: "exact", head: true });
+
+      // Apply date range filter
+      if (startDate) {
+        const startISO = startOfDay(startDate).toISOString();
+        ordersQuery = ordersQuery.gte("created_at", startISO);
+        leadsQuery = leadsQuery.gte("created_at", startISO);
+      }
+      
+      if (endDate) {
+        const endISO = endOfDay(endDate).toISOString();
+        ordersQuery = ordersQuery.lte("created_at", endISO);
+        leadsQuery = leadsQuery.lte("created_at", endISO);
+      }
 
       // If seller role, only show their own stats
       if (isSotuvchi && currentUserId) {
@@ -162,6 +200,14 @@ const Statistics = () => {
         leadsQueryBuilder = leadsQueryBuilder.eq("seller_id", currentUserId);
       } else if (selectedSeller !== "all") {
         leadsQueryBuilder = leadsQueryBuilder.eq("seller_id", selectedSeller);
+      }
+
+      // Apply date range filter to leads
+      if (startDate) {
+        leadsQueryBuilder = leadsQueryBuilder.gte("created_at", startOfDay(startDate).toISOString());
+      }
+      if (endDate) {
+        leadsQueryBuilder = leadsQueryBuilder.lte("created_at", endOfDay(endDate).toISOString());
       }
       
       const { data: leadsData } = await leadsQueryBuilder;
@@ -215,7 +261,7 @@ const Statistics = () => {
         }
       });
 
-      const statsArray: OrderStatusData[] = Array.from(sellerMap.values()).map((seller) => {
+      let statsArray: OrderStatusData[] = Array.from(sellerMap.values()).map((seller) => {
         const sellerLeads = leadsMap.get(seller.seller_id) || 0;
         const conversionRate = sellerLeads > 0 ? (seller.total / sellerLeads) * 100 : 0;
         
@@ -246,6 +292,20 @@ const Statistics = () => {
           leadStages: leadStages
         };
       });
+
+      // Apply search filter
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        statsArray = statsArray.filter(seller => 
+          seller.seller_name.toLowerCase().includes(term) ||
+          seller.orders.some((order: any) => 
+            order.customer_name?.toLowerCase().includes(term) ||
+            order.customer_phone?.toLowerCase().includes(term) ||
+            order.region?.toLowerCase().includes(term) ||
+            order.district?.toLowerCase().includes(term)
+          )
+        );
+      }
       
       setStatusData(statsArray);
 
@@ -353,31 +413,148 @@ const Statistics = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">Statistika</h2>
-            <p className="text-muted-foreground mt-2">
-              {isAdmin || isRop ? "Hodimlar bo'yicha zakaz holati statistikasi" : "Mening zakaz statistikam"}
-            </p>
-          </div>
-          {(isAdmin || isRop) && (
-            <div className="w-[250px]">
-              <Label>Sotuvchi</Label>
-              <Select value={selectedSeller} onValueChange={setSelectedSeller}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sotuvchini tanlang" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Barcha sotuvchilar</SelectItem>
-                  {sellers.map((seller) => (
-                    <SelectItem key={seller.id} value={seller.id}>
-                      {seller.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <div className="space-y-4">
+          <div className="flex justify-between items-start">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight">Statistika</h2>
+              <p className="text-muted-foreground mt-2">
+                {isAdmin || isRop ? "Hodimlar bo'yicha zakaz holati statistikasi" : "Mening zakaz statistikam"}
+              </p>
             </div>
-          )}
+            {(isAdmin || isRop) && (
+              <div className="w-[250px]">
+                <Label>Sotuvchi</Label>
+                <Select value={selectedSeller} onValueChange={setSelectedSeller}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sotuvchini tanlang" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Barcha sotuvchilar</SelectItem>
+                    {sellers.map((seller) => (
+                      <SelectItem key={seller.id} value={seller.id}>
+                        {seller.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+
+          {/* Date Range and Search Filters */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {/* Date Range Pickers */}
+                <div className="space-y-2">
+                  <Label>Boshlanish sanasi</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !startDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {startDate ? format(startDate, "dd.MM.yyyy") : "Sanani tanlang"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={startDate}
+                        onSelect={setStartDate}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Tugash sanasi</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !endDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {endDate ? format(endDate, "dd.MM.yyyy") : "Sanani tanlang"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={endDate}
+                        onSelect={setEndDate}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Search Bar */}
+                <div className="space-y-2">
+                  <Label>Qidiruv</Label>
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Qidirish..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Filter Buttons */}
+              <div className="flex flex-wrap gap-2 mt-4">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setQuickFilter(7)}
+                >
+                  1 Hafta
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setQuickFilter(10)}
+                >
+                  10 Kun
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setQuickFilter(20)}
+                >
+                  20 Kun
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setQuickFilter(30)}
+                >
+                  1 Oy
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setQuickFilter('year')}
+                >
+                  1 Yil
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Summary Statistics */}
