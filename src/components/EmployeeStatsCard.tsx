@@ -12,7 +12,7 @@ interface EmployeeStatsCardProps {
   pendingOrders: number;
   deliveredOrders: number;
   cancelledOrders: number;
-  onViewOrders: (status: string) => void;
+  onViewOrders?: (status: string) => void;
 }
 
 const EmployeeStatsCard = ({
@@ -82,10 +82,10 @@ const EmployeeStatsCard = ({
         <div className="pt-3 border-t space-y-2">
           <p className="text-sm font-medium mb-2">Zakazlar holati</p>
           
-          <div 
-            className="flex items-center justify-between p-2 rounded-md bg-blue-500/10 hover:bg-blue-500/20 cursor-pointer transition-colors"
-            onClick={() => onViewOrders('pending')}
-          >
+              <div 
+                className={`flex items-center justify-between p-2 rounded-md bg-blue-500/10 ${onViewOrders ? 'hover:bg-blue-500/20 cursor-pointer' : ''} transition-colors`}
+                onClick={() => onViewOrders?.('pending')}
+              >
             <div className="flex items-center gap-2">
               <Package className="h-4 w-4 text-blue-600" />
               <span className="text-sm">Jarayonda</span>
@@ -93,10 +93,10 @@ const EmployeeStatsCard = ({
             <Badge variant="secondary">{pendingOrders}</Badge>
           </div>
           
-          <div 
-            className="flex items-center justify-between p-2 rounded-md bg-green-500/10 hover:bg-green-500/20 cursor-pointer transition-colors"
-            onClick={() => onViewOrders('delivered')}
-          >
+              <div 
+                className={`flex items-center justify-between p-2 rounded-md bg-green-500/10 ${onViewOrders ? 'hover:bg-green-500/20 cursor-pointer' : ''} transition-colors`}
+                onClick={() => onViewOrders?.('delivered')}
+              >
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
               <span className="text-sm">Yetkazildi</span>
@@ -104,10 +104,10 @@ const EmployeeStatsCard = ({
             <Badge variant="default">{deliveredOrders}</Badge>
           </div>
           
-          <div 
-            className="flex items-center justify-between p-2 rounded-md bg-red-500/10 hover:bg-red-500/20 cursor-pointer transition-colors"
-            onClick={() => onViewOrders('cancelled')}
-          >
+              <div 
+                className={`flex items-center justify-between p-2 rounded-md bg-red-500/10 ${onViewOrders ? 'hover:bg-red-500/20 cursor-pointer' : ''} transition-colors`}
+                onClick={() => onViewOrders?.('cancelled')}
+              >
             <div className="flex items-center gap-2">
               <XCircle className="h-4 w-4 text-red-600" />
               <span className="text-sm">Bekor qilindi</span>

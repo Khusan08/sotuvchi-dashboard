@@ -10,11 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Filter, Search } from "lucide-react";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCenter } from "@dnd-kit/core";
+import { SortableContext, horizontalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import LeadColumn from "@/components/LeadColumn";
 import LeadCard from "@/components/LeadCard";
 import LeadDetailsDialog from "@/components/LeadDetailsDialog";
 import StageManagement from "@/components/StageManagement";
+import SortableStageColumn from "@/components/SortableStageColumn";
 
 const LEAD_TYPE_OPTIONS = ["Yangi lid", "Baza"];
 
@@ -210,6 +212,39 @@ const Leads = () => {
     } catch (error) {
       console.error("Error creating lead:", error);
       toast.error("Lid qo'shishda xato");
+    }
+  };
+
+  const handleStageDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = stages.findIndex((s) => s.id === active.id);
+    const newIndex = stages.findIndex((s) => s.id === over.id);
+
+    const newStages = arrayMove(stages, oldIndex, newIndex);
+    setStages(newStages);
+
+    // Update display order in database
+    try {
+      const updates = newStages.map((stage, index) => ({
+        id: stage.id,
+        display_order: index + 1
+      }));
+
+      for (const update of updates) {
+        await supabase
+          .from("stages")
+          .update({ display_order: update.display_order })
+          .eq("id", update.id);
+      }
+
+      toast.success("Bosqichlar tartibi yangilandi!");
+    } catch (error) {
+      console.error("Error updating stage order:", error);
+      toast.error("Bosqichlar tartibini yangilashda xato");
+      fetchStages(); // Revert on error
     }
   };
 
@@ -459,31 +494,28 @@ const Leads = () => {
 
       <DndContext
         sensors={sensors}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
+        collisionDetection={closestCenter}
+        onDragEnd={handleStageDragEnd}
       >
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {stages.map((stage) => (
-            <LeadColumn
-              key={stage.id}
-              stage={stage.id}
-              title={stage.name}
-              leads={getLeadsByStage(stage.id)}
-              color={stage.color}
-              onLeadClick={(lead) => {
-                setSelectedLead(lead);
-                setDetailsDialogOpen(true);
-              }}
-              stageData={stage}
-              stages={stages}
-              onStageChange={handleStageChange}
-            />
-          ))}
-        </div>
-
-        <DragOverlay>
-          {activeLead ? <LeadCard lead={activeLead} isDragging stage={stages.find(s => s.id === activeLead.stage)} /> : null}
-        </DragOverlay>
+        <SortableContext items={stages.map(s => s.id)} strategy={horizontalListSortingStrategy}>
+          <div className="flex gap-4 overflow-x-auto pb-4">
+            {stages.map((stage) => (
+              <SortableStageColumn
+                key={stage.id}
+                stage={stage}
+                leads={getLeadsByStage(stage.id)}
+                onLeadClick={(lead) => {
+                  setSelectedLead(lead);
+                  setDetailsDialogOpen(true);
+                }}
+                stages={stages}
+                onStageChange={handleStageChange}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+              />
+            ))}
+          </div>
+        </SortableContext>
       </DndContext>
 
       {selectedLead && (

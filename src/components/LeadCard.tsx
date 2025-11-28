@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Phone, User, DollarSign, Facebook } from "lucide-react";
 import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface LeadCardProps {
   lead: any;
@@ -14,9 +16,35 @@ interface LeadCardProps {
 }
 
 const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange }: LeadCardProps) => {
+  const activityOptions = [
+    "O'ylab ko'radi",
+    "Mavjud emas",
+    "Qimmatlik qildi",
+    "Telegramdan ma'lumot",
+    "Hozir gaplashaolmaydi",
+    "Keyinroq oladi",
+    "O'chiq",
+    "Umid bor"
+  ];
+
   const handleStageChange = (newStageId: string) => {
     if (onStageChange) {
       onStageChange(lead.id, newStageId);
+    }
+  };
+
+  const handleActivityChange = async (newActivity: string) => {
+    try {
+      const { error } = await supabase
+        .from("leads")
+        .update({ activity: newActivity })
+        .eq("id", lead.id);
+
+      if (error) throw error;
+      toast.success("Amal yangilandi!");
+    } catch (error) {
+      console.error("Error updating activity:", error);
+      toast.error("Amalni yangilashda xato");
     }
   };
 
@@ -93,6 +121,24 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange }: L
             {lead.notes}
           </p>
         )}
+
+        <div className="mt-2 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">
+            Amallar
+          </label>
+          <Select value={lead.activity || ""} onValueChange={handleActivityChange}>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Amalni tanlang" />
+            </SelectTrigger>
+            <SelectContent>
+              {activityOptions.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </CardContent>
     </Card>
   );

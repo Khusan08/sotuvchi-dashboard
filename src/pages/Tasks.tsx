@@ -18,6 +18,10 @@ interface Task {
   due_date: string;
   status: string;
   created_at: string;
+  seller_id: string;
+  profiles?: {
+    full_name: string;
+  };
 }
 
 const Tasks = () => {
@@ -116,7 +120,10 @@ const Tasks = () => {
 
       const { data, error } = await supabase
         .from("tasks")
-        .select("*")
+        .select(`
+          *,
+          profiles:seller_id(full_name)
+        `)
         .eq("seller_id", user.id)
         .order("due_date", { ascending: true });
 
@@ -288,9 +295,14 @@ const Tasks = () => {
                           {task.description}
                         </p>
                       )}
-                      <p className="text-sm text-muted-foreground">
+                       <p className="text-sm text-muted-foreground">
                         Muddat: {format(new Date(task.due_date), "dd.MM.yyyy HH:mm")}
                       </p>
+                      {task.profiles?.full_name && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Yaratuvchi: {task.profiles.full_name}
+                        </p>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       {task.status === "pending" && (

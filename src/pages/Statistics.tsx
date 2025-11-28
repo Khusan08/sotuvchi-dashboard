@@ -29,6 +29,7 @@ interface OrderStatusData {
   averageCheck: number;
   totalLeads: number;
   conversionRate: number;
+  leadStages?: { [stageId: string]: { count: number; percent: number; stageName: string; leads: any[] } };
 }
 
 const Statistics = () => {
@@ -46,18 +47,39 @@ const Statistics = () => {
   const [totalSales, setTotalSales] = useState(0);
   const [averageCheck, setAverageCheck] = useState(0);
   const [conversionRate, setConversionRate] = useState(0);
+  const [stages, setStages] = useState<any[]>([]);
   
   // Orders dialog state
   const [ordersDialogOpen, setOrdersDialogOpen] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState<any[]>([]);
   const [dialogTitle, setDialogTitle] = useState("");
+  
+  // Leads by stage dialog
+  const [leadsDialogOpen, setLeadsDialogOpen] = useState(false);
+  const [selectedStageLeads, setSelectedStageLeads] = useState<any[]>([]);
+  const [leadsDialogTitle, setLeadsDialogTitle] = useState("");
 
   useEffect(() => {
     fetchCurrentUser();
+    fetchStages();
     if (isAdmin || isRop) {
       fetchSellers();
     }
   }, [isAdmin, isRop]);
+
+  const fetchStages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("stages")
+        .select("*")
+        .order("display_order");
+      
+      if (error) throw error;
+      setStages(data || []);
+    } catch (error) {
+      console.error("Error fetching stages:", error);
+    }
+  };
 
   const fetchCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -129,11 +151,12 @@ const Statistics = () => {
       setAverageCheck(avgCheck);
       setConversionRate(conversion);
 
-      // Get leads data for conversion calculation
+      // Get leads data with stages for conversion and stage distribution calculation
       let leadsMap = new Map<string, number>();
+      let leadsStageMap = new Map<string, Map<string, any[]>>();
       
-      // Fetch leads for all sellers or specific seller
-      let leadsQueryBuilder = supabase.from("leads").select("seller_id, id");
+      // Fetch leads for all sellers or specific seller with stage info
+      let leadsQueryBuilder = supabase.from("leads").select("seller_id, id, stage, customer_name, customer_phone");
       
       if (isSotuvchi && currentUserId) {
         leadsQueryBuilder = leadsQueryBuilder.eq("seller_id", currentUserId);
@@ -146,6 +169,16 @@ const Statistics = () => {
       leadsData?.forEach((lead) => {
         const count = leadsMap.get(lead.seller_id) || 0;
         leadsMap.set(lead.seller_id, count + 1);
+        
+        // Track leads by stage for each seller
+        if (!leadsStageMap.has(lead.seller_id)) {
+          leadsStageMap.set(lead.seller_id, new Map());
+        }
+        const sellerStages = leadsStageMap.get(lead.seller_id)!;
+        if (!sellerStages.has(lead.stage)) {
+          sellerStages.set(lead.stage, []);
+        }
+        sellerStages.get(lead.stage)!.push(lead);
       });
 
       // Group by seller
@@ -186,6 +219,22 @@ const Statistics = () => {
         const sellerLeads = leadsMap.get(seller.seller_id) || 0;
         const conversionRate = sellerLeads > 0 ? (seller.total / sellerLeads) * 100 : 0;
         
+        // Calculate lead stage distribution
+        const sellerStageLeads = leadsStageMap.get(seller.seller_id);
+        const leadStages: { [stageId: string]: { count: number; percent: number; stageName: string; leads: any[] } } = {};
+        
+        if (sellerStageLeads && sellerLeads > 0) {
+          stages.forEach((stage) => {
+            const stageLeadsList = sellerStageLeads.get(stage.id) || [];
+            leadStages[stage.id] = {
+              count: stageLeadsList.length,
+              percent: Math.round((stageLeadsList.length / sellerLeads) * 100),
+              stageName: stage.name,
+              leads: stageLeadsList
+            };
+          });
+        }
+        
         return {
           ...seller,
           pendingPercent: seller.total > 0 ? Math.round((seller.pending / seller.total) * 100) : 0,
@@ -193,7 +242,8 @@ const Statistics = () => {
           cancelledPercent: seller.total > 0 ? Math.round((seller.cancelled / seller.total) * 100) : 0,
           averageCheck: seller.total > 0 ? seller.totalSales / seller.total : 0,
           totalLeads: sellerLeads,
-          conversionRate: conversionRate
+          conversionRate: conversionRate,
+          leadStages: leadStages
         };
       });
       
@@ -363,19 +413,50 @@ const Statistics = () => {
           <h3 className="text-xl font-semibold mb-4">Hodimlar statistikasi</h3>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {statusData.map((seller) => (
-              <EmployeeStatsCard
-                key={seller.seller_id}
-                sellerName={seller.seller_name}
-                totalOrders={seller.total}
-                totalLeads={seller.totalLeads}
-                totalSales={seller.totalSales}
-                averageCheck={seller.averageCheck}
-                conversionRate={seller.conversionRate}
-                pendingOrders={seller.pending}
-                deliveredOrders={seller.delivered}
-                cancelledOrders={seller.cancelled}
-                onViewOrders={(status) => handleViewOrders(seller.seller_id, seller.seller_name, status)}
-              />
+              <div key={seller.seller_id} className="space-y-4">
+                <EmployeeStatsCard
+                  sellerName={seller.seller_name}
+                  totalOrders={seller.total}
+                  totalLeads={seller.totalLeads}
+                  totalSales={seller.totalSales}
+                  averageCheck={seller.averageCheck}
+                  conversionRate={seller.conversionRate}
+                  pendingOrders={seller.pending}
+                  deliveredOrders={seller.delivered}
+                  cancelledOrders={seller.cancelled}
+                  onViewOrders={(status) => handleViewOrders(seller.seller_id, seller.seller_name, status)}
+                />
+                
+                {/* Lead Stage Distribution */}
+                {seller.leadStages && Object.keys(seller.leadStages).length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Lid bosqichlari</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {Object.entries(seller.leadStages).map(([stageId, stageData]) => (
+                        stageData.count > 0 && (
+                          <div
+                            key={stageId}
+                            className="flex items-center justify-between p-2 hover:bg-muted rounded-lg cursor-pointer transition-colors"
+                            onClick={() => {
+                              setSelectedStageLeads(stageData.leads);
+                              setLeadsDialogTitle(`${seller.seller_name} - ${stageData.stageName} lidlari`);
+                              setLeadsDialogOpen(true);
+                            }}
+                          >
+                            <span className="text-sm">{stageData.stageName}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">{stageData.count} ta</span>
+                              <Badge variant="outline">{stageData.percent}%</Badge>
+                            </div>
+                          </div>
+                        )
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             ))}
           </div>
         </div>
@@ -421,6 +502,37 @@ const Statistics = () => {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+
+        {/* Leads by Stage Dialog */}
+        <Dialog open={leadsDialogOpen} onOpenChange={setLeadsDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{leadsDialogTitle}</DialogTitle>
+            </DialogHeader>
+            <div className="mt-4">
+              {selectedStageLeads.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Lidlar topilmadi</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Mijoz nomi</TableHead>
+                      <TableHead>Telefon</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedStageLeads.map((lead) => (
+                      <TableRow key={lead.id}>
+                        <TableCell className="font-medium">{lead.customer_name}</TableCell>
+                        <TableCell>{lead.customer_phone || "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Orders Dialog */}
         <Dialog open={ordersDialogOpen} onOpenChange={setOrdersDialogOpen}>
