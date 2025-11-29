@@ -46,13 +46,13 @@ const SortableStageColumn = ({
   );
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef} style={style} className="flex-shrink-0">
       <div 
         {...attributes} 
         {...listeners}
-        className="cursor-grab active:cursor-grabbing mb-2 p-2 bg-muted/50 rounded-lg"
+        className="cursor-grab active:cursor-grabbing mb-2 p-2 bg-muted/50 rounded-lg touch-none"
       >
-        <h3 className="font-semibold text-center">{stage.name}</h3>
+        <h3 className="font-semibold text-center text-sm sm:text-base">{stage.name}</h3>
       </div>
       <DndContext
         sensors={sensors}

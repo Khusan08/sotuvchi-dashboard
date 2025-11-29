@@ -19,11 +19,11 @@ const LeadColumn = ({ stage, title, leads, color, onLeadClick, stageData, stages
   const { setNodeRef } = useDroppable({ id: stage });
 
   return (
-    <div className="flex flex-col h-full min-w-[320px]">
-      <div className={`p-4 rounded-t-lg ${color}`}>
+    <div className="flex flex-col h-full min-w-[280px] sm:min-w-[320px] lg:min-w-[350px]">
+      <div className={`p-3 sm:p-4 rounded-t-lg ${color}`}>
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-white">{title}</h2>
-          <Badge variant="secondary" className="bg-white/20 text-white border-0">
+          <h2 className="font-semibold text-white text-sm sm:text-base">{title}</h2>
+          <Badge variant="secondary" className="bg-white/20 text-white border-0 text-xs sm:text-sm">
             {leads.length}
           </Badge>
         </div>
@@ -32,7 +32,7 @@ const LeadColumn = ({ stage, title, leads, color, onLeadClick, stageData, stages
       <Card className="flex-1 rounded-t-none border-t-0 overflow-hidden">
         <div
           ref={setNodeRef}
-          className="p-3 space-y-3 h-full overflow-y-auto"
+          className="p-2 sm:p-3 space-y-2 sm:space-y-3 h-full overflow-y-auto"
           style={{ minHeight: '400px' }}
         >
           <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
@@ -49,7 +49,7 @@ const LeadColumn = ({ stage, title, leads, color, onLeadClick, stageData, stages
           </SortableContext>
           
           {leads.length === 0 && (
-            <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+            <div className="flex items-center justify-center h-32 text-muted-foreground text-xs sm:text-sm">
               Lidlar yo'q
             </div>
           )}
