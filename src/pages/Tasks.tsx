@@ -118,14 +118,28 @@ const Tasks = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      // Check if user has admin or rop role
+      const { data: rolesData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+
+      const isAdminOrRop = rolesData?.some(r => r.role === "admin" || r.role === "rop");
+
+      // Build query based on role
+      let query = supabase
         .from("tasks")
         .select(`
           *,
           profiles:seller_id(full_name)
-        `)
-        .eq("seller_id", user.id)
-        .order("due_date", { ascending: true });
+        `);
+
+      // If not admin or rop, only show own tasks
+      if (!isAdminOrRop) {
+        query = query.eq("seller_id", user.id);
+      }
+
+      const { data, error } = await query.order("due_date", { ascending: true });
 
       if (error) throw error;
       setTasks(data || []);
@@ -209,9 +223,9 @@ const Tasks = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Tasklar</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">Tasklar</h1>
             <p className="text-muted-foreground mt-1">
               {tasks.filter(t => t.status === "pending").length} ta kutilayotgan task
               {overdueCount > 0 && (
@@ -284,9 +298,9 @@ const Tasks = () => {
           ) : (
             tasks.map((task) => (
               <Card key={task.id} className={task.status === "completed" ? "opacity-60" : ""}>
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                    <div className="flex-1 w-full">
                       <h3 className="text-lg font-semibold mb-2">
                         {task.title}
                       </h3>
@@ -295,21 +309,24 @@ const Tasks = () => {
                           {task.description}
                         </p>
                       )}
-                       <p className="text-sm text-muted-foreground">
-                        Muddat: {format(new Date(task.due_date), "dd.MM.yyyy HH:mm")}
-                      </p>
-                      {task.profiles?.full_name && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Yaratuvchi: {task.profiles.full_name}
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                        <p className="text-sm text-muted-foreground">
+                          Muddat: {format(new Date(task.due_date), "dd.MM.yyyy HH:mm")}
                         </p>
-                      )}
+                        {task.profiles?.full_name && (
+                          <p className="text-xs text-muted-foreground">
+                            Xodim: {task.profiles.full_name}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 w-full sm:w-auto justify-end">
                       {task.status === "pending" && (
                         <Button
                           size="icon"
                           variant="outline"
                           onClick={() => markAsComplete(task.id)}
+                          className="h-10 w-10"
                         >
                           <Check className="h-4 w-4" />
                         </Button>
@@ -318,6 +335,7 @@ const Tasks = () => {
                         size="icon"
                         variant="destructive"
                         onClick={() => deleteTask(task.id)}
+                        className="h-10 w-10"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

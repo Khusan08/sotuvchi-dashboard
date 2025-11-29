@@ -114,4 +114,50 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Responsive improvements for all devices */
+  html {
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+  }
+
+  /* Better touch targets for mobile */
+  button, a, input, select, textarea {
+    @apply min-h-[44px] sm:min-h-0;
+  }
+
+  /* Prevent horizontal scroll on mobile */
+  body, html {
+    @apply overflow-x-hidden;
+  }
+
+  /* Improve readability on all screens */
+  p, span, div {
+    @apply break-words;
+  }
+
+  /* Better spacing on mobile */
+  @media (max-width: 640px) {
+    .space-y-6 {
+      @apply space-y-4;
+    }
+    
+    .space-y-4 {
+      @apply space-y-3;
+    }
+  }
+
+  /* Improve table responsiveness */
+  @media (max-width: 768px) {
+    table {
+      @apply text-sm;
+    }
+  }
+
+  /* Better card padding on mobile */
+  @media (max-width: 640px) {
+    .card {
+      @apply p-4;
+    }
+  }
 }
