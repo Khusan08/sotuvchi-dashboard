@@ -372,6 +372,41 @@ const AllOrders = () => {
 
       if (itemsError) throw itemsError;
 
+      // Get seller profile for Telegram message
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single();
+
+      // Send order to Telegram
+      try {
+        await supabase.functions.invoke('send-order-to-telegram', {
+          body: {
+            order: {
+              order_number: orderData.order_number,
+              customer_name: createFormData.customer_name,
+              customer_phone: createFormData.customer_phone,
+              customer_phone2: createFormData.customer_phone2,
+              region: createFormData.region,
+              district: createFormData.district,
+              products: validItems.map(item => ({
+                product_name: item.product_name,
+                quantity: item.quantity,
+                price: itemPrice
+              })),
+              total_amount: createFormData.total_amount,
+              advance_payment: createFormData.advance_payment,
+              notes: createFormData.notes,
+              seller_name: profileData?.full_name || "Noma'lum"
+            }
+          }
+        });
+      } catch (telegramError) {
+        console.error('Telegram yuborishda xatolik:', telegramError);
+        // Don't fail the order creation if Telegram fails
+      }
+
       toast.success("Buyurtma muvaffaqiyatli yaratildi");
       setCreateDialogOpen(false);
       setCreateFormData({
