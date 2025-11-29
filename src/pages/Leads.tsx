@@ -303,37 +303,37 @@ const Leads = () => {
 
   if (loading) {
     return (
-      <DashboardLayout fullWidth={true}>
+      <DashboardLayout>
         <div className="flex justify-center items-center h-64">
-          <div className="text-base sm:text-lg">Yuklanmoqda...</div>
+          <div className="text-lg">Yuklanmoqda...</div>
         </div>
       </DashboardLayout>
     );
   }
 
   return (
-    <DashboardLayout fullWidth={true}>
-      <div className="mb-4 sm:mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-2">Lidlar Voronkasi</h1>
+    <DashboardLayout>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold mb-2">Lidlar Voronkasi</h1>
         <p className="text-muted-foreground">Lidlarni boshqarish va kuzatish</p>
       </div>
 
       {/* Search Bar */}
-      <div className="mb-3 sm:mb-4">
+      <div className="mb-4">
         <Input
           placeholder="Qidirish (ism, telefon, email, izoh, faoliyat...)"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-full sm:max-w-md"
+          className="max-w-md"
         />
       </div>
 
-      <div className="flex gap-2 sm:gap-4 mb-4 sm:mb-6 flex-wrap items-center">
+      <div className="flex gap-4 mb-6 flex-wrap items-center">
         {isAdminOrRop && (
           <>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="sm:size-default">
+              <Button>
                 <Plus className="mr-2 h-4 w-4" />
                 Yangi lid
               </Button>
@@ -498,7 +498,7 @@ const Leads = () => {
         onDragEnd={handleStageDragEnd}
       >
         <SortableContext items={stages.map(s => s.id)} strategy={horizontalListSortingStrategy}>
-          <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 min-h-[calc(100vh-300px)]">
+          <div className="flex gap-4 overflow-x-auto pb-4">
             {stages.map((stage) => (
               <SortableStageColumn
                 key={stage.id}

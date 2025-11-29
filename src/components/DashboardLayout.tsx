@@ -10,10 +10,9 @@ import TaskNotifications from "./TaskNotifications";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  fullWidth?: boolean;
 }
 
-const DashboardLayout = ({ children, fullWidth = false }: DashboardLayoutProps) => {
+const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [loading, setLoading] = useState(true);
@@ -192,7 +191,7 @@ const DashboardLayout = ({ children, fullWidth = false }: DashboardLayoutProps) 
         </div>
       </div>
 
-      <main className={fullWidth ? "w-full px-4 sm:px-6 lg:px-8 py-8" : "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"}>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
       
