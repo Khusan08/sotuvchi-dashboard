@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import SortableLeadCard from "./SortableLeadCard";
@@ -30,30 +31,31 @@ const LeadColumn = ({ stage, title, leads, color, onLeadClick, stageData, stages
       </div>
       
       <Card className="flex-1 rounded-t-none border-t-0 overflow-hidden">
-        <div
-          ref={setNodeRef}
-          className="p-3 space-y-3 h-full overflow-y-auto"
-          style={{ minHeight: '400px' }}
-        >
-          <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
-            {leads.map((lead) => (
-              <SortableLeadCard 
-                key={lead.id} 
-                lead={lead}
-                onClick={() => onLeadClick?.(lead)}
-                stage={stageData}
-                stages={stages}
-                onStageChange={onStageChange}
-              />
-            ))}
-          </SortableContext>
-          
-          {leads.length === 0 && (
-            <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
-              Lidlar yo'q
-            </div>
-          )}
-        </div>
+        <ScrollArea className="h-[calc(100vh-280px)]">
+          <div
+            ref={setNodeRef}
+            className="p-3 space-y-3"
+          >
+            <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
+              {leads.map((lead) => (
+                <SortableLeadCard 
+                  key={lead.id} 
+                  lead={lead}
+                  onClick={() => onLeadClick?.(lead)}
+                  stage={stageData}
+                  stages={stages}
+                  onStageChange={onStageChange}
+                />
+              ))}
+            </SortableContext>
+            
+            {leads.length === 0 && (
+              <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+                Lidlar yo'q
+              </div>
+            )}
+          </div>
+        </ScrollArea>
       </Card>
     </div>
   );
