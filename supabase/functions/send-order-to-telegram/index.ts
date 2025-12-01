@@ -42,7 +42,7 @@ serve(async (req) => {
 
     // Format products list
     const productsList = order.products
-      .map((p, i) => `${i + 1}. ${p.product_name} - ${p.quantity} dona x ${p.price.toLocaleString()} so'm`)
+      .map((p, i) => `${i + 1}. ${p.product_name}`)
       .join('\n');
 
     // Calculate remaining amount
