@@ -314,8 +314,8 @@ const Leads = () => {
   return (
     <DashboardLayout>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Lidlar Voronkasi</h1>
-        <p className="text-muted-foreground">Lidlarni boshqarish va kuzatish</p>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2">Lidlar Voronkasi</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">Lidlarni boshqarish va kuzatish</p>
       </div>
 
       {/* Search Bar */}
@@ -324,7 +324,7 @@ const Leads = () => {
           placeholder="Qidirish (ism, telefon, email, izoh, faoliyat...)"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-md"
+          className="w-full sm:max-w-md"
         />
       </div>
 

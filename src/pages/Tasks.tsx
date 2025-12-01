@@ -19,8 +19,12 @@ interface Task {
   status: string;
   created_at: string;
   seller_id: string;
+  lead_id: string | null;
   profiles?: {
     full_name: string;
+  };
+  leads?: {
+    customer_name: string;
   };
 }
 
@@ -131,7 +135,8 @@ const Tasks = () => {
         .from("tasks")
         .select(`
           *,
-          profiles:seller_id(full_name)
+          profiles:seller_id(full_name),
+          leads:lead_id(customer_name)
         `);
 
       // If not admin or rop, only show own tasks
@@ -316,6 +321,11 @@ const Tasks = () => {
                         {task.profiles?.full_name && (
                           <p className="text-xs text-muted-foreground">
                             Xodim: {task.profiles.full_name}
+                          </p>
+                        )}
+                        {task.leads?.customer_name && (
+                          <p className="text-xs text-muted-foreground">
+                            Mijoz: {task.leads.customer_name}
                           </p>
                         )}
                       </div>
