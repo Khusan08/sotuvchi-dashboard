@@ -17,7 +17,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [overdueTasksCount, setOverdueTasksCount] = useState(0);
-  const { isAdminOrRop } = useUserRoles();
+  const { isAdminOrRop, loading: rolesLoading } = useUserRoles();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -92,7 +92,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     navigate("/auth");
   };
 
-  if (loading) {
+  if (loading || rolesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-muted-foreground">Yuklanmoqda...</div>
