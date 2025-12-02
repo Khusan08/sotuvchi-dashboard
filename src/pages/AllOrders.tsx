@@ -60,9 +60,18 @@ const AllOrders = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [editFormData, setEditFormData] = useState({
+    customer_name: "",
+    customer_phone: "",
+    customer_phone2: "",
+    region: "",
+    district: "",
+    advance_payment: 0,
+    total_amount: 0,
     status: "",
     notes: "",
+    items: [] as Array<{ product_name: string; quantity: number; price: number }>
   });
+  const [editAvailableDistricts, setEditAvailableDistricts] = useState<string[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createFormData, setCreateFormData] = useState({
     customer_name: '',
@@ -237,9 +246,24 @@ const AllOrders = () => {
   const handleEdit = (order: Order) => {
     setEditingOrder(order);
     setEditFormData({
+      customer_name: order.customer_name,
+      customer_phone: order.customer_phone || "",
+      customer_phone2: (order as any).customer_phone2 || "",
+      region: order.region || "",
+      district: order.district || "",
+      advance_payment: order.advance_payment || 0,
+      total_amount: order.total_amount,
       status: order.status,
       notes: order.notes || "",
+      items: order.items.map(item => ({ 
+        product_name: item.product_name, 
+        quantity: item.quantity, 
+        price: item.price 
+      }))
     });
+    if (order.region) {
+      setEditAvailableDistricts(regionsData[order.region] || []);
+    }
     setEditDialogOpen(true);
   };
 
@@ -269,6 +293,13 @@ const AllOrders = () => {
       
       if (isAdmin) {
         updateData.status = editFormData.status;
+        updateData.customer_name = editFormData.customer_name;
+        updateData.customer_phone = editFormData.customer_phone;
+        updateData.customer_phone2 = editFormData.customer_phone2;
+        updateData.region = editFormData.region;
+        updateData.district = editFormData.district;
+        updateData.advance_payment = editFormData.advance_payment;
+        updateData.total_amount = editFormData.total_amount;
       }
 
       const { error } = await supabase
@@ -278,11 +309,74 @@ const AllOrders = () => {
 
       if (error) throw error;
 
+      // Update order items if admin
+      if (isAdmin) {
+        // Delete existing items
+        await supabase
+          .from("order_items")
+          .delete()
+          .eq("order_id", editingOrder.id);
+
+        // Insert new items
+        const validItems = editFormData.items.filter(item => item.product_name);
+        if (validItems.length > 0) {
+          const totalQuantity = validItems.reduce((sum, item) => sum + item.quantity, 0);
+          const itemPrice = totalQuantity > 0 ? editFormData.total_amount / totalQuantity : 0;
+          
+          const orderItems = validItems.map(item => ({
+            order_id: editingOrder.id,
+            product_name: item.product_name,
+            price: itemPrice,
+            quantity: item.quantity
+          }));
+
+          await supabase.from("order_items").insert(orderItems);
+        }
+      }
+
       toast.success("Zakaz muvaffaqiyatli yangilandi!");
       setEditDialogOpen(false);
       fetchOrders();
     } catch (error: any) {
       toast.error("Xatolik: " + error.message);
+    }
+  };
+
+  const addEditOrderItem = () => {
+    setEditFormData({
+      ...editFormData,
+      items: [...editFormData.items, { product_name: '', quantity: 1, price: 0 }]
+    });
+  };
+
+  const removeEditOrderItem = (index: number) => {
+    const newItems = editFormData.items.filter((_, i) => i !== index);
+    if (newItems.length === 0) {
+      newItems.push({ product_name: '', quantity: 1, price: 0 });
+    }
+    setEditFormData({ ...editFormData, items: newItems });
+  };
+
+  const updateEditOrderItem = (index: number, field: string, value: any) => {
+    const newItems = [...editFormData.items];
+    newItems[index] = { ...newItems[index], [field]: value };
+    setEditFormData({ ...editFormData, items: newItems });
+  };
+
+  const addProductToEditOrder = (product: any) => {
+    const existingIndex = editFormData.items.findIndex(item => item.product_name === product.name);
+    
+    if (existingIndex >= 0) {
+      const newItems = [...editFormData.items];
+      newItems[existingIndex].quantity += 1;
+      setEditFormData({ ...editFormData, items: newItems });
+    } else {
+      const newItems = [...editFormData.items.filter(item => item.product_name !== ''), {
+        product_name: product.name,
+        quantity: 1,
+        price: 0
+      }];
+      setEditFormData({ ...editFormData, items: newItems });
     }
   };
 
@@ -776,28 +870,187 @@ const AllOrders = () => {
       </div>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className={isAdmin ? "max-w-2xl max-h-[90vh] overflow-y-auto" : "max-w-md"}>
           <DialogHeader>
             <DialogTitle>Zakazni tahrirlash</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {isAdmin && (
-              <div className="space-y-2">
-                <Label htmlFor="edit-status">Status</Label>
-                <Select
-                  value={editFormData.status}
-                  onValueChange={(value) => setEditFormData({ ...editFormData, status: value })}
-                >
-                  <SelectTrigger id="edit-status">
-                    <SelectValue placeholder="Statusni tanlang" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Jarayonda</SelectItem>
-                    <SelectItem value="delivered" className="bg-green-500 text-white focus:bg-green-600 focus:text-white">Tugallandi</SelectItem>
-                    <SelectItem value="cancelled" className="bg-red-500 text-white focus:bg-red-600 focus:text-white">Bekor qilindi</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <>
+                {/* Customer Info */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit_customer_name">Mijoz ismi *</Label>
+                    <Input
+                      id="edit_customer_name"
+                      value={editFormData.customer_name}
+                      onChange={(e) => setEditFormData({ ...editFormData, customer_name: e.target.value })}
+                      placeholder="Ism Familiya"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label htmlFor="edit_customer_phone">Telefon 1</Label>
+                      <Input
+                        id="edit_customer_phone"
+                        value={editFormData.customer_phone}
+                        onChange={(e) => setEditFormData({ ...editFormData, customer_phone: e.target.value })}
+                        placeholder="+998 XX XXX XX XX"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit_customer_phone2">Telefon 2</Label>
+                      <Input
+                        id="edit_customer_phone2"
+                        value={editFormData.customer_phone2}
+                        onChange={(e) => setEditFormData({ ...editFormData, customer_phone2: e.target.value })}
+                        placeholder="+998 XX XXX XX XX"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Region and District */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit_region">Viloyat</Label>
+                    <Select
+                      value={editFormData.region}
+                      onValueChange={(value) => {
+                        setEditFormData({ ...editFormData, region: value, district: '' });
+                        setEditAvailableDistricts(regionsData[value] || []);
+                      }}
+                    >
+                      <SelectTrigger id="edit_region">
+                        <SelectValue placeholder="Viloyatni tanlang" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.keys(regionsData).map((regionName) => (
+                          <SelectItem key={regionName} value={regionName}>
+                            {regionName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="edit_district">Tuman</Label>
+                    <Select
+                      value={editFormData.district}
+                      onValueChange={(value) => setEditFormData({ ...editFormData, district: value })}
+                      disabled={!editFormData.region}
+                    >
+                      <SelectTrigger id="edit_district">
+                        <SelectValue placeholder="Tumanni tanlang" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {editAvailableDistricts.map((district) => (
+                          <SelectItem key={district} value={district}>
+                            {district}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Products */}
+                <div className="space-y-2">
+                  <Label>Mahsulotlar</Label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {products.map((product) => (
+                      <Button
+                        key={product.id}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addProductToEditOrder(product)}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        {product.name}
+                      </Button>
+                    ))}
+                  </div>
+                  {editFormData.items.map((item, index) => (
+                    <div key={index} className="flex gap-2 items-center">
+                      <Input
+                        placeholder="Mahsulot nomi"
+                        value={item.product_name}
+                        onChange={(e) => updateEditOrderItem(index, 'product_name', e.target.value)}
+                        className="flex-1"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Soni"
+                        value={item.quantity}
+                        onChange={(e) => updateEditOrderItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                        className="w-20"
+                        min={1}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeEditOrderItem(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addEditOrderItem}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Mahsulot qo'shish
+                  </Button>
+                </div>
+
+                {/* Amounts */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit_total_amount">Umumiy summa *</Label>
+                    <Input
+                      id="edit_total_amount"
+                      type="number"
+                      value={editFormData.total_amount}
+                      onChange={(e) => setEditFormData({ ...editFormData, total_amount: parseFloat(e.target.value) || 0 })}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit_advance_payment">Oldindan to'lov</Label>
+                    <Input
+                      id="edit_advance_payment"
+                      type="number"
+                      value={editFormData.advance_payment}
+                      onChange={(e) => setEditFormData({ ...editFormData, advance_payment: parseFloat(e.target.value) || 0 })}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
+                {/* Status */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-status">Status</Label>
+                  <Select
+                    value={editFormData.status}
+                    onValueChange={(value) => setEditFormData({ ...editFormData, status: value })}
+                  >
+                    <SelectTrigger id="edit-status">
+                      <SelectValue placeholder="Statusni tanlang" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Jarayonda</SelectItem>
+                      <SelectItem value="delivered" className="bg-green-500 text-white focus:bg-green-600 focus:text-white">Tugallandi</SelectItem>
+                      <SelectItem value="cancelled" className="bg-red-500 text-white focus:bg-red-600 focus:text-white">Bekor qilindi</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
             )}
             <div className="space-y-2">
               <Label htmlFor="edit-notes">Izoh</Label>
