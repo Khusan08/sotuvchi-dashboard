@@ -709,7 +709,10 @@ const AllOrders = () => {
                           value={order.status}
                           onValueChange={(value) => handleQuickStatusUpdate(order.id, value)}
                         >
-                          <SelectTrigger className="w-[140px]">
+                          <SelectTrigger className={`w-[140px] ${
+                            order.status === 'delivered' ? 'bg-green-500 text-white border-green-500' :
+                            order.status === 'cancelled' ? 'bg-red-500 text-white border-red-500' : ''
+                          }`}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
