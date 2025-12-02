@@ -714,8 +714,8 @@ const AllOrders = () => {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="pending">Jarayonda</SelectItem>
-                            <SelectItem value="delivered">Tugallandi</SelectItem>
-                            <SelectItem value="cancelled">Bekor qilindi</SelectItem>
+                            <SelectItem value="delivered" className="bg-green-500 text-white focus:bg-green-600 focus:text-white">Tugallandi</SelectItem>
+                            <SelectItem value="cancelled" className="bg-red-500 text-white focus:bg-red-600 focus:text-white">Bekor qilindi</SelectItem>
                           </SelectContent>
                         </Select>
                       ) : (
@@ -790,8 +790,8 @@ const AllOrders = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pending">Jarayonda</SelectItem>
-                    <SelectItem value="delivered">Tugallandi</SelectItem>
-                    <SelectItem value="cancelled">Bekor qilindi</SelectItem>
+                    <SelectItem value="delivered" className="bg-green-500 text-white focus:bg-green-600 focus:text-white">Tugallandi</SelectItem>
+                    <SelectItem value="cancelled" className="bg-red-500 text-white focus:bg-red-600 focus:text-white">Bekor qilindi</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
