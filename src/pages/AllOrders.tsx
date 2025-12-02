@@ -434,9 +434,9 @@ const AllOrders = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+    const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" | "success" }> = {
       pending: { label: "Jarayonda", variant: "secondary" },
-      delivered: { label: "Tugallandi", variant: "default" },
+      delivered: { label: "Tugallandi", variant: "success" },
       cancelled: { label: "Bekor qilindi", variant: "destructive" },
     };
     
