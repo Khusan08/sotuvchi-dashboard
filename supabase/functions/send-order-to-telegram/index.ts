@@ -48,6 +48,17 @@ serve(async (req) => {
     // Calculate remaining amount
     const remainingAmount = order.total_amount - (order.advance_payment || 0);
 
+    // Format current date and time
+    const now = new Date();
+    const orderDateTime = now.toLocaleString('uz-UZ', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Tashkent'
+    });
+
     // Format message
     const message = `
 🆕 <b>Yangi buyurtma #${order.order_number}</b>
@@ -65,6 +76,8 @@ ${productsList}
 
 👨‍💼 <b>Sotuvchi:</b> ${order.seller_name}
 ${order.notes ? `\n📝 <b>Izoh:</b> ${order.notes}` : ''}
+
+📅 <b>Buyurtma sanasi:</b> ${orderDateTime}
     `.trim();
 
     console.log('Sending message to Telegram:', { CHAT_ID, TOPIC_ID });
