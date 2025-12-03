@@ -7,7 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Filter, Search } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Plus, Filter, Search, Calendar as CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCenter } from "@dnd-kit/core";
@@ -22,6 +25,7 @@ const LEAD_TYPE_OPTIONS = ["Yangi lid", "Baza"];
 
 const TIME_FILTER_OPTIONS = [
   { value: "all", label: "Barchasi" },
+  { value: "daily", label: "Bugun" },
   { value: "1week", label: "1 haftalik" },
   { value: "10days", label: "10 kunlik" },
   { value: "20days", label: "20 kunlik" },
@@ -35,6 +39,7 @@ const Leads = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [filterLeadType, setFilterLeadType] = useState<string>("all");
   const [filterTimeRange, setFilterTimeRange] = useState<string>("all");
+  const [filterDate, setFilterDate] = useState<Date>();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sellers, setSellers] = useState<any[]>([]);
   const [stages, setStages] = useState<any[]>([]);
@@ -138,11 +143,21 @@ const Leads = () => {
       filtered = filtered.filter(lead => lead.lead_type === filterLeadType);
     }
 
-    if (filterTimeRange !== "all") {
+    // Specific date filter
+    if (filterDate) {
+      const filterDateStr = format(filterDate, "yyyy-MM-dd");
+      filtered = filtered.filter(lead => {
+        const leadDate = format(new Date(lead.created_at), "yyyy-MM-dd");
+        return leadDate === filterDateStr;
+      });
+    } else if (filterTimeRange !== "all") {
       const now = new Date();
       let startDate = new Date();
 
       switch (filterTimeRange) {
+        case "daily":
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          break;
         case "1week":
           startDate.setDate(now.getDate() - 7);
           break;
@@ -463,8 +478,11 @@ const Leads = () => {
         <div className="flex gap-2 items-center flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
           
-          <Select value={filterTimeRange} onValueChange={setFilterTimeRange}>
-            <SelectTrigger className="w-[200px]">
+          <Select value={filterTimeRange} onValueChange={(value) => {
+            setFilterTimeRange(value);
+            if (value !== "all") setFilterDate(undefined);
+          }}>
+            <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Vaqt bo'yicha" />
             </SelectTrigger>
             <SelectContent>
@@ -476,8 +494,33 @@ const Leads = () => {
             </SelectContent>
           </Select>
 
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-[160px] justify-start">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {filterDate ? format(filterDate, "dd.MM.yyyy") : "Sana tanlash"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar 
+                mode="single" 
+                selected={filterDate} 
+                onSelect={(date) => {
+                  setFilterDate(date);
+                  if (date) setFilterTimeRange("all");
+                }} 
+              />
+            </PopoverContent>
+          </Popover>
+
+          {filterDate && (
+            <Button variant="ghost" size="sm" onClick={() => setFilterDate(undefined)}>
+              Sanani tozalash
+            </Button>
+          )}
+
           <Select value={filterLeadType} onValueChange={setFilterLeadType}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Lead turi" />
             </SelectTrigger>
             <SelectContent>

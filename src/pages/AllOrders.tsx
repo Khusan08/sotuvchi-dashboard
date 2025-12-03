@@ -57,6 +57,8 @@ const AllOrders = () => {
   const [endDate, setEndDate] = useState<Date>();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterSeller, setFilterSeller] = useState<string>("all");
+  const [sellers, setSellers] = useState<Array<{ id: string; full_name: string }>>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [editFormData, setEditFormData] = useState({
@@ -93,12 +95,13 @@ const AllOrders = () => {
     if (!rolesLoading) {
       fetchOrders();
       fetchProducts();
+      fetchSellers();
     }
   }, [rolesLoading, isAdmin, isRop]);
 
   useEffect(() => {
     filterOrders();
-  }, [orders, startDate, endDate, searchQuery, filterStatus]);
+  }, [orders, startDate, endDate, searchQuery, filterStatus, filterSeller]);
 
   useEffect(() => {
     if (createFormData.region) {
@@ -175,6 +178,20 @@ const AllOrders = () => {
     }
   };
 
+  const fetchSellers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .order("full_name");
+
+      if (error) throw error;
+      setSellers(data || []);
+    } catch (error: any) {
+      console.error("Error fetching sellers:", error);
+    }
+  };
+
   const filterOrders = () => {
     let filtered = [...orders];
 
@@ -194,12 +211,20 @@ const AllOrders = () => {
       filtered = filtered.filter(order => order.status === filterStatus);
     }
 
+    if (filterSeller !== "all") {
+      filtered = filtered.filter(order => {
+        const seller = sellers.find(s => s.id === filterSeller);
+        return seller && order.seller_name === seller.full_name;
+      });
+    }
+
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(order =>
         order.customer_name.toLowerCase().includes(query) ||
         order.customer_phone?.toLowerCase().includes(query) ||
-        order.order_number.toString().includes(query)
+        order.order_number.toString().includes(query) ||
+        order.seller_name?.toLowerCase().includes(query)
       );
     }
 
@@ -310,6 +335,7 @@ const AllOrders = () => {
       if (error) throw error;
 
       // Update order items if admin
+      let validItems = editFormData.items.filter(item => item.product_name);
       if (isAdmin) {
         // Delete existing items
         await supabase
@@ -318,7 +344,6 @@ const AllOrders = () => {
           .eq("order_id", editingOrder.id);
 
         // Insert new items
-        const validItems = editFormData.items.filter(item => item.product_name);
         if (validItems.length > 0) {
           const totalQuantity = validItems.reduce((sum, item) => sum + item.quantity, 0);
           const itemPrice = totalQuantity > 0 ? editFormData.total_amount / totalQuantity : 0;
@@ -331,6 +356,39 @@ const AllOrders = () => {
           }));
 
           await supabase.from("order_items").insert(orderItems);
+        }
+
+        // Send Telegram notification for edited order
+        try {
+          const totalQuantity = validItems.reduce((sum, item) => sum + item.quantity, 0);
+          const itemPrice = totalQuantity > 0 ? editFormData.total_amount / totalQuantity : 0;
+          
+          await supabase.functions.invoke('send-order-to-telegram', {
+            body: {
+              order: {
+                order_id: editingOrder.id,
+                order_number: editingOrder.order_number,
+                customer_name: editFormData.customer_name,
+                customer_phone: editFormData.customer_phone,
+                customer_phone2: editFormData.customer_phone2,
+                region: editFormData.region,
+                district: editFormData.district,
+                products: validItems.map(item => ({
+                  product_name: item.product_name,
+                  quantity: item.quantity,
+                  price: itemPrice
+                })),
+                total_amount: editFormData.total_amount,
+                advance_payment: editFormData.advance_payment,
+                notes: editFormData.notes,
+                seller_name: editingOrder.seller_name || "Noma'lum",
+                status: editFormData.status
+              },
+              action: 'edit'
+            }
+          });
+        } catch (telegramError) {
+          console.error('Telegram yuborishda xatolik:', telegramError);
         }
       }
 
@@ -671,7 +729,7 @@ const AllOrders = () => {
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <Label>Boshlanish sanasi</Label>
                   <Popover>
@@ -714,15 +772,34 @@ const AllOrders = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                {(isAdmin || isRop) && (
+                  <div className="space-y-2">
+                    <Label htmlFor="seller-filter">Xodim</Label>
+                    <Select value={filterSeller} onValueChange={setFilterSeller}>
+                      <SelectTrigger id="seller-filter">
+                        <SelectValue placeholder="Xodimni tanlang" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Barcha xodimlar</SelectItem>
+                        {sellers.map((seller) => (
+                          <SelectItem key={seller.id} value={seller.id}>
+                            {seller.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             </div>
-            {(startDate || endDate || filterStatus !== "all") && (
+            {(startDate || endDate || filterStatus !== "all" || filterSeller !== "all") && (
               <Button 
                 variant="outline" 
                 onClick={() => { 
                   setStartDate(undefined); 
                   setEndDate(undefined); 
-                  setFilterStatus("all"); 
+                  setFilterStatus("all");
+                  setFilterSeller("all");
                 }}
               >
                 Filtrni tozalash

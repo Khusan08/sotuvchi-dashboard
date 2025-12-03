@@ -3,7 +3,7 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, LayoutDashboard, ShoppingCart, User, Shield, Users, Package, CheckSquare, UserCog, BarChart3 } from "lucide-react";
+import { LogOut, LayoutDashboard, ShoppingCart, User, Shield, Users, Package, CheckSquare, UserCog, BarChart3, Warehouse } from "lucide-react";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import TaskNotifications from "./TaskNotifications";
@@ -108,6 +108,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { path: "/tasks", icon: CheckSquare, label: "Tasklar" },
     { path: "/statistics", icon: BarChart3, label: "Statistika" },
     ...(isAdminOrRop ? [
+      { path: "/inventory", icon: Warehouse, label: "Ombor" },
       { path: "/sellers", icon: UserCog, label: "Hodimlar" },
     ] : []),
     { path: "/profile", icon: User, label: "Profil" },
