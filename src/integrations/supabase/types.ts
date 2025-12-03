@@ -161,6 +161,7 @@ export type Database = {
           region: string | null
           seller_id: string
           status: string
+          telegram_message_id: number | null
           total_amount: number
           updated_at: string
         }
@@ -178,6 +179,7 @@ export type Database = {
           region?: string | null
           seller_id: string
           status?: string
+          telegram_message_id?: number | null
           total_amount: number
           updated_at?: string
         }
@@ -195,6 +197,7 @@ export type Database = {
           region?: string | null
           seller_id?: string
           status?: string
+          telegram_message_id?: number | null
           total_amount?: number
           updated_at?: string
         }
