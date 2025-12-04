@@ -48,7 +48,6 @@ export type Database = {
       }
       leads: {
         Row: {
-          action_status: string | null
           activity: string | null
           created_at: string
           customer_email: string | null
@@ -67,7 +66,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          action_status?: string | null
           activity?: string | null
           created_at?: string
           customer_email?: string | null
@@ -86,7 +84,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          action_status?: string | null
           activity?: string | null
           created_at?: string
           customer_email?: string | null
@@ -223,7 +220,6 @@ export type Database = {
           image_url: string | null
           name: string
           price: number
-          stock: number | null
           updated_at: string
         }
         Insert: {
@@ -234,7 +230,6 @@ export type Database = {
           image_url?: string | null
           name: string
           price: number
-          stock?: number | null
           updated_at?: string
         }
         Update: {
@@ -245,7 +240,6 @@ export type Database = {
           image_url?: string | null
           name?: string
           price?: number
-          stock?: number | null
           updated_at?: string
         }
         Relationships: []

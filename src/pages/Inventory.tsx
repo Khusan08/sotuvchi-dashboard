@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarIcon, Package, TrendingDown, BarChart3, AlertTriangle } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Calendar as CalendarIcon, Package, TrendingDown, BarChart3 } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
@@ -20,16 +19,13 @@ interface ProductStats {
   name: string;
   category: string | null;
   price: number;
-  stock: number;
   totalSold: number;
   totalRevenue: number;
 }
 
-const LOW_STOCK_THRESHOLD = 10;
-
 const Inventory = () => {
   const navigate = useNavigate();
-  const { isAdmin, loading: rolesLoading } = useUserRoles();
+  const { isAdmin, isRop, loading: rolesLoading } = useUserRoles();
   const [products, setProducts] = useState<ProductStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 30));
@@ -37,17 +33,17 @@ const Inventory = () => {
   const [chartData, setChartData] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!rolesLoading && !isAdmin) {
+    if (!rolesLoading && !isAdmin && !isRop) {
       navigate('/');
       toast.error("Bu sahifaga kirish huquqi yo'q");
     }
-  }, [rolesLoading, isAdmin, navigate]);
+  }, [rolesLoading, isAdmin, isRop, navigate]);
 
   useEffect(() => {
-    if (!rolesLoading && isAdmin) {
+    if (!rolesLoading && (isAdmin || isRop)) {
       fetchInventoryStats();
     }
-  }, [rolesLoading, isAdmin, startDate, endDate]);
+  }, [rolesLoading, isAdmin, isRop, startDate, endDate]);
 
   const fetchInventoryStats = async () => {
     try {
@@ -97,7 +93,6 @@ const Inventory = () => {
           name: product.name,
           category: product.category,
           price: product.price,
-          stock: product.stock || 0,
           totalSold,
           totalRevenue,
         };
@@ -137,11 +132,9 @@ const Inventory = () => {
     );
   }
 
-  if (!isAdmin) {
+  if (!isAdmin && !isRop) {
     return null;
   }
-
-  const lowStockProducts = products.filter(p => p.stock <= LOW_STOCK_THRESHOLD && p.stock >= 0);
 
   return (
     <DashboardLayout>
@@ -150,27 +143,6 @@ const Inventory = () => {
           <h1 className="text-3xl font-bold">Ombor</h1>
           <p className="text-muted-foreground">Mahsulotlar statistikasi va sotuvlar</p>
         </div>
-
-        {/* Low Stock Warning */}
-        {lowStockProducts.length > 0 && (
-          <Card className="border-destructive bg-destructive/10">
-            <CardHeader>
-              <CardTitle className="text-destructive flex items-center gap-2">
-                <TrendingDown className="h-5 w-5" />
-                Kam qolgan mahsulotlar ({lowStockProducts.length} ta)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {lowStockProducts.map(p => (
-                  <Badge key={p.id} variant="destructive">
-                    {p.name}: {p.stock} ta
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Filter Card */}
         <Card>
@@ -351,7 +323,6 @@ const Inventory = () => {
                   <TableRow>
                     <TableHead>Mahsulot nomi</TableHead>
                     <TableHead>Kategoriya</TableHead>
-                    <TableHead>Qoldiq</TableHead>
                     <TableHead>Narxi</TableHead>
                     <TableHead>Sotilgan (davr)</TableHead>
                     <TableHead>Daromad (davr)</TableHead>
@@ -360,7 +331,7 @@ const Inventory = () => {
                 <TableBody>
                   {products.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground">
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
                         Mahsulotlar topilmadi
                       </TableCell>
                     </TableRow>
@@ -369,12 +340,6 @@ const Inventory = () => {
                       <TableRow key={product.id}>
                         <TableCell className="font-medium">{product.name}</TableCell>
                         <TableCell>{product.category || "-"}</TableCell>
-                        <TableCell>
-                          <span className={product.stock <= LOW_STOCK_THRESHOLD ? "text-destructive font-medium flex items-center gap-1" : "text-foreground"}>
-                            {product.stock <= LOW_STOCK_THRESHOLD && <AlertTriangle className="h-3 w-3" />}
-                            {product.stock} ta
-                          </span>
-                        </TableCell>
                         <TableCell>{product.price.toLocaleString()} so'm</TableCell>
                         <TableCell>
                           <span className={product.totalSold > 0 ? "text-green-600 font-medium" : "text-muted-foreground"}>

@@ -16,7 +16,7 @@ interface LeadCardProps {
 }
 
 const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange }: LeadCardProps) => {
-  const actionStatusOptions = [
+  const activityOptions = [
     "O'ylab ko'radi",
     "Mavjud emas",
     "Qimmatlik qildi",
@@ -33,17 +33,17 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange }: L
     }
   };
 
-  const handleActionStatusChange = async (newActionStatus: string) => {
+  const handleActivityChange = async (newActivity: string) => {
     try {
       const { error } = await supabase
         .from("leads")
-        .update({ action_status: newActionStatus })
+        .update({ activity: newActivity })
         .eq("id", lead.id);
 
       if (error) throw error;
       toast.success("Amal yangilandi!");
     } catch (error) {
-      console.error("Error updating action status:", error);
+      console.error("Error updating activity:", error);
       toast.error("Amalni yangilashda xato");
     }
   };
@@ -116,13 +116,6 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange }: L
           </div>
         )}
 
-        {lead.activity && (
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Faoliyat:</span>
-            <span className="font-medium">{lead.activity}</span>
-          </div>
-        )}
-
         {lead.notes && (
           <p className="text-xs text-muted-foreground line-clamp-2 mt-2 pt-2 border-t">
             {lead.notes}
@@ -133,12 +126,12 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange }: L
           <label className="text-xs font-medium text-muted-foreground mb-1 block">
             Amallar
           </label>
-          <Select value={lead.action_status || ""} onValueChange={handleActionStatusChange}>
+          <Select value={lead.activity || ""} onValueChange={handleActivityChange}>
             <SelectTrigger className="h-8 text-xs">
               <SelectValue placeholder="Amalni tanlang" />
             </SelectTrigger>
             <SelectContent>
-              {actionStatusOptions.map((option) => (
+              {activityOptions.map((option) => (
                 <SelectItem key={option} value={option}>
                   {option}
                 </SelectItem>
