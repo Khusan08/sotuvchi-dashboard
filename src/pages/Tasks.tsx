@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,10 @@ interface Task {
 }
 
 const Tasks = () => {
+  const [searchParams] = useSearchParams();
+  const highlightedTaskId = searchParams.get('taskId');
+  const taskRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -48,6 +53,15 @@ const Tasks = () => {
     const interval = setInterval(checkUpcomingTasks, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Scroll to highlighted task
+  useEffect(() => {
+    if (highlightedTaskId && taskRefs.current[highlightedTaskId]) {
+      setTimeout(() => {
+        taskRefs.current[highlightedTaskId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 500);
+    }
+  }, [highlightedTaskId, tasks]);
 
   useEffect(() => {
     // Count overdue tasks
@@ -302,7 +316,11 @@ const Tasks = () => {
             </Card>
           ) : (
             tasks.map((task) => (
-              <Card key={task.id} className={task.status === "completed" ? "opacity-60" : ""}>
+              <Card 
+                key={task.id} 
+                ref={(el) => { taskRefs.current[task.id] = el; }}
+                className={`${task.status === "completed" ? "opacity-60" : ""} ${highlightedTaskId === task.id ? "ring-2 ring-primary ring-offset-2 bg-primary/5" : ""}`}
+              >
                 <CardContent className="p-4 sm:p-6">
                   <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                     <div className="flex-1 w-full">
