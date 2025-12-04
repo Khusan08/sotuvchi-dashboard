@@ -100,6 +100,24 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     );
   }
 
+  const { data: { user } } = { data: { user: null as any } };
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id);
+        const roles = data?.map(r => r.role) || [];
+        setIsAdmin(roles.includes('admin'));
+      }
+    };
+    checkAdmin();
+  }, []);
+
   const navItems = [
     { path: "/", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/leads", icon: Users, label: "Lidlar" },
@@ -107,8 +125,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { path: "/all-orders", icon: Package, label: "Barcha zakazlar" },
     { path: "/tasks", icon: CheckSquare, label: "Tasklar" },
     { path: "/statistics", icon: BarChart3, label: "Statistika" },
-    ...(isAdminOrRop ? [
+    ...(isAdmin ? [
       { path: "/inventory", icon: Warehouse, label: "Ombor" },
+    ] : []),
+    ...(isAdminOrRop ? [
       { path: "/sellers", icon: UserCog, label: "Hodimlar" },
     ] : []),
     { path: "/profile", icon: User, label: "Profil" },

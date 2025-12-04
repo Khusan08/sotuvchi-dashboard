@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { format, subDays, subMonths, subYears, startOfDay, endOfDay } from "date-fns";
 import StatsCard from "@/components/StatsCard";
 import EmployeeStatsCard from "@/components/EmployeeStatsCard";
-import { ShoppingCart, TrendingUp, DollarSign, Target, CalendarIcon, Search } from "lucide-react";
+import { ShoppingCart, TrendingUp, DollarSign, Target, CalendarIcon, Search, Trophy, Medal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -584,6 +584,57 @@ const Statistics = () => {
             description={`Konversiya: ${conversionRate.toFixed(1)}%`}
           />
         </div>
+
+        {/* Sales Ranking */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-yellow-500" />
+              Sotuv bo'yicha reyting
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[...statusData]
+                .sort((a, b) => b.totalSales - a.totalSales)
+                .map((seller, index) => {
+                  const getRankIcon = (rank: number) => {
+                    if (rank === 0) return <Trophy className="h-5 w-5 text-yellow-500" />;
+                    if (rank === 1) return <Medal className="h-5 w-5 text-gray-400" />;
+                    if (rank === 2) return <Medal className="h-5 w-5 text-amber-600" />;
+                    return <span className="w-5 h-5 flex items-center justify-center text-sm font-bold text-muted-foreground">{rank + 1}</span>;
+                  };
+
+                  return (
+                    <div
+                      key={seller.seller_id}
+                      className={`flex items-center justify-between p-3 rounded-lg border ${
+                        index === 0 ? 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800' :
+                        index === 1 ? 'bg-gray-50 dark:bg-gray-950/20 border-gray-200 dark:border-gray-800' :
+                        index === 2 ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800' :
+                        'bg-card'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        {getRankIcon(index)}
+                        <div>
+                          <p className="font-medium">{seller.seller_name}</p>
+                          <p className="text-xs text-muted-foreground">{seller.total} ta zakaz</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-lg">{seller.totalSales.toLocaleString()} so'm</p>
+                        <p className="text-xs text-muted-foreground">O'rtacha: {Math.round(seller.averageCheck).toLocaleString()} so'm</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              {statusData.length === 0 && (
+                <p className="text-center text-muted-foreground py-4">Ma'lumot topilmadi</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Employee Stats Cards */}
         <div>

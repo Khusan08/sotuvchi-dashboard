@@ -156,15 +156,22 @@ const TaskNotifications = () => {
 
   if (overdueTasks.length === 0) return null;
 
+  const handleClick = () => {
+    // Navigate to tasks page with first overdue task ID as query param
+    if (overdueTasks.length > 0) {
+      window.location.href = `/tasks?taskId=${overdueTasks[0].id}`;
+    } else {
+      window.location.href = '/tasks';
+    }
+  };
+
   return (
     <div className="fixed bottom-4 right-4 z-50">
       <Button
         variant="destructive"
         size="lg"
         className="shadow-lg animate-pulse"
-        onClick={() => {
-          window.location.href = '/tasks';
-        }}
+        onClick={handleClick}
       >
         <Bell className="h-5 w-5 mr-2" />
         <span className="font-semibold">Muddati o'tgan vazifalar</span>
