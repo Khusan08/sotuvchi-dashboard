@@ -585,6 +585,54 @@ const Statistics = () => {
           />
         </div>
 
+        {/* Sales Rankings - Visible to Everyone */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Sotuvlar bo'yicha reyting
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[...statusData]
+                .sort((a, b) => b.totalSales - a.totalSales)
+                .map((seller, index) => (
+                  <div
+                    key={seller.seller_id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                        index === 0 ? 'bg-yellow-500 text-yellow-950' :
+                        index === 1 ? 'bg-gray-400 text-gray-950' :
+                        index === 2 ? 'bg-amber-600 text-amber-950' :
+                        'bg-muted-foreground/20 text-muted-foreground'
+                      }`}>
+                        {index + 1}
+                      </div>
+                      <div>
+                        <p className="font-semibold">{seller.seller_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {seller.delivered} ta yetkazilgan zakaz
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-lg">{seller.totalSales.toLocaleString()} so'm</p>
+                      <p className="text-xs text-muted-foreground">
+                        Konversiya: {seller.conversionRate.toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              {statusData.length === 0 && (
+                <p className="text-center text-muted-foreground py-4">Ma'lumotlar mavjud emas</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Employee Stats Cards */}
         <div>
           <h3 className="text-xl font-semibold mb-4">Hodimlar statistikasi</h3>

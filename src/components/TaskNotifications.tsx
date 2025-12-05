@@ -11,6 +11,7 @@ interface Task {
   description: string | null;
   due_date: string;
   status: string;
+  lead_id: string | null;
 }
 
 const TaskNotifications = () => {
@@ -118,7 +119,7 @@ const TaskNotifications = () => {
       
       const { data } = await supabase
         .from("tasks")
-        .select("*")
+        .select("id, title, description, due_date, status, lead_id")
         .eq("seller_id", user.id)
         .eq("status", "pending")
         .lt("due_date", now.toISOString());
@@ -156,22 +157,29 @@ const TaskNotifications = () => {
 
   if (overdueTasks.length === 0) return null;
 
+  const handleTaskClick = (task: Task) => {
+    if (task.lead_id) {
+      window.location.href = `/leads?lead=${task.lead_id}`;
+    } else {
+      window.location.href = '/tasks';
+    }
+  };
+
   return (
-    <div className="fixed bottom-4 right-4 z-50">
-      <Button
-        variant="destructive"
-        size="lg"
-        className="shadow-lg animate-pulse"
-        onClick={() => {
-          window.location.href = '/tasks';
-        }}
-      >
-        <Bell className="h-5 w-5 mr-2" />
-        <span className="font-semibold">Muddati o'tgan vazifalar</span>
-        <Badge variant="secondary" className="ml-2">
-          {overdueTasks.length}
-        </Badge>
-      </Button>
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-h-[300px] overflow-y-auto">
+      {overdueTasks.map((task) => (
+        <Button
+          key={task.id}
+          variant="destructive"
+          size="sm"
+          className="shadow-lg animate-pulse justify-start"
+          onClick={() => handleTaskClick(task)}
+          title={task.lead_id ? "Lidga o'tish uchun bosing" : "Vazifalar sahifasiga o'tish"}
+        >
+          <Bell className="h-4 w-4 mr-2" />
+          <span className="font-medium truncate max-w-[200px]">{task.title}</span>
+        </Button>
+      ))}
     </div>
   );
 };

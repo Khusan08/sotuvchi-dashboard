@@ -33,17 +33,17 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange }: L
     }
   };
 
-  const handleActivityChange = async (newActivity: string) => {
+  const handleActionStatusChange = async (newActionStatus: string) => {
     try {
       const { error } = await supabase
         .from("leads")
-        .update({ activity: newActivity })
+        .update({ action_status: newActionStatus })
         .eq("id", lead.id);
 
       if (error) throw error;
       toast.success("Amal yangilandi!");
     } catch (error) {
-      console.error("Error updating activity:", error);
+      console.error("Error updating action status:", error);
       toast.error("Amalni yangilashda xato");
     }
   };
@@ -126,7 +126,7 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange }: L
           <label className="text-xs font-medium text-muted-foreground mb-1 block">
             Amallar
           </label>
-          <Select value={lead.activity || ""} onValueChange={handleActivityChange}>
+          <Select value={lead.action_status || ""} onValueChange={handleActionStatusChange}>
             <SelectTrigger className="h-8 text-xs">
               <SelectValue placeholder="Amalni tanlang" />
             </SelectTrigger>
