@@ -76,40 +76,6 @@ const TaskNotifications = () => {
     }
   }, [notificationPermission]);
 
-  const sendTelegramReminder = useCallback(async (task: Task & { seller_id?: string; customer_name?: string }) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Get task with seller and lead info
-      const { data: taskData } = await supabase
-        .from("tasks")
-        .select(`
-          *,
-          leads:lead_id(customer_name)
-        `)
-        .eq("id", task.id)
-        .single();
-
-      if (!taskData) return;
-
-      await supabase.functions.invoke("send-task-telegram-reminder", {
-        body: {
-          task_id: task.id,
-          task_title: task.title,
-          task_description: task.description,
-          due_date: task.due_date,
-          seller_id: taskData.seller_id,
-          customer_name: taskData.leads?.customer_name
-        }
-      });
-
-      console.log("Telegram reminder sent for task:", task.id);
-    } catch (error) {
-      console.error("Error sending Telegram reminder:", error);
-    }
-  }, []);
-
   const checkTasks = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -154,11 +120,6 @@ const TaskNotifications = () => {
           `${newlyOverdue.length} ta vazifaning muddati o'tdi`
         );
 
-        // Send Telegram reminders for newly overdue tasks
-        newlyOverdue.forEach(task => {
-          sendTelegramReminder(task);
-        });
-
         // Show toast
         toast.error(
           <div className="flex items-center gap-2">
@@ -183,11 +144,6 @@ const TaskNotifications = () => {
           `${newlyUpcoming.length} ta vazifaning muddati yaqinlashmoqda`
         );
 
-        // Send Telegram reminders for upcoming tasks
-        newlyUpcoming.forEach(task => {
-          sendTelegramReminder(task);
-        });
-
         toast.warning(
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
@@ -205,7 +161,7 @@ const TaskNotifications = () => {
     } catch (error) {
       console.error("Error checking tasks:", error);
     }
-  }, [overdueTasks, upcomingTasks, playNotificationSound, sendBrowserNotification, sendTelegramReminder]);
+  }, [overdueTasks, upcomingTasks, playNotificationSound, sendBrowserNotification]);
 
   useEffect(() => {
     checkTasks();
