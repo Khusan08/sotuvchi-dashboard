@@ -144,7 +144,7 @@ const Tasks = () => {
         query = query.eq("seller_id", user.id);
       }
 
-      const { data, error } = await query.order("due_date", { ascending: true });
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
       setTasks(data || []);
