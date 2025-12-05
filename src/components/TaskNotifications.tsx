@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Bell } from "lucide-react";
+import { Bell, Clock, X } from "lucide-react";
 import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
+import { Card } from "./ui/card";
+import { format } from "date-fns";
 
 interface Task {
   id: string;
@@ -16,46 +17,165 @@ interface Task {
 
 const TaskNotifications = () => {
   const [overdueTasks, setOverdueTasks] = useState<Task[]>([]);
-  const [hasPlayed, setHasPlayed] = useState(false);
+  const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([]);
+  const [dismissed, setDismissed] = useState<string[]>([]);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if ("Notification" in window) {
+      setNotificationPermission(Notification.permission);
+      if (Notification.permission === "default") {
+        Notification.requestPermission().then(permission => {
+          setNotificationPermission(permission);
+        });
+      }
+    }
+  }, []);
+
+  const playNotificationSound = useCallback(() => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Play 3 beeps
+      for (let i = 0; i < 3; i++) {
+        setTimeout(() => {
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          
+          oscillator.frequency.value = 600;
+          oscillator.type = 'sine';
+          gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+          
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + 0.15);
+        }, i * 200);
+      }
+    } catch (error) {
+      console.error("Error playing notification sound:", error);
+    }
+  }, []);
+
+  const sendBrowserNotification = useCallback((title: string, body: string) => {
+    if (notificationPermission === "granted" && "Notification" in window) {
+      const notification = new Notification(title, {
+        body,
+        icon: "/favicon.ico",
+        tag: "task-reminder",
+        requireInteraction: true
+      });
+      
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+    }
+  }, [notificationPermission]);
+
+  const checkTasks = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const now = new Date();
+      const fiveMinutesLater = new Date(now.getTime() + 5 * 60 * 1000);
+      
+      // Fetch overdue tasks
+      const { data: overdueData } = await supabase
+        .from("tasks")
+        .select("id, title, description, due_date, status, lead_id")
+        .eq("seller_id", user.id)
+        .eq("status", "pending")
+        .lt("due_date", now.toISOString())
+        .order("due_date", { ascending: true });
+
+      // Fetch upcoming tasks (due in next 5 minutes)
+      const { data: upcomingData } = await supabase
+        .from("tasks")
+        .select("id, title, description, due_date, status, lead_id")
+        .eq("seller_id", user.id)
+        .eq("status", "pending")
+        .gte("due_date", now.toISOString())
+        .lte("due_date", fiveMinutesLater.toISOString())
+        .order("due_date", { ascending: true });
+
+      const newOverdueTasks = overdueData || [];
+      const newUpcomingTasks = upcomingData || [];
+
+      // Check for newly overdue tasks
+      const newlyOverdue = newOverdueTasks.filter(
+        task => !overdueTasks.some(t => t.id === task.id)
+      );
+
+      if (newlyOverdue.length > 0) {
+        playNotificationSound();
+        
+        // Send browser notification
+        sendBrowserNotification(
+          "⚠️ Muddati o'tgan vazifalar!",
+          `${newlyOverdue.length} ta vazifaning muddati o'tdi`
+        );
+
+        // Show toast
+        toast.error(
+          <div className="flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            <div>
+              <p className="font-semibold">Muddati o'tgan vazifalar!</p>
+              <p className="text-sm">{newlyOverdue.length} ta vazifa bajarilmagan</p>
+            </div>
+          </div>,
+          { duration: 10000 }
+        );
+      }
+
+      // Check for tasks becoming due soon
+      const newlyUpcoming = newUpcomingTasks.filter(
+        task => !upcomingTasks.some(t => t.id === task.id)
+      );
+
+      if (newlyUpcoming.length > 0) {
+        sendBrowserNotification(
+          "🔔 Yaqinlashayotgan vazifalar",
+          `${newlyUpcoming.length} ta vazifaning muddati yaqinlashmoqda`
+        );
+
+        toast.warning(
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            <div>
+              <p className="font-semibold">Vazifa muddati yaqinlashmoqda!</p>
+              <p className="text-sm">{newlyUpcoming[0].title}</p>
+            </div>
+          </div>,
+          { duration: 8000 }
+        );
+      }
+
+      setOverdueTasks(newOverdueTasks);
+      setUpcomingTasks(newUpcomingTasks);
+    } catch (error) {
+      console.error("Error checking tasks:", error);
+    }
+  }, [overdueTasks, upcomingTasks, playNotificationSound, sendBrowserNotification]);
 
   useEffect(() => {
     checkTasks();
-    setupRealtimeSubscription();
     
     // Check tasks every 30 seconds
     const interval = setInterval(checkTasks, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const setupRealtimeSubscription = () => {
+    
+    // Setup realtime subscription
     const channel = supabase
-      .channel('tasks-changes')
+      .channel('task-notifications')
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'tasks'
-        },
-        (payload) => {
-          const newTask = payload.new as Task;
-          toast.success(
-            <div className="flex items-center gap-2">
-              <Bell className="h-4 w-4" />
-              <div>
-                <p className="font-semibold">Yangi vazifa qo'shildi</p>
-                <p className="text-sm text-muted-foreground">{newTask.title}</p>
-              </div>
-            </div>
-          );
-          playNotificationSound('new');
-          checkTasks();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
           table: 'tasks'
         },
@@ -66,96 +186,27 @@ const TaskNotifications = () => {
       .subscribe();
 
     return () => {
+      clearInterval(interval);
       supabase.removeChannel(channel);
     };
-  };
+  }, []);
 
-  const playNotificationSound = (type: 'new' | 'overdue') => {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    if (type === 'new') {
-      // Short beep for new tasks
-      oscillator.frequency.value = 800;
-      oscillator.type = 'sine';
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.3);
-    } else {
-      // Longer alert for overdue tasks
-      oscillator.frequency.value = 600;
-      oscillator.type = 'square';
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      
-      // Play 3 beeps
-      for (let i = 0; i < 3; i++) {
-        setTimeout(() => {
-          const osc = audioContext.createOscillator();
-          const gain = audioContext.createGain();
-          osc.connect(gain);
-          gain.connect(audioContext.destination);
-          osc.frequency.value = 600;
-          osc.type = 'square';
-          gain.gain.setValueAtTime(0.3, audioContext.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-          osc.start(audioContext.currentTime);
-          osc.stop(audioContext.currentTime + 0.2);
-        }, i * 300);
+  // Periodic reminder for overdue tasks (every 2 minutes)
+  useEffect(() => {
+    if (overdueTasks.length === 0) return;
+
+    const reminderInterval = setInterval(() => {
+      if (overdueTasks.length > 0) {
+        playNotificationSound();
+        sendBrowserNotification(
+          "⚠️ Eslatma: Muddati o'tgan vazifalar!",
+          `${overdueTasks.length} ta bajarilmagan vazifa bor`
+        );
       }
-    }
-  };
+    }, 120000); // Every 2 minutes
 
-  const checkTasks = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const now = new Date();
-      
-      const { data } = await supabase
-        .from("tasks")
-        .select("id, title, description, due_date, status, lead_id")
-        .eq("seller_id", user.id)
-        .eq("status", "pending")
-        .lt("due_date", now.toISOString());
-
-      if (data && data.length > 0) {
-        setOverdueTasks(data);
-        
-        // Play music only once when overdue tasks are first detected
-        if (!hasPlayed && data.length > 0) {
-          playNotificationSound('overdue');
-          setHasPlayed(true);
-          
-          // Show toast notification
-          toast.error(
-            <div className="flex items-center gap-2">
-              <Bell className="h-4 w-4" />
-              <div>
-                <p className="font-semibold">Muddati o'tgan vazifalar!</p>
-                <p className="text-sm">{data.length} ta vazifa bajarilmagan</p>
-              </div>
-            </div>,
-            {
-              duration: 10000,
-            }
-          );
-        }
-      } else {
-        setOverdueTasks([]);
-        setHasPlayed(false);
-      }
-    } catch (error) {
-      console.error("Error checking tasks:", error);
-    }
-  };
-
-  if (overdueTasks.length === 0) return null;
+    return () => clearInterval(reminderInterval);
+  }, [overdueTasks.length, playNotificationSound, sendBrowserNotification]);
 
   const handleTaskClick = (task: Task) => {
     if (task.lead_id) {
@@ -165,20 +216,70 @@ const TaskNotifications = () => {
     }
   };
 
+  const handleDismiss = (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDismissed(prev => [...prev, taskId]);
+  };
+
+  const visibleOverdueTasks = overdueTasks.filter(t => !dismissed.includes(t.id));
+  const visibleUpcomingTasks = upcomingTasks.filter(t => !dismissed.includes(t.id));
+
+  if (visibleOverdueTasks.length === 0 && visibleUpcomingTasks.length === 0) return null;
+
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-h-[300px] overflow-y-auto">
-      {overdueTasks.map((task) => (
-        <Button
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm max-h-[400px] overflow-y-auto">
+      {/* Overdue tasks */}
+      {visibleOverdueTasks.map((task) => (
+        <Card
           key={task.id}
-          variant="destructive"
-          size="sm"
-          className="shadow-lg animate-pulse justify-start"
+          className="p-3 bg-destructive/10 border-destructive cursor-pointer hover:bg-destructive/20 transition-colors animate-pulse"
           onClick={() => handleTaskClick(task)}
-          title={task.lead_id ? "Lidga o'tish uchun bosing" : "Vazifalar sahifasiga o'tish"}
         >
-          <Bell className="h-4 w-4 mr-2" />
-          <span className="font-medium truncate max-w-[200px]">{task.title}</span>
-        </Button>
+          <div className="flex items-start gap-2">
+            <Bell className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm text-destructive truncate">{task.title}</p>
+              <p className="text-xs text-muted-foreground">
+                Muddat: {format(new Date(task.due_date), "dd.MM.yyyy HH:mm")}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={(e) => handleDismiss(task.id, e)}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        </Card>
+      ))}
+      
+      {/* Upcoming tasks */}
+      {visibleUpcomingTasks.map((task) => (
+        <Card
+          key={task.id}
+          className="p-3 bg-warning/10 border-warning cursor-pointer hover:bg-warning/20 transition-colors"
+          onClick={() => handleTaskClick(task)}
+        >
+          <div className="flex items-start gap-2">
+            <Clock className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm truncate">{task.title}</p>
+              <p className="text-xs text-muted-foreground">
+                Muddat: {format(new Date(task.due_date), "dd.MM.yyyy HH:mm")}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={(e) => handleDismiss(task.id, e)}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        </Card>
       ))}
     </div>
   );
