@@ -64,6 +64,7 @@ const Leads = () => {
     activity: "",
     notes: "",
     stage: "yengi_mijoz",
+    source: "",
   });
 
   useEffect(() => {
@@ -208,6 +209,7 @@ const Leads = () => {
         notes: formData.notes || null,
         activity: formData.activity || null,
         stage: formData.stage,
+        source: formData.source || null,
       });
 
       if (error) throw error;
@@ -222,6 +224,7 @@ const Leads = () => {
         activity: "",
         notes: "",
         stage: "yengi_mijoz",
+        source: "",
       });
       fetchLeads();
     } catch (error) {
@@ -440,15 +443,31 @@ const Leads = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="activity">Faoliyat turi</Label>
-                    <Input
-                      id="activity"
-                      type="text"
-                      value={formData.activity}
-                      onChange={(e) => setFormData({ ...formData, activity: e.target.value })}
-                      placeholder="Masalan: Konsultatsiya, Savdo"
-                    />
+                    <Label htmlFor="source">Qayerdan? *</Label>
+                    <Select
+                      value={formData.source}
+                      onValueChange={(value) => setFormData({ ...formData, source: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Manbani tanlang" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Sayt">Sayt</SelectItem>
+                        <SelectItem value="Forma">Forma</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="activity">Faoliyat turi</Label>
+                  <Input
+                    id="activity"
+                    type="text"
+                    value={formData.activity}
+                    onChange={(e) => setFormData({ ...formData, activity: e.target.value })}
+                    placeholder="Masalan: Konsultatsiya, Savdo"
+                  />
                 </div>
 
                 <div>
