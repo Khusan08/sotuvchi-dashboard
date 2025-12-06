@@ -7,18 +7,21 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarIcon, Package, TrendingDown, BarChart3 } from "lucide-react";
+import { Calendar as CalendarIcon, Package, TrendingDown, BarChart3, Plus, Minus, Edit2 } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useNavigate } from "react-router-dom";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 interface ProductStats {
   id: string;
   name: string;
   category: string | null;
   price: number;
+  stock: number;
   totalSold: number;
   totalRevenue: number;
 }
@@ -31,6 +34,10 @@ const Inventory = () => {
   const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 30));
   const [endDate, setEndDate] = useState<Date>(new Date());
   const [chartData, setChartData] = useState<any[]>([]);
+  const [stockDialogOpen, setStockDialogOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<ProductStats | null>(null);
+  const [stockAdjustment, setStockAdjustment] = useState<number>(0);
+  const [adjustmentType, setAdjustmentType] = useState<'add' | 'subtract' | 'set'>('add');
 
   useEffect(() => {
     if (!rolesLoading && !isAdmin && !isRop) {
@@ -48,315 +55,108 @@ const Inventory = () => {
   const fetchInventoryStats = async () => {
     try {
       setLoading(true);
-      
-      // Fetch all products
-      const { data: productsData, error: productsError } = await supabase
-        .from("products")
-        .select("*")
-        .order("name");
-
+      const { data: productsData, error: productsError } = await supabase.from("products").select("*").order("name");
       if (productsError) throw productsError;
 
-      // Fetch order items within date range
-      const { data: ordersData, error: ordersError } = await supabase
-        .from("orders")
-        .select("id, order_date, status")
-        .gte("order_date", format(startDate, "yyyy-MM-dd"))
-        .lte("order_date", format(endDate, "yyyy-MM-dd"))
-        .neq("status", "cancelled");
-
+      const { data: ordersData, error: ordersError } = await supabase.from("orders").select("id, order_date, status")
+        .gte("order_date", format(startDate, "yyyy-MM-dd")).lte("order_date", format(endDate, "yyyy-MM-dd")).neq("status", "cancelled");
       if (ordersError) throw ordersError;
 
       const orderIds = ordersData?.map(o => o.id) || [];
-
       let orderItems: any[] = [];
       if (orderIds.length > 0) {
-        const { data: itemsData, error: itemsError } = await supabase
-          .from("order_items")
-          .select("*")
-          .in("order_id", orderIds);
-
+        const { data: itemsData, error: itemsError } = await supabase.from("order_items").select("*").in("order_id", orderIds);
         if (itemsError) throw itemsError;
         orderItems = itemsData || [];
       }
 
-      // Calculate stats per product
       const productStats: ProductStats[] = (productsData || []).map(product => {
-        const productItems = orderItems.filter(item => 
-          item.product_name.toLowerCase() === product.name.toLowerCase()
-        );
-        const totalSold = productItems.reduce((sum, item) => sum + item.quantity, 0);
-        const totalRevenue = productItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-
+        const productItems = orderItems.filter(item => item.product_name.toLowerCase() === product.name.toLowerCase());
         return {
-          id: product.id,
-          name: product.name,
-          category: product.category,
-          price: product.price,
-          totalSold,
-          totalRevenue,
+          id: product.id, name: product.name, category: product.category, price: product.price, stock: product.stock || 0,
+          totalSold: productItems.reduce((sum, item) => sum + item.quantity, 0),
+          totalRevenue: productItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
         };
       });
-
-      // Sort by total sold descending
       productStats.sort((a, b) => b.totalSold - a.totalSold);
       setProducts(productStats);
-
-      // Create chart data (top 10 products)
-      const topProducts = productStats.slice(0, 10).map(p => ({
-        name: p.name.length > 15 ? p.name.substring(0, 15) + '...' : p.name,
-        fullName: p.name,
-        sotilgan: p.totalSold,
-        daromad: p.totalRevenue,
-      }));
-      setChartData(topProducts);
-
+      setChartData(productStats.slice(0, 10).map(p => ({ name: p.name.length > 15 ? p.name.substring(0, 15) + '...' : p.name, sotilgan: p.totalSold })));
     } catch (error: any) {
-      console.error("Error fetching inventory:", error);
       toast.error("Ma'lumotlarni yuklashda xatolik");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleOpenStockDialog = (product: ProductStats, type: 'add' | 'subtract' | 'set') => {
+    setSelectedProduct(product);
+    setAdjustmentType(type);
+    setStockAdjustment(type === 'set' ? product.stock : 0);
+    setStockDialogOpen(true);
+  };
+
+  const handleStockAdjustment = async () => {
+    if (!selectedProduct) return;
+    try {
+      let newStock = adjustmentType === 'add' ? selectedProduct.stock + stockAdjustment : adjustmentType === 'subtract' ? Math.max(0, selectedProduct.stock - stockAdjustment) : Math.max(0, stockAdjustment);
+      const { error } = await supabase.from('products').update({ stock: newStock }).eq('id', selectedProduct.id);
+      if (error) throw error;
+      toast.success(`${selectedProduct.name} zaxirasi: ${newStock} ta`);
+      setStockDialogOpen(false);
+      fetchInventoryStats();
+    } catch (error: any) {
+      toast.error('Xatolik: ' + error.message);
+    }
+  };
+
   const totalSold = products.reduce((sum, p) => sum + p.totalSold, 0);
-  const totalRevenue = products.reduce((sum, p) => sum + p.totalRevenue, 0);
+  const totalStock = products.reduce((sum, p) => sum + p.stock, 0);
 
-  if (rolesLoading || loading) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Yuklanmoqda...</p>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (!isAdmin && !isRop) {
-    return null;
-  }
+  if (rolesLoading || loading) return <DashboardLayout><div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Yuklanmoqda...</p></div></DashboardLayout>;
+  if (!isAdmin && !isRop) return null;
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Ombor</h1>
-          <p className="text-muted-foreground">Mahsulotlar statistikasi va sotuvlar</p>
+        <div><h1 className="text-3xl font-bold">Ombor</h1><p className="text-muted-foreground">Mahsulotlar va zaxira</p></div>
+
+        <Card><CardContent className="pt-6"><div className="flex flex-wrap gap-2">
+          {[7, 10, 20, 30, 365].map(d => <Button key={d} variant="outline" size="sm" onClick={() => { setStartDate(subDays(new Date(), d)); setEndDate(new Date()); }}>{d === 365 ? '1 yil' : d === 30 ? '1 oy' : `${d} kun`}</Button>)}
+        </div></CardContent></Card>
+
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card><CardContent className="pt-6"><div className="flex items-center gap-4"><Package className="h-6 w-6 text-primary" /><div><p className="text-sm text-muted-foreground">Mahsulotlar</p><p className="text-2xl font-bold">{products.length}</p></div></div></CardContent></Card>
+          <Card><CardContent className="pt-6"><div className="flex items-center gap-4"><Package className="h-6 w-6 text-blue-500" /><div><p className="text-sm text-muted-foreground">Jami zaxira</p><p className="text-2xl font-bold">{totalStock} ta</p></div></div></CardContent></Card>
+          <Card><CardContent className="pt-6"><div className="flex items-center gap-4"><TrendingDown className="h-6 w-6 text-green-500" /><div><p className="text-sm text-muted-foreground">Sotilgan</p><p className="text-2xl font-bold">{totalSold} ta</p></div></div></CardContent></Card>
+          <Card className={products.filter(p => p.stock === 0).length > 0 ? "border-destructive" : ""}><CardContent className="pt-6"><div className="flex items-center gap-4"><Package className="h-6 w-6 text-destructive" /><div><p className="text-sm text-muted-foreground">Tugagan</p><p className="text-2xl font-bold text-destructive">{products.filter(p => p.stock === 0).length}</p></div></div></CardContent></Card>
         </div>
 
-        {/* Filter Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Sanalar bo'yicha filtr</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-4 items-end">
-              <div className="space-y-2">
-                <Label>Tezkor filtr</Label>
-                <div className="flex flex-wrap gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      setStartDate(subDays(new Date(), 7));
-                      setEndDate(new Date());
-                    }}
-                  >
-                    1 hafta
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      setStartDate(subDays(new Date(), 10));
-                      setEndDate(new Date());
-                    }}
-                  >
-                    10 kun
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      setStartDate(subDays(new Date(), 20));
-                      setEndDate(new Date());
-                    }}
-                  >
-                    20 kun
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      setStartDate(subDays(new Date(), 30));
-                      setEndDate(new Date());
-                    }}
-                  >
-                    1 oy
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      setStartDate(subDays(new Date(), 365));
-                      setEndDate(new Date());
-                    }}
-                  >
-                    1 yil
-                  </Button>
-                </div>
-              </div>
+        {chartData.length > 0 && <Card><CardHeader><CardTitle>Top 10 sotilgan</CardTitle></CardHeader><CardContent><div className="h-[300px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartData} layout="vertical"><CartesianGrid strokeDasharray="3 3" /><XAxis type="number" /><YAxis dataKey="name" type="category" width={120} /><Tooltip /><Bar dataKey="sotilgan" fill="hsl(var(--primary))" name="Sotilgan" /></BarChart></ResponsiveContainer></div></CardContent></Card>}
 
-              <div className="space-y-2">
-                <Label>Boshlanish</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-[160px] justify-start">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {format(startDate, "dd.MM.yyyy")}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar mode="single" selected={startDate} onSelect={(d) => d && setStartDate(d)} />
-                  </PopoverContent>
-                </Popover>
-              </div>
+        <Card><CardHeader><CardTitle>Mahsulotlar</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Nomi</TableHead><TableHead>Narxi</TableHead><TableHead>Zaxira</TableHead><TableHead>Sotilgan</TableHead><TableHead>Amallar</TableHead></TableRow></TableHeader><TableBody>
+          {products.map(p => <TableRow key={p.id} className={p.stock === 0 ? "bg-destructive/5" : p.stock < 10 ? "bg-warning/5" : ""}>
+            <TableCell className="font-medium">{p.name}</TableCell>
+            <TableCell>{p.price.toLocaleString()} so'm</TableCell>
+            <TableCell><span className={p.stock === 0 ? "text-destructive font-bold" : p.stock < 10 ? "text-warning font-medium" : "text-green-600"}>{p.stock} ta</span></TableCell>
+            <TableCell>{p.totalSold} ta</TableCell>
+            <TableCell><div className="flex gap-1">
+              <Button variant="outline" size="sm" onClick={() => handleOpenStockDialog(p, 'add')} className="h-8 w-8 p-0"><Plus className="h-4 w-4" /></Button>
+              <Button variant="outline" size="sm" onClick={() => handleOpenStockDialog(p, 'subtract')} className="h-8 w-8 p-0"><Minus className="h-4 w-4" /></Button>
+              <Button variant="outline" size="sm" onClick={() => handleOpenStockDialog(p, 'set')} className="h-8 w-8 p-0"><Edit2 className="h-4 w-4" /></Button>
+            </div></TableCell>
+          </TableRow>)}
+        </TableBody></Table></CardContent></Card>
 
-              <div className="space-y-2">
-                <Label>Tugash</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-[160px] justify-start">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {format(endDate, "dd.MM.yyyy")}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar mode="single" selected={endDate} onSelect={(d) => d && setEndDate(d)} />
-                  </PopoverContent>
-                </Popover>
-              </div>
+        <Dialog open={stockDialogOpen} onOpenChange={setStockDialogOpen}>
+          <DialogContent><DialogHeader><DialogTitle>{adjustmentType === 'add' ? "Qo'shish" : adjustmentType === 'subtract' ? 'Kamaytirish' : 'Belgilash'} - {selectedProduct?.name}</DialogTitle></DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="flex justify-between"><span>Hozirgi:</span><span className="font-bold">{selectedProduct?.stock} ta</span></div>
+              <div><Label>Miqdor</Label><Input type="number" min={0} value={stockAdjustment} onChange={e => setStockAdjustment(parseInt(e.target.value) || 0)} /></div>
+              <div className="flex justify-between border-t pt-2"><span>Yangi:</span><span className="font-bold text-primary">{adjustmentType === 'add' ? (selectedProduct?.stock || 0) + stockAdjustment : adjustmentType === 'subtract' ? Math.max(0, (selectedProduct?.stock || 0) - stockAdjustment) : Math.max(0, stockAdjustment)} ta</span></div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-full bg-primary/10">
-                  <Package className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Jami mahsulotlar</p>
-                  <p className="text-2xl font-bold">{products.length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-full bg-green-500/10">
-                  <TrendingDown className="h-6 w-6 text-green-500" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Jami sotilgan</p>
-                  <p className="text-2xl font-bold">{totalSold} ta</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-full bg-blue-500/10">
-                  <BarChart3 className="h-6 w-6 text-blue-500" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Jami daromad</p>
-                  <p className="text-2xl font-bold">{totalRevenue.toLocaleString()} so'm</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Chart */}
-        {chartData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Top 10 sotilgan mahsulotlar</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="name" type="category" width={120} />
-                    <Tooltip 
-                      formatter={(value, name) => [
-                        name === 'sotilgan' ? `${value} ta` : `${Number(value).toLocaleString()} so'm`,
-                        name === 'sotilgan' ? 'Sotilgan' : 'Daromad'
-                      ]}
-                    />
-                    <Legend />
-                    <Bar dataKey="sotilgan" fill="hsl(var(--primary))" name="Sotilgan" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Products Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Mahsulotlar ro'yxati</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="border rounded-lg overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Mahsulot nomi</TableHead>
-                    <TableHead>Kategoriya</TableHead>
-                    <TableHead>Narxi</TableHead>
-                    <TableHead>Sotilgan (davr)</TableHead>
-                    <TableHead>Daromad (davr)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {products.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
-                        Mahsulotlar topilmadi
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    products.map((product) => (
-                      <TableRow key={product.id}>
-                        <TableCell className="font-medium">{product.name}</TableCell>
-                        <TableCell>{product.category || "-"}</TableCell>
-                        <TableCell>{product.price.toLocaleString()} so'm</TableCell>
-                        <TableCell>
-                          <span className={product.totalSold > 0 ? "text-green-600 font-medium" : "text-muted-foreground"}>
-                            {product.totalSold} ta
-                          </span>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {product.totalRevenue.toLocaleString()} so'm
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+            <DialogFooter><Button variant="outline" onClick={() => setStockDialogOpen(false)}>Bekor</Button><Button onClick={handleStockAdjustment}>Saqlash</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

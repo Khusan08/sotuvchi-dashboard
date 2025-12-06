@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Bell, Clock, X } from "lucide-react";
@@ -13,6 +13,7 @@ interface Task {
   due_date: string;
   status: string;
   lead_id: string | null;
+  leads?: { customer_name: string } | null;
 }
 
 const TaskNotifications = () => {
@@ -20,6 +21,7 @@ const TaskNotifications = () => {
   const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([]);
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
+  const sentReminders = useRef<Set<string>>(new Set());
 
   // Request notification permission on mount
   useEffect(() => {
@@ -76,6 +78,39 @@ const TaskNotifications = () => {
     }
   }, [notificationPermission]);
 
+  const sendTelegramReminder = useCallback(async (task: Task, userId: string) => {
+    // Only send once per task
+    if (sentReminders.current.has(task.id)) {
+      return;
+    }
+    
+    try {
+      console.log('Sending Telegram reminder for task:', task.id);
+      sentReminders.current.add(task.id);
+      
+      const response = await supabase.functions.invoke('send-task-reminder', {
+        body: {
+          task: {
+            task_id: task.id,
+            task_title: task.title,
+            task_description: task.description,
+            due_date: task.due_date,
+            seller_id: userId,
+            customer_name: task.leads?.customer_name
+          }
+        }
+      });
+
+      if (response.error) {
+        console.error('Error sending telegram reminder:', response.error);
+      } else {
+        console.log('Telegram reminder sent successfully:', response.data);
+      }
+    } catch (error) {
+      console.error('Failed to send telegram reminder:', error);
+    }
+  }, []);
+
   const checkTasks = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -87,7 +122,7 @@ const TaskNotifications = () => {
       // Fetch overdue tasks
       const { data: overdueData } = await supabase
         .from("tasks")
-        .select("id, title, description, due_date, status, lead_id")
+        .select("id, title, description, due_date, status, lead_id, leads(customer_name)")
         .eq("seller_id", user.id)
         .eq("status", "pending")
         .lt("due_date", now.toISOString())
@@ -96,17 +131,17 @@ const TaskNotifications = () => {
       // Fetch upcoming tasks (due in next 5 minutes)
       const { data: upcomingData } = await supabase
         .from("tasks")
-        .select("id, title, description, due_date, status, lead_id")
+        .select("id, title, description, due_date, status, lead_id, leads(customer_name)")
         .eq("seller_id", user.id)
         .eq("status", "pending")
         .gte("due_date", now.toISOString())
         .lte("due_date", fiveMinutesLater.toISOString())
         .order("due_date", { ascending: true });
 
-      const newOverdueTasks = overdueData || [];
-      const newUpcomingTasks = upcomingData || [];
+      const newOverdueTasks = (overdueData || []) as Task[];
+      const newUpcomingTasks = (upcomingData || []) as Task[];
 
-      // Check for newly overdue tasks
+      // Check for newly overdue tasks - send telegram reminder only once when they become overdue
       const newlyOverdue = newOverdueTasks.filter(
         task => !overdueTasks.some(t => t.id === task.id)
       );
@@ -116,8 +151,8 @@ const TaskNotifications = () => {
         
         // Send browser notification
         sendBrowserNotification(
-          "⚠️ Muddati o'tgan vazifalar!",
-          `${newlyOverdue.length} ta vazifaning muddati o'tdi`
+          "⚠️ Muddati tugagan vazifalar!",
+          `${newlyOverdue.length} ta vazifaning muddati tugadi`
         );
 
         // Show toast
@@ -125,23 +160,28 @@ const TaskNotifications = () => {
           <div className="flex items-center gap-2">
             <Bell className="h-4 w-4" />
             <div>
-              <p className="font-semibold">Muddati o'tgan vazifalar!</p>
+              <p className="font-semibold">Muddati tugagan vazifalar!</p>
               <p className="text-sm">{newlyOverdue.length} ta vazifa bajarilmagan</p>
             </div>
           </div>,
           { duration: 10000 }
         );
+
+        // Send Telegram reminders for newly overdue tasks
+        for (const task of newlyOverdue) {
+          await sendTelegramReminder(task, user.id);
+        }
       }
 
-      // Check for tasks becoming due soon
-      const newlyUpcoming = newUpcomingTasks.filter(
+      // Check for tasks becoming due (at exact time) - only send once
+      const newlyDue = newUpcomingTasks.filter(
         task => !upcomingTasks.some(t => t.id === task.id)
       );
 
-      if (newlyUpcoming.length > 0) {
+      if (newlyDue.length > 0) {
         sendBrowserNotification(
-          "🔔 Yaqinlashayotgan vazifalar",
-          `${newlyUpcoming.length} ta vazifaning muddati yaqinlashmoqda`
+          "🔔 Vazifa muddati yetdi",
+          `${newlyDue.length} ta vazifaning muddati yetib keldi`
         );
 
         toast.warning(
@@ -149,7 +189,7 @@ const TaskNotifications = () => {
             <Clock className="h-4 w-4" />
             <div>
               <p className="font-semibold">Vazifa muddati yaqinlashmoqda!</p>
-              <p className="text-sm">{newlyUpcoming[0].title}</p>
+              <p className="text-sm">{newlyDue[0].title}</p>
             </div>
           </div>,
           { duration: 8000 }
@@ -161,7 +201,7 @@ const TaskNotifications = () => {
     } catch (error) {
       console.error("Error checking tasks:", error);
     }
-  }, [overdueTasks, upcomingTasks, playNotificationSound, sendBrowserNotification]);
+  }, [overdueTasks, upcomingTasks, playNotificationSound, sendBrowserNotification, sendTelegramReminder]);
 
   useEffect(() => {
     checkTasks();
@@ -190,23 +230,6 @@ const TaskNotifications = () => {
       supabase.removeChannel(channel);
     };
   }, []);
-
-  // Periodic reminder for overdue tasks (every 2 minutes)
-  useEffect(() => {
-    if (overdueTasks.length === 0) return;
-
-    const reminderInterval = setInterval(() => {
-      if (overdueTasks.length > 0) {
-        playNotificationSound();
-        sendBrowserNotification(
-          "⚠️ Eslatma: Muddati o'tgan vazifalar!",
-          `${overdueTasks.length} ta bajarilmagan vazifa bor`
-        );
-      }
-    }, 120000); // Every 2 minutes
-
-    return () => clearInterval(reminderInterval);
-  }, [overdueTasks.length, playNotificationSound, sendBrowserNotification]);
 
   const handleTaskClick = (task: Task) => {
     if (task.lead_id) {
