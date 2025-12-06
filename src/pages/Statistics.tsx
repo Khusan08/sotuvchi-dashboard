@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell, LabelList } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell, LabelList, PieChart, Pie } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useUserRoles } from "@/hooks/useUserRoles";
@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { format, subDays, subMonths, subYears, startOfDay, endOfDay } from "date-fns";
 import StatsCard from "@/components/StatsCard";
 import EmployeeStatsCard from "@/components/EmployeeStatsCard";
-import { ShoppingCart, TrendingUp, DollarSign, Target, CalendarIcon, Search } from "lucide-react";
+import { ShoppingCart, TrendingUp, DollarSign, Target, CalendarIcon, Search, Globe, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -38,6 +38,14 @@ interface OrderStatusData {
   leadStages?: { [stageId: string]: { count: number; percent: number; stageName: string; leads: any[] } };
 }
 
+interface SourceStats {
+  source: string;
+  leads: number;
+  sales: number;
+  leadsPercent: number;
+  salesPercent: number;
+}
+
 const Statistics = () => {
   const [sellers, setSellers] = useState<any[]>([]);
   const [selectedSeller, setSelectedSeller] = useState<string>("all");
@@ -59,6 +67,9 @@ const Statistics = () => {
   const [averageCheck, setAverageCheck] = useState(0);
   const [conversionRate, setConversionRate] = useState(0);
   const [stages, setStages] = useState<any[]>([]);
+  
+  // Source stats
+  const [sourceStats, setSourceStats] = useState<SourceStats[]>([]);
   
   // Orders dialog state
   const [ordersDialogOpen, setOrdersDialogOpen] = useState(false);
@@ -189,12 +200,12 @@ const Statistics = () => {
       setAverageCheck(avgCheck);
       setConversionRate(conversion);
 
-      // Get leads data with stages for conversion and stage distribution calculation
+      // Get leads data with stages and source for conversion and stage distribution calculation
       let leadsMap = new Map<string, number>();
       let leadsStageMap = new Map<string, Map<string, any[]>>();
       
-      // Fetch leads for all sellers or specific seller with stage info
-      let leadsQueryBuilder = supabase.from("leads").select("seller_id, id, stage, customer_name, customer_phone");
+      // Fetch leads for all sellers or specific seller with stage and source info
+      let leadsQueryBuilder = supabase.from("leads").select("seller_id, id, stage, customer_name, customer_phone, source");
       
       if (isSotuvchi && currentUserId) {
         leadsQueryBuilder = leadsQueryBuilder.eq("seller_id", currentUserId);
@@ -212,9 +223,18 @@ const Statistics = () => {
       
       const { data: leadsData } = await leadsQueryBuilder;
       
+      // Calculate source statistics
+      const sourceLeadsMap = new Map<string, number>();
+      const sourceSalesMap = new Map<string, number>();
+      const totalLeadsForSource = leadsData?.length || 0;
+      
       leadsData?.forEach((lead) => {
         const count = leadsMap.get(lead.seller_id) || 0;
         leadsMap.set(lead.seller_id, count + 1);
+        
+        // Track leads by source
+        const source = lead.source || 'Noma\'lum';
+        sourceLeadsMap.set(source, (sourceLeadsMap.get(source) || 0) + 1);
         
         // Track leads by stage for each seller
         if (!leadsStageMap.has(lead.seller_id)) {
@@ -225,7 +245,46 @@ const Statistics = () => {
           sellerStages.set(lead.stage, []);
         }
         sellerStages.get(lead.stage)!.push(lead);
+        
+        // Count sales by source (if stage is "sotildi" or similar completed stage)
+        const soldStage = stages.find(s => s.name.toLowerCase().includes('sotildi'));
+        if (soldStage && lead.stage === soldStage.id) {
+          sourceSalesMap.set(source, (sourceSalesMap.get(source) || 0) + 1);
+        }
       });
+      
+      // Calculate total sales from leads (conversion count)
+      const totalSalesFromLeads = Array.from(sourceSalesMap.values()).reduce((a, b) => a + b, 0);
+      
+      // Build source stats array
+      const sourceStatsArray: SourceStats[] = [];
+      ['Sayt', 'Forma'].forEach(source => {
+        const leads = sourceLeadsMap.get(source) || 0;
+        const sales = sourceSalesMap.get(source) || 0;
+        sourceStatsArray.push({
+          source,
+          leads,
+          sales,
+          leadsPercent: totalLeadsForSource > 0 ? Math.round((leads / totalLeadsForSource) * 100) : 0,
+          salesPercent: totalSalesFromLeads > 0 ? Math.round((sales / totalSalesFromLeads) * 100) : 0
+        });
+      });
+      
+      // Add other sources if exist
+      sourceLeadsMap.forEach((leads, source) => {
+        if (source !== 'Sayt' && source !== 'Forma') {
+          const sales = sourceSalesMap.get(source) || 0;
+          sourceStatsArray.push({
+            source,
+            leads,
+            sales,
+            leadsPercent: totalLeadsForSource > 0 ? Math.round((leads / totalLeadsForSource) * 100) : 0,
+            salesPercent: totalSalesFromLeads > 0 ? Math.round((sales / totalSalesFromLeads) * 100) : 0
+          });
+        }
+      });
+      
+      setSourceStats(sourceStatsArray);
 
       // Group by seller
       const sellerMap = new Map<string, any>();
@@ -513,7 +572,62 @@ const Statistics = () => {
                     />
                   </div>
                 </div>
-              </div>
+        </div>
+
+        {/* Source Statistics */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5" />
+              Manba bo'yicha statistika
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {sourceStats.map((stat) => (
+                <Card key={stat.source} className="bg-muted/50">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      {stat.source === 'Sayt' ? (
+                        <Globe className="h-8 w-8 text-blue-500" />
+                      ) : stat.source === 'Forma' ? (
+                        <FileText className="h-8 w-8 text-green-500" />
+                      ) : (
+                        <Target className="h-8 w-8 text-gray-500" />
+                      )}
+                      <h3 className="text-lg font-semibold">{stat.source}</h3>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Lidlar:</span>
+                        <div className="text-right">
+                          <span className="font-bold text-lg">{stat.leads}</span>
+                          <Badge variant="outline" className="ml-2">{stat.leadsPercent}%</Badge>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Sotuvlar:</span>
+                        <div className="text-right">
+                          <span className="font-bold text-lg text-green-600">{stat.sales}</span>
+                          <Badge variant="secondary" className="ml-2">{stat.salesPercent}%</Badge>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t">
+                        <span className="text-sm text-muted-foreground">Konversiya:</span>
+                        <span className="font-bold text-primary">
+                          {stat.leads > 0 ? Math.round((stat.sales / stat.leads) * 100) : 0}%
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {sourceStats.length === 0 && (
+                <p className="text-muted-foreground col-span-full text-center py-4">Ma'lumotlar mavjud emas</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
               {/* Quick Filter Buttons */}
               <div className="flex flex-wrap gap-2 mt-4">

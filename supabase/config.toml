@@ -1,5 +1,8 @@
 project_id = "ffqcwcbrfzvytsokkrln"
 
+[functions.send-task-reminder]
+verify_jwt = false
+
 [functions.import-lead-from-sheets]
 verify_jwt = false
 
