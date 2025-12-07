@@ -36,15 +36,10 @@ const Sellers = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!rolesLoading && !isAdminOrRop) {
-      navigate("/");
-      toast.error("Sizda bu sahifaga kirish huquqi yo'q");
-      return;
-    }
-    if (isAdminOrRop) {
+    if (!rolesLoading) {
       fetchSellers();
     }
-  }, [isAdminOrRop, rolesLoading, navigate]);
+  }, [rolesLoading]);
 
   const fetchSellers = async () => {
     try {

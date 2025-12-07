@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ const Leads = () => {
   const [activeLead, setActiveLead] = useState<any>(null);
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -72,6 +74,21 @@ const Leads = () => {
     fetchSellers();
     fetchStages();
   }, []);
+
+  // Handle opening specific lead from URL parameter
+  useEffect(() => {
+    const openLeadId = searchParams.get('openLead');
+    if (openLeadId && leads.length > 0) {
+      const leadToOpen = leads.find(l => l.id === openLeadId);
+      if (leadToOpen) {
+        setSelectedLead(leadToOpen);
+        setDetailsDialogOpen(true);
+        // Clear the URL parameter after opening
+        searchParams.delete('openLead');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [leads, searchParams, setSearchParams]);
 
   const fetchLeads = async () => {
     try {

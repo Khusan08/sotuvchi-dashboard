@@ -233,7 +233,8 @@ const TaskNotifications = () => {
 
   const handleTaskClick = (task: Task) => {
     if (task.lead_id) {
-      window.location.href = `/leads?lead=${task.lead_id}`;
+      // Navigate to leads page with the specific lead modal open
+      window.location.href = `/leads?openLead=${task.lead_id}`;
     } else {
       window.location.href = '/tasks';
     }
