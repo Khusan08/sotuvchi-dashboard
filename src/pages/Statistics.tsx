@@ -84,10 +84,9 @@ const Statistics = () => {
   useEffect(() => {
     fetchCurrentUser();
     fetchStages();
-    if (isAdmin || isRop) {
-      fetchSellers();
-    }
-  }, [isAdmin, isRop]);
+    // Fetch sellers for everyone (for rankings visibility)
+    fetchSellers();
+  }, []);
 
   const fetchStages = async () => {
     try {
@@ -144,7 +143,7 @@ const Statistics = () => {
   };
 
   const fetchStatistics = async () => {
-    if (!currentUserId && isSotuvchi) return;
+    if (!currentUserId) return;
     
     try {
       setLoading(true);
@@ -170,13 +169,15 @@ const Statistics = () => {
         leadsQuery = leadsQuery.lte("created_at", endISO);
       }
 
-      // If seller role, only show their own stats
-      if (isSotuvchi && currentUserId) {
-        ordersQuery = ordersQuery.eq("seller_id", currentUserId);
-        leadsQuery = leadsQuery.eq("seller_id", currentUserId);
-      } else if (selectedSeller !== "all") {
+      // Filter by selected seller only for summary stats
+      // Rankings will show all sellers for everyone
+      if (selectedSeller !== "all") {
         ordersQuery = ordersQuery.eq("seller_id", selectedSeller);
         leadsQuery = leadsQuery.eq("seller_id", selectedSeller);
+      } else if (isSotuvchi && currentUserId) {
+        // For sotuvchi, filter summary stats to their own but still show all for ranking
+        ordersQuery = ordersQuery.eq("seller_id", currentUserId);
+        leadsQuery = leadsQuery.eq("seller_id", currentUserId);
       }
 
       const [{ data: orders, error: ordersError }, { count: leadsCount, error: leadsError }] = await Promise.all([
@@ -204,12 +205,11 @@ const Statistics = () => {
       let leadsMap = new Map<string, number>();
       let leadsStageMap = new Map<string, Map<string, any[]>>();
       
-      // Fetch leads for all sellers or specific seller with stage and source info
+      // Fetch leads for all sellers to show rankings for everyone
       let leadsQueryBuilder = supabase.from("leads").select("seller_id, id, stage, customer_name, customer_phone, source");
       
-      if (isSotuvchi && currentUserId) {
-        leadsQueryBuilder = leadsQueryBuilder.eq("seller_id", currentUserId);
-      } else if (selectedSeller !== "all") {
+      // Don't filter leads by seller - we need all for rankings
+      if (selectedSeller !== "all") {
         leadsQueryBuilder = leadsQueryBuilder.eq("seller_id", selectedSeller);
       }
 
@@ -574,60 +574,62 @@ const Statistics = () => {
                 </div>
         </div>
 
-        {/* Source Statistics */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Globe className="h-5 w-5" />
-              Manba bo'yicha statistika
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {sourceStats.map((stat) => (
-                <Card key={stat.source} className="bg-muted/50">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      {stat.source === 'Sayt' ? (
-                        <Globe className="h-8 w-8 text-blue-500" />
-                      ) : stat.source === 'Forma' ? (
-                        <FileText className="h-8 w-8 text-green-500" />
-                      ) : (
-                        <Target className="h-8 w-8 text-gray-500" />
-                      )}
-                      <h3 className="text-lg font-semibold">{stat.source}</h3>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Lidlar:</span>
-                        <div className="text-right">
-                          <span className="font-bold text-lg">{stat.leads}</span>
-                          <Badge variant="outline" className="ml-2">{stat.leadsPercent}%</Badge>
+        {/* Source Statistics - Only for Admin */}
+        {isAdmin && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                Manba bo'yicha statistika
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {sourceStats.map((stat) => (
+                  <Card key={stat.source} className="bg-muted/50">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        {stat.source === 'Sayt' ? (
+                          <Globe className="h-8 w-8 text-blue-500" />
+                        ) : stat.source === 'Forma' ? (
+                          <FileText className="h-8 w-8 text-green-500" />
+                        ) : (
+                          <Target className="h-8 w-8 text-gray-500" />
+                        )}
+                        <h3 className="text-lg font-semibold">{stat.source}</h3>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Lidlar:</span>
+                          <div className="text-right">
+                            <span className="font-bold text-lg">{stat.leads}</span>
+                            <Badge variant="outline" className="ml-2">{stat.leadsPercent}%</Badge>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Sotuvlar:</span>
+                          <div className="text-right">
+                            <span className="font-bold text-lg text-green-600">{stat.sales}</span>
+                            <Badge variant="secondary" className="ml-2">{stat.salesPercent}%</Badge>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center pt-2 border-t">
+                          <span className="text-sm text-muted-foreground">Konversiya:</span>
+                          <span className="font-bold text-primary">
+                            {stat.leads > 0 ? Math.round((stat.sales / stat.leads) * 100) : 0}%
+                          </span>
                         </div>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Sotuvlar:</span>
-                        <div className="text-right">
-                          <span className="font-bold text-lg text-green-600">{stat.sales}</span>
-                          <Badge variant="secondary" className="ml-2">{stat.salesPercent}%</Badge>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center pt-2 border-t">
-                        <span className="text-sm text-muted-foreground">Konversiya:</span>
-                        <span className="font-bold text-primary">
-                          {stat.leads > 0 ? Math.round((stat.sales / stat.leads) * 100) : 0}%
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              {sourceStats.length === 0 && (
-                <p className="text-muted-foreground col-span-full text-center py-4">Ma'lumotlar mavjud emas</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                    </CardContent>
+                  </Card>
+                ))}
+                {sourceStats.length === 0 && (
+                  <p className="text-muted-foreground col-span-full text-center py-4">Ma'lumotlar mavjud emas</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
               {/* Quick Filter Buttons */}
               <div className="flex flex-wrap gap-2 mt-4">
