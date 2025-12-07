@@ -109,8 +109,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { path: "/statistics", icon: BarChart3, label: "Statistika" },
     ...(isAdminOrRop ? [
       { path: "/inventory", icon: Warehouse, label: "Ombor" },
-      { path: "/sellers", icon: UserCog, label: "Hodimlar" },
     ] : []),
+    { path: "/sellers", icon: UserCog, label: "Hodimlar" },
     { path: "/profile", icon: User, label: "Profil" },
     ...(isAdminOrRop ? [
       { path: "/admin", icon: Shield, label: "Boshqaruv" }
