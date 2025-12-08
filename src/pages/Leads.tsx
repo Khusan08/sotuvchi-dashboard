@@ -58,7 +58,7 @@ const Leads = () => {
     })
   );
   
-  const [formData, setFormData] = useState({
+const [formData, setFormData] = useState({
     customer_name: "",
     customer_phone: "",
     employee: "",
@@ -68,6 +68,8 @@ const Leads = () => {
     stage: "yengi_mijoz",
     source: "",
   });
+  const [startDateFilter, setStartDateFilter] = useState<Date>();
+  const [endDateFilter, setEndDateFilter] = useState<Date>();
 
   useEffect(() => {
     fetchLeads();
@@ -161,8 +163,19 @@ const Leads = () => {
       filtered = filtered.filter(lead => lead.lead_type === filterLeadType);
     }
 
-    // Specific date filter
-    if (filterDate) {
+    // Date range filter
+    if (startDateFilter || endDateFilter) {
+      filtered = filtered.filter(lead => {
+        const leadDate = new Date(lead.created_at);
+        if (startDateFilter && leadDate < startDateFilter) return false;
+        if (endDateFilter) {
+          const endOfDay = new Date(endDateFilter);
+          endOfDay.setHours(23, 59, 59, 999);
+          if (leadDate > endOfDay) return false;
+        }
+        return true;
+      });
+    } else if (filterDate) {
       const filterDateStr = format(filterDate, "yyyy-MM-dd");
       filtered = filtered.filter(lead => {
         const leadDate = format(new Date(lead.created_at), "yyyy-MM-dd");
@@ -568,6 +581,61 @@ const Leads = () => {
               ))}
             </SelectContent>
           </Select>
+
+          {/* Date Range Filter */}
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-[140px] justify-start text-xs">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDateFilter ? format(startDateFilter, "dd.MM.yyyy") : "Boshlanish"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar 
+                  mode="single" 
+                  selected={startDateFilter} 
+                  onSelect={(date) => {
+                    setStartDateFilter(date);
+                    if (date) {
+                      setFilterTimeRange("all");
+                      setFilterDate(undefined);
+                    }
+                  }} 
+                />
+              </PopoverContent>
+            </Popover>
+            <span className="text-muted-foreground">-</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-[140px] justify-start text-xs">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {endDateFilter ? format(endDateFilter, "dd.MM.yyyy") : "Tugash"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar 
+                  mode="single" 
+                  selected={endDateFilter} 
+                  onSelect={(date) => {
+                    setEndDateFilter(date);
+                    if (date) {
+                      setFilterTimeRange("all");
+                      setFilterDate(undefined);
+                    }
+                  }} 
+                />
+              </PopoverContent>
+            </Popover>
+            {(startDateFilter || endDateFilter) && (
+              <Button variant="ghost" size="sm" onClick={() => {
+                setStartDateFilter(undefined);
+                setEndDateFilter(undefined);
+              }}>
+                Tozalash
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
