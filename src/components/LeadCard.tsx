@@ -13,9 +13,16 @@ interface LeadCardProps {
   stage?: any;
   stages?: any[];
   onStageChange?: (leadId: string, newStageId: string) => void;
+  onLeadUpdate?: () => void;
 }
 
-const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange }: LeadCardProps) => {
+const DELIVERY_STATUS_OPTIONS = [
+  { value: "Jarayonda", label: "Jarayonda", color: "bg-yellow-500" },
+  { value: "Tasdiqlandi", label: "Tasdiqlandi", color: "bg-green-500" },
+  { value: "Bekor bo'ldi", label: "Bekor bo'ldi", color: "bg-red-500" }
+];
+
+const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onLeadUpdate }: LeadCardProps) => {
   const activityOptions = [
     "O'ylab ko'radi",
     "Mavjud emas",
@@ -47,6 +54,25 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange }: L
       toast.error("Amalni yangilashda xato");
     }
   };
+
+  const handleDeliveryStatusChange = async (newDeliveryStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("leads")
+        .update({ delivery_status: newDeliveryStatus })
+        .eq("id", lead.id);
+
+      if (error) throw error;
+      toast.success("Yetkazish holati yangilandi!");
+      if (onLeadUpdate) onLeadUpdate();
+    } catch (error) {
+      console.error("Error updating delivery status:", error);
+      toast.error("Yetkazish holatini yangilashda xato");
+    }
+  };
+
+  // Check if lead is in "Sotildi" stage
+  const isSoldStage = stage?.name === "Sotildi" || stages?.find(s => s.id === lead.stage)?.name === "Sotildi";
 
   return (
     <Card 
@@ -139,6 +165,30 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange }: L
             </SelectContent>
           </Select>
         </div>
+
+        {/* Delivery Status - Only for Sotildi stage */}
+        {isSoldStage && (
+          <div className="mt-2 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              Yetkazish holati
+            </label>
+            <Select value={lead.delivery_status || ""} onValueChange={handleDeliveryStatusChange}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Holatni tanlang" />
+              </SelectTrigger>
+              <SelectContent>
+                {DELIVERY_STATUS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${option.color}`} />
+                      {option.label}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
