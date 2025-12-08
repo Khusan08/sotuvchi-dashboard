@@ -111,6 +111,39 @@ const TaskNotifications = () => {
     }
   }, []);
 
+  // Move overdue leads to "Muhim" stage
+  const moveOverdueLeadsToMuhim = useCallback(async (overdueTasks: Task[]) => {
+    const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
+    const movedLeads = new Set<string>();
+
+    for (const task of overdueTasks) {
+      if (task.lead_id && !movedLeads.has(task.lead_id)) {
+        try {
+          // Check if lead is not already in Muhim stage
+          const { data: lead } = await supabase
+            .from("leads")
+            .select("id, stage")
+            .eq("id", task.lead_id)
+            .single();
+
+          if (lead && lead.stage !== MUHIM_STAGE_ID) {
+            await supabase
+              .from("leads")
+              .update({ stage: MUHIM_STAGE_ID })
+              .eq("id", task.lead_id);
+            
+            movedLeads.add(task.lead_id);
+            console.log(`Lead ${task.lead_id} moved to Muhim stage due to overdue task`);
+          }
+        } catch (error) {
+          console.error("Error moving lead to Muhim stage:", error);
+        }
+      }
+    }
+
+    return movedLeads.size;
+  }, []);
+
   const checkTasks = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -140,6 +173,12 @@ const TaskNotifications = () => {
 
       const newOverdueTasks = (overdueData || []) as Task[];
       const newUpcomingTasks = (upcomingData || []) as Task[];
+
+      // Move leads with overdue tasks to "Muhim" stage
+      const movedCount = await moveOverdueLeadsToMuhim(newOverdueTasks);
+      if (movedCount > 0) {
+        toast.warning(`${movedCount} ta lid "Muhim" bosqichiga o'tkazildi (vazifa muddati tugadi)`);
+      }
 
       // Check for newly overdue tasks - send telegram reminder only once when they become overdue
       const newlyOverdue = newOverdueTasks.filter(
@@ -201,7 +240,7 @@ const TaskNotifications = () => {
     } catch (error) {
       console.error("Error checking tasks:", error);
     }
-  }, [overdueTasks, upcomingTasks, playNotificationSound, sendBrowserNotification, sendTelegramReminder]);
+  }, [overdueTasks, upcomingTasks, playNotificationSound, sendBrowserNotification, sendTelegramReminder, moveOverdueLeadsToMuhim]);
 
   useEffect(() => {
     checkTasks();
