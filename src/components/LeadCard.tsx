@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, User, DollarSign, Facebook } from "lucide-react";
@@ -6,10 +5,6 @@ import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import StageChangeDialog from "./StageChangeDialog";
-
-// Stages that don't require comment/task for stage change
-const EXEMPT_STAGE_NAMES = ["Sotildi", "Olmaydi", "Ko'tarmagan"];
 
 interface LeadCardProps {
   lead: any;
@@ -17,21 +12,10 @@ interface LeadCardProps {
   onClick?: () => void;
   stage?: any;
   stages?: any[];
-  onStageChange?: (leadId: string, newStageId: string, skipDialog?: boolean) => void;
-  onLeadUpdate?: () => void;
+  onStageChange?: (leadId: string, newStageId: string) => void;
 }
 
-const DELIVERY_STATUS_OPTIONS = [
-  { value: "Jarayonda", label: "Jarayonda", color: "bg-yellow-500" },
-  { value: "Tasdiqlandi", label: "Tasdiqlandi", color: "bg-green-500" },
-  { value: "Bekor bo'ldi", label: "Bekor bo'ldi", color: "bg-red-500" }
-];
-
-const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onLeadUpdate }: LeadCardProps) => {
-  const [stageChangeDialogOpen, setStageChangeDialogOpen] = useState(false);
-  const [pendingStageId, setPendingStageId] = useState<string>("");
-  const [pendingStageName, setPendingStageName] = useState<string>("");
-
+const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange }: LeadCardProps) => {
   const activityOptions = [
     "O'ylab ko'radi",
     "Mavjud emas",
@@ -44,28 +28,8 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onL
   ];
 
   const handleStageChange = (newStageId: string) => {
-    if (!stages) return;
-    
-    const targetStage = stages.find(s => s.id === newStageId);
-    if (!targetStage) return;
-
-    // Check if target stage is exempt (Sotildi, Olmaydi, Ko'tarmagan)
-    if (EXEMPT_STAGE_NAMES.includes(targetStage.name)) {
-      // Direct change without dialog
-      if (onStageChange) {
-        onStageChange(lead.id, newStageId, true);
-      }
-    } else {
-      // Show dialog for comment/task requirement
-      setPendingStageId(newStageId);
-      setPendingStageName(targetStage.name);
-      setStageChangeDialogOpen(true);
-    }
-  };
-
-  const handleStageChangeConfirm = () => {
-    if (onLeadUpdate) {
-      onLeadUpdate();
+    if (onStageChange) {
+      onStageChange(lead.id, newStageId);
     }
   };
 
@@ -83,25 +47,6 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onL
       toast.error("Amalni yangilashda xato");
     }
   };
-
-  const handleDeliveryStatusChange = async (newDeliveryStatus: string) => {
-    try {
-      const { error } = await supabase
-        .from("leads")
-        .update({ delivery_status: newDeliveryStatus })
-        .eq("id", lead.id);
-
-      if (error) throw error;
-      toast.success("Yetkazish holati yangilandi!");
-      if (onLeadUpdate) onLeadUpdate();
-    } catch (error) {
-      console.error("Error updating delivery status:", error);
-      toast.error("Yetkazish holatini yangilashda xato");
-    }
-  };
-
-  // Check if lead is in "Sotildi" stage
-  const isSoldStage = stage?.name === "Sotildi" || stages?.find(s => s.id === lead.stage)?.name === "Sotildi";
 
   return (
     <Card 
@@ -194,40 +139,6 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onL
             </SelectContent>
           </Select>
         </div>
-
-        {/* Delivery Status - Only for Sotildi stage */}
-        {isSoldStage && (
-          <div className="mt-2 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">
-              Yetkazish holati
-            </label>
-            <Select value={lead.delivery_status || ""} onValueChange={handleDeliveryStatusChange}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Holatni tanlang" />
-              </SelectTrigger>
-              <SelectContent>
-                {DELIVERY_STATUS_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${option.color}`} />
-                      {option.label}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
-        {/* Stage Change Dialog */}
-        <StageChangeDialog
-          open={stageChangeDialogOpen}
-          onOpenChange={setStageChangeDialogOpen}
-          lead={lead}
-          targetStageId={pendingStageId}
-          targetStageName={pendingStageName}
-          onConfirm={handleStageChangeConfirm}
-        />
       </CardContent>
     </Card>
   );

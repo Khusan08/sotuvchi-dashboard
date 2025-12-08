@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { format } from "date-fns";
-import { CalendarIcon, User, Phone, DollarSign, Facebook, CheckCircle2, Clock, Plus, MessageSquare, Trash2, Truck } from "lucide-react";
+import { CalendarIcon, User, Phone, DollarSign, Facebook, CheckCircle2, Clock, Plus, MessageSquare, Trash2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -23,12 +23,6 @@ interface LeadDetailsDialogProps {
   stages: any[];
 }
 
-const DELIVERY_STATUS_OPTIONS = [
-  { value: "Jarayonda", label: "Jarayonda", color: "bg-yellow-500" },
-  { value: "Tasdiqlandi", label: "Tasdiqlandi", color: "bg-green-500" },
-  { value: "Bekor bo'ldi", label: "Bekor bo'ldi", color: "bg-red-500" }
-];
-
 const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages }: LeadDetailsDialogProps) => {
   const { isAdminOrRop, isAdmin } = useUserRoles();
   const [tasks, setTasks] = useState<any[]>([]);
@@ -37,7 +31,6 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
   const [selectedSeller, setSelectedSeller] = useState(lead?.seller_id || "");
   const [price, setPrice] = useState(lead?.price?.toString() || "");
   const [notes, setNotes] = useState(lead?.notes || "");
-  const [deliveryStatus, setDeliveryStatus] = useState(lead?.delivery_status || "");
   const [taskForm, setTaskForm] = useState({
     title: "",
     description: "",
@@ -53,7 +46,6 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
       setSelectedSeller(lead.seller_id);
       setPrice(lead.price?.toString() || "");
       setNotes(lead.notes || "");
-      setDeliveryStatus(lead.delivery_status || "");
     }
   }, [open, lead]);
 
@@ -223,24 +215,6 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
     }
   };
 
-  const handleUpdateDeliveryStatus = async (newStatus: string) => {
-    try {
-      const { error } = await supabase
-        .from("leads")
-        .update({ delivery_status: newStatus })
-        .eq("id", lead.id);
-
-      if (error) throw error;
-
-      setDeliveryStatus(newStatus);
-      toast.success("Yetkazish holati saqlandi");
-      onUpdate();
-    } catch (error) {
-      console.error("Error updating delivery status:", error);
-      toast.error("Yetkazish holatini saqlashda xato");
-    }
-  };
-
   const handleToggleTask = async (taskId: string, currentStatus: string) => {
     const newStatus = currentStatus === "completed" ? "pending" : "completed";
     
@@ -382,31 +356,6 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
               {lead?.source && (
                 <p className="text-xs text-muted-foreground mt-1">Manba: {lead.source}</p>
               )}
-            </div>
-          )}
-
-          {/* Delivery Status - Only for Sotildi stage */}
-          {isSoldStage && (
-            <div className="p-4 bg-muted rounded-lg">
-              <Label className="flex items-center gap-2 mb-2">
-                <Truck className="h-4 w-4" />
-                Yetkazish holati
-              </Label>
-              <Select value={deliveryStatus} onValueChange={handleUpdateDeliveryStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Holatni tanlang" />
-                </SelectTrigger>
-                <SelectContent>
-                  {DELIVERY_STATUS_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${option.color}`} />
-                        {option.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
           )}
 
