@@ -329,28 +329,24 @@ const [formData, setFormData] = useState({
     }
   };
 
-  const handleStageChange = async (leadId: string, newStageId: string, skipDialog?: boolean) => {
+  const handleStageChange = async (leadId: string, newStageId: string) => {
     const lead = leads.find(l => l.id === leadId);
     if (!lead || lead.stage === newStageId) return;
 
-    // If skipDialog is true, directly update without checking
-    if (skipDialog) {
-      try {
-        const { error } = await supabase
-          .from("leads")
-          .update({ stage: newStageId })
-          .eq("id", leadId);
+    try {
+      const { error } = await supabase
+        .from("leads")
+        .update({ stage: newStageId })
+        .eq("id", leadId);
 
-        if (error) throw error;
+      if (error) throw error;
 
-        toast.success("Lid bosqichi yangilandi!");
-        fetchLeads();
-      } catch (error) {
-        console.error("Error updating lead stage:", error);
-        toast.error("Lid bosqichini yangilashda xato");
-      }
+      toast.success("Lid bosqichi yangilandi!");
+      fetchLeads();
+    } catch (error) {
+      console.error("Error updating lead stage:", error);
+      toast.error("Lid bosqichini yangilashda xato");
     }
-    // If skipDialog is false or undefined, the LeadCard will handle it via StageChangeDialog
   };
 
   if (loading) {
@@ -663,7 +659,6 @@ const [formData, setFormData] = useState({
                 onStageChange={handleStageChange}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
-                onLeadUpdate={fetchLeads}
               />
             ))}
           </div>

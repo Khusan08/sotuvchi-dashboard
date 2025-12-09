@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, User, DollarSign, Facebook } from "lucide-react";
@@ -6,10 +5,6 @@ import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import StageChangeDialog from "./StageChangeDialog";
-
-// Stages that don't require comment/task for stage change
-const EXEMPT_STAGE_NAMES = ["Sotildi", "Olmaydi", "Ko'tarmagan"];
 
 interface LeadCardProps {
   lead: any;
@@ -17,7 +12,7 @@ interface LeadCardProps {
   onClick?: () => void;
   stage?: any;
   stages?: any[];
-  onStageChange?: (leadId: string, newStageId: string, skipDialog?: boolean) => void;
+  onStageChange?: (leadId: string, newStageId: string) => void;
   onLeadUpdate?: () => void;
 }
 
@@ -28,10 +23,6 @@ const DELIVERY_STATUS_OPTIONS = [
 ];
 
 const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onLeadUpdate }: LeadCardProps) => {
-  const [stageChangeDialogOpen, setStageChangeDialogOpen] = useState(false);
-  const [pendingStageId, setPendingStageId] = useState<string>("");
-  const [pendingStageName, setPendingStageName] = useState<string>("");
-
   const activityOptions = [
     "O'ylab ko'radi",
     "Mavjud emas",
@@ -44,28 +35,8 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onL
   ];
 
   const handleStageChange = (newStageId: string) => {
-    if (!stages) return;
-    
-    const targetStage = stages.find(s => s.id === newStageId);
-    if (!targetStage) return;
-
-    // Check if target stage is exempt (Sotildi, Olmaydi, Ko'tarmagan)
-    if (EXEMPT_STAGE_NAMES.includes(targetStage.name)) {
-      // Direct change without dialog
-      if (onStageChange) {
-        onStageChange(lead.id, newStageId, true);
-      }
-    } else {
-      // Show dialog for comment/task requirement
-      setPendingStageId(newStageId);
-      setPendingStageName(targetStage.name);
-      setStageChangeDialogOpen(true);
-    }
-  };
-
-  const handleStageChangeConfirm = () => {
-    if (onLeadUpdate) {
-      onLeadUpdate();
+    if (onStageChange) {
+      onStageChange(lead.id, newStageId);
     }
   };
 
@@ -218,16 +189,6 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onL
             </Select>
           </div>
         )}
-
-        {/* Stage Change Dialog */}
-        <StageChangeDialog
-          open={stageChangeDialogOpen}
-          onOpenChange={setStageChangeDialogOpen}
-          lead={lead}
-          targetStageId={pendingStageId}
-          targetStageName={pendingStageName}
-          onConfirm={handleStageChangeConfirm}
-        />
       </CardContent>
     </Card>
   );
