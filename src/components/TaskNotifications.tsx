@@ -201,35 +201,60 @@ const TaskNotifications = () => {
     } catch (error) {
       console.error("Error checking tasks:", error);
     }
-  }, [overdueTasks, upcomingTasks, playNotificationSound, sendBrowserNotification, sendTelegramReminder]);
+  }, [playNotificationSound, sendBrowserNotification, sendTelegramReminder]);
+
+  // Move overdue leads to Muhim stage
+  const moveOverdueLeadsToMuhim = async (overdueTasks: Task[]) => {
+    const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
+    
+    for (const task of overdueTasks) {
+      if (task.lead_id) {
+        try {
+          // Check if lead is not already in Muhim
+          const { data: lead } = await supabase
+            .from("leads")
+            .select("stage")
+            .eq("id", task.lead_id)
+            .single();
+
+          if (lead && lead.stage !== MUHIM_STAGE_ID) {
+            await supabase
+              .from("leads")
+              .update({ stage: MUHIM_STAGE_ID })
+              .eq("id", task.lead_id);
+          }
+        } catch (error) {
+          console.error("Error moving lead to Muhim:", error);
+        }
+      }
+    }
+  };
 
   useEffect(() => {
-    checkTasks();
+    let isMounted = true;
     
-    // Check tasks every 30 seconds
-    const interval = setInterval(checkTasks, 30000);
+    const runCheck = async () => {
+      if (!isMounted) return;
+      await checkTasks();
+    };
+
+    runCheck();
     
-    // Setup realtime subscription
-    const channel = supabase
-      .channel('task-notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tasks'
-        },
-        () => {
-          checkTasks();
-        }
-      )
-      .subscribe();
+    // Check tasks every 60 seconds (reduced from 30 for performance)
+    const interval = setInterval(runCheck, 60000);
 
     return () => {
+      isMounted = false;
       clearInterval(interval);
-      supabase.removeChannel(channel);
     };
-  }, []);
+  }, [checkTasks]);
+
+  // Move overdue leads when overdue tasks change
+  useEffect(() => {
+    if (overdueTasks.length > 0) {
+      moveOverdueLeadsToMuhim(overdueTasks);
+    }
+  }, [overdueTasks]);
 
   const handleTaskClick = (task: Task) => {
     if (task.lead_id) {

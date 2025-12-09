@@ -591,6 +591,7 @@ const Leads = () => {
                 onStageChange={handleStageChange}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
+                onLeadUpdate={fetchLeads}
               />
             ))}
           </div>
