@@ -13,7 +13,7 @@ interface LeadColumnProps {
   onLeadClick?: (lead: any) => void;
   stageData?: any;
   stages?: any[];
-  onStageChange?: (leadId: string, newStageId: string) => void;
+  onStageChange?: (leadId: string, newStageId: string, skipDialog?: boolean) => void;
   onLeadUpdate?: () => void;
 }
 

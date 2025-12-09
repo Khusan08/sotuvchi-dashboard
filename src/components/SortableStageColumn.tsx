@@ -8,7 +8,7 @@ interface SortableStageColumnProps {
   leads: any[];
   onLeadClick: (lead: any) => void;
   stages: any[];
-  onStageChange: (leadId: string, newStageId: string) => void;
+  onStageChange: (leadId: string, newStageId: string, skipDialog?: boolean) => void;
   onDragStart: (event: DragStartEvent) => void;
   onDragEnd: (event: DragEndEvent) => void;
   onLeadUpdate?: () => void;

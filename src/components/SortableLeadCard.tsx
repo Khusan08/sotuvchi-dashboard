@@ -7,7 +7,7 @@ interface SortableLeadCardProps {
   onClick?: () => void;
   stage?: any;
   stages?: any[];
-  onStageChange?: (leadId: string, newStageId: string) => void;
+  onStageChange?: (leadId: string, newStageId: string, skipDialog?: boolean) => void;
   onLeadUpdate?: () => void;
 }
 
