@@ -21,6 +21,7 @@ import LeadCard from "@/components/LeadCard";
 import LeadDetailsDialog from "@/components/LeadDetailsDialog";
 import StageManagement from "@/components/StageManagement";
 import SortableStageColumn from "@/components/SortableStageColumn";
+import { StageChangeDialog } from "@/components/StageChangeDialog";
 
 const LEAD_TYPE_OPTIONS = ["Yangi lid", "Baza"];
 
@@ -49,6 +50,20 @@ const Leads = () => {
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [pendingStageChange, setPendingStageChange] = useState<{
+    leadId: string;
+    leadName: string;
+    newStageId: string;
+    newStageName: string;
+    sellerId: string;
+  } | null>(null);
+
+  // Exempt stages (no comment/task required)
+  const EXEMPT_STAGE_IDS = [
+    "ad598efe-b15f-4809-bdf1-4afcdc9abf42", // Sotildi
+    "73a7dee3-b00f-4ab1-bdc2-d801e07ae2d8", // Ko'tarmagan
+    "dab83451-1ee6-44ec-a16c-ecbf54df8430", // Olmaydi
+  ];
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -305,27 +320,41 @@ const [formData, setFormData] = useState({
     const { active, over } = event;
     setActiveLead(null);
 
-    if (!over || !isAdminOrRop) return;
+    if (!over) return;
 
     const leadId = active.id as string;
-    const newStage = over.id as string;
+    const newStageId = over.id as string;
 
     const lead = leads.find(l => l.id === leadId);
-    if (!lead || lead.stage === newStage) return;
+    if (!lead || lead.stage === newStageId) return;
 
-    try {
-      const { error } = await supabase
-        .from("leads")
-        .update({ stage: newStage })
-        .eq("id", leadId);
+    const newStage = stages.find(s => s.id === newStageId);
+    
+    // Check if exempt stage - direct change allowed
+    if (EXEMPT_STAGE_IDS.includes(newStageId)) {
+      try {
+        const { error } = await supabase
+          .from("leads")
+          .update({ stage: newStageId })
+          .eq("id", leadId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast.success("Lid bosqichi yangilandi!");
-      fetchLeads();
-    } catch (error) {
-      console.error("Error updating lead stage:", error);
-      toast.error("Lid bosqichini yangilashda xato");
+        toast.success("Lid bosqichi yangilandi!");
+        fetchLeads();
+      } catch (error) {
+        console.error("Error updating lead stage:", error);
+        toast.error("Lid bosqichini yangilashda xato");
+      }
+    } else {
+      // Open dialog for mandatory comment and task
+      setPendingStageChange({
+        leadId: lead.id,
+        leadName: lead.customer_name,
+        newStageId: newStageId,
+        newStageName: newStage?.name || "",
+        sellerId: lead.seller_id,
+      });
     }
   };
 
@@ -333,19 +362,33 @@ const [formData, setFormData] = useState({
     const lead = leads.find(l => l.id === leadId);
     if (!lead || lead.stage === newStageId) return;
 
-    try {
-      const { error } = await supabase
-        .from("leads")
-        .update({ stage: newStageId })
-        .eq("id", leadId);
+    const newStage = stages.find(s => s.id === newStageId);
 
-      if (error) throw error;
+    // Check if exempt stage - direct change allowed
+    if (EXEMPT_STAGE_IDS.includes(newStageId)) {
+      try {
+        const { error } = await supabase
+          .from("leads")
+          .update({ stage: newStageId })
+          .eq("id", leadId);
 
-      toast.success("Lid bosqichi yangilandi!");
-      fetchLeads();
-    } catch (error) {
-      console.error("Error updating lead stage:", error);
-      toast.error("Lid bosqichini yangilashda xato");
+        if (error) throw error;
+
+        toast.success("Lid bosqichi yangilandi!");
+        fetchLeads();
+      } catch (error) {
+        console.error("Error updating lead stage:", error);
+        toast.error("Lid bosqichini yangilashda xato");
+      }
+    } else {
+      // Open dialog for mandatory comment and task
+      setPendingStageChange({
+        leadId: lead.id,
+        leadName: lead.customer_name,
+        newStageId: newStageId,
+        newStageName: newStage?.name || "",
+        sellerId: lead.seller_id,
+      });
     }
   };
 
@@ -673,6 +716,23 @@ const [formData, setFormData] = useState({
           onUpdate={fetchLeads}
           sellers={sellers}
           stages={stages}
+        />
+      )}
+
+      {/* Stage Change Dialog with mandatory comment and task */}
+      {pendingStageChange && (
+        <StageChangeDialog
+          open={!!pendingStageChange}
+          onOpenChange={(open) => !open && setPendingStageChange(null)}
+          leadId={pendingStageChange.leadId}
+          leadName={pendingStageChange.leadName}
+          newStageId={pendingStageChange.newStageId}
+          newStageName={pendingStageChange.newStageName}
+          sellerId={pendingStageChange.sellerId}
+          onSuccess={() => {
+            setPendingStageChange(null);
+            fetchLeads();
+          }}
         />
       )}
 
