@@ -240,8 +240,21 @@ const Orders = () => {
     }
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent double submission
+    if (isSubmitting) return;
+    
+    // Show confirmation dialog for new orders only
+    if (!editingOrder) {
+      const confirmed = window.confirm("Haqiqatdan ham yangi zakaz yaratmoqchimisiz?");
+      if (!confirmed) return;
+    }
+    
+    setIsSubmitting(true);
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -346,6 +359,8 @@ const Orders = () => {
       fetchOrders();
     } catch (error: any) {
       toast.error(error.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

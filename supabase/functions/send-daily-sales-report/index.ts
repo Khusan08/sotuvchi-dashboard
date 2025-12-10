@@ -13,7 +13,6 @@ serve(async (req) => {
 
   try {
     const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
-    const ADMIN_CHAT_ID = Deno.env.get('ADMIN_TELEGRAM_CHAT_ID');
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -21,11 +20,35 @@ serve(async (req) => {
       throw new Error('TELEGRAM_BOT_TOKEN not configured');
     }
 
-    if (!ADMIN_CHAT_ID) {
-      throw new Error('ADMIN_TELEGRAM_CHAT_ID not configured');
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Fetch all admin users with telegram_user_id
+    const { data: adminUsers, error: adminError } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .eq('role', 'admin');
+
+    if (adminError) throw adminError;
+
+    // Get telegram IDs for admin users
+    const adminUserIds = adminUsers?.map(u => u.user_id) || [];
+    const { data: adminProfiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, telegram_user_id, full_name')
+      .in('id', adminUserIds)
+      .not('telegram_user_id', 'is', null);
+
+    if (profilesError) throw profilesError;
+
+    if (!adminProfiles || adminProfiles.length === 0) {
+      console.log('No admin users with Telegram ID configured');
+      return new Response(
+        JSON.stringify({ success: true, message: 'No admin users with Telegram ID' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    console.log(`Found ${adminProfiles.length} admin(s) with Telegram ID`);
 
     // Get request body to check report type
     let reportType = 'daily';
@@ -154,31 +177,45 @@ serve(async (req) => {
     message += `━━━━━━━━━━━━━━━━━━━━\n`;
     message += `🕐 Hisobot vaqti: ${uzbekistanTime.toLocaleString('uz-UZ')}`;
 
-    console.log('Sending report to admin:', ADMIN_CHAT_ID);
+    // Send to all admin users
+    const results = [];
+    for (const admin of adminProfiles) {
+      console.log(`Sending report to admin: ${admin.full_name} (${admin.telegram_user_id})`);
+      
+      try {
+        const telegramResponse = await fetch(
+          `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: admin.telegram_user_id,
+              text: message,
+              parse_mode: 'HTML',
+            }),
+          }
+        );
 
-    // Send to admin's personal Telegram
-    const telegramResponse = await fetch(
-      `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: ADMIN_CHAT_ID,
-          text: message,
-          parse_mode: 'HTML',
-        }),
+        const telegramData = await telegramResponse.json();
+        console.log(`Telegram response for ${admin.full_name}:`, telegramData);
+        
+        results.push({
+          admin: admin.full_name,
+          success: telegramResponse.ok,
+          data: telegramData
+        });
+      } catch (err: any) {
+        console.error(`Error sending to ${admin.full_name}:`, err);
+        results.push({
+          admin: admin.full_name,
+          success: false,
+          error: err.message
+        });
       }
-    );
-
-    const telegramData = await telegramResponse.json();
-    console.log('Telegram response:', telegramData);
-
-    if (!telegramResponse.ok) {
-      throw new Error(`Telegram API error: ${JSON.stringify(telegramData)}`);
     }
 
     return new Response(
-      JSON.stringify({ success: true, data: telegramData }),
+      JSON.stringify({ success: true, results }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
   } catch (error: any) {
