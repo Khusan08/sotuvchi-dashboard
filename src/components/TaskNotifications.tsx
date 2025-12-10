@@ -111,6 +111,39 @@ const TaskNotifications = () => {
     }
   }, []);
 
+  // Move overdue leads to "Muhim" stage
+  const moveOverdueLeadsToMuhim = useCallback(async (overdueTasks: Task[]) => {
+    const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
+    
+    for (const task of overdueTasks) {
+      if (task.lead_id) {
+        try {
+          // Check current stage - only move if not already in Muhim
+          const { data: lead } = await supabase
+            .from("leads")
+            .select("stage")
+            .eq("id", task.lead_id)
+            .maybeSingle();
+
+          if (lead && lead.stage !== MUHIM_STAGE_ID) {
+            const { error } = await supabase
+              .from("leads")
+              .update({ stage: MUHIM_STAGE_ID })
+              .eq("id", task.lead_id);
+
+            if (error) {
+              console.error("Error moving lead to Muhim:", error);
+            } else {
+              console.log(`Lead ${task.lead_id} moved to Muhim stage due to overdue task`);
+            }
+          }
+        } catch (error) {
+          console.error("Error checking/moving lead:", error);
+        }
+      }
+    }
+  }, []);
+
   const checkTasks = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -140,6 +173,11 @@ const TaskNotifications = () => {
 
       const newOverdueTasks = (overdueData || []) as Task[];
       const newUpcomingTasks = (upcomingData || []) as Task[];
+
+      // Move overdue task leads to Muhim stage
+      if (newOverdueTasks.length > 0) {
+        await moveOverdueLeadsToMuhim(newOverdueTasks);
+      }
 
       // Check for newly overdue tasks - send telegram reminder only once when they become overdue
       const newlyOverdue = newOverdueTasks.filter(
@@ -201,7 +239,7 @@ const TaskNotifications = () => {
     } catch (error) {
       console.error("Error checking tasks:", error);
     }
-  }, [overdueTasks, upcomingTasks, playNotificationSound, sendBrowserNotification, sendTelegramReminder]);
+  }, [overdueTasks, upcomingTasks, playNotificationSound, sendBrowserNotification, sendTelegramReminder, moveOverdueLeadsToMuhim]);
 
   useEffect(() => {
     checkTasks();
