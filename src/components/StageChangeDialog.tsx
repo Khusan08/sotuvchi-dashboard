@@ -22,6 +22,14 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
+// Stages where task is NOT required (only comment is mandatory)
+const TASK_OPTIONAL_STAGE_IDS = [
+  "ad598efe-b15f-4809-bdf1-4afcdc9abf42", // Sotildi
+  "97dac92a-654a-4ce3-8501-317648f22795", // Keyin oladi
+  "adc7a8bf-d7c2-4dc5-b89b-6d1da828ce84", // Sifatsiz
+  "dab83451-1ee6-44ec-a16c-ecbf54df8430", // Olmaydi
+];
+
 interface StageChangeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -50,20 +58,25 @@ export function StageChangeDialog({
   const [taskTime, setTaskTime] = useState("12:00");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const isTaskOptional = TASK_OPTIONAL_STAGE_IDS.includes(newStageId);
+
   const handleSubmit = async () => {
     if (!comment.trim()) {
       toast.error("Izoh yozish majburiy!");
       return;
     }
 
-    if (!taskTitle.trim()) {
-      toast.error("Vazifa nomi majburiy!");
-      return;
-    }
+    // Task is required only for non-optional stages
+    if (!isTaskOptional) {
+      if (!taskTitle.trim()) {
+        toast.error("Vazifa nomi majburiy!");
+        return;
+      }
 
-    if (!taskDate) {
-      toast.error("Vazifa muddatini tanlang!");
-      return;
+      if (!taskDate) {
+        toast.error("Vazifa muddatini tanlang!");
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -90,26 +103,28 @@ export function StageChangeDialog({
         return;
       }
 
-      // 2. Create task with time
-      const [hours, minutes] = taskTime.split(":").map(Number);
-      const dueDate = new Date(taskDate);
-      dueDate.setHours(hours, minutes, 0, 0);
+      // 2. Create task with time (only if task fields are filled or required)
+      if (taskTitle.trim() && taskDate) {
+        const [hours, minutes] = taskTime.split(":").map(Number);
+        const dueDate = new Date(taskDate);
+        dueDate.setHours(hours, minutes, 0, 0);
 
-      const { error: taskError } = await supabase
-        .from("tasks")
-        .insert({
-          lead_id: leadId,
-          seller_id: sellerId,
-          title: taskTitle.trim(),
-          description: taskDescription.trim() || null,
-          due_date: dueDate.toISOString(),
-          status: "pending",
-        });
+        const { error: taskError } = await supabase
+          .from("tasks")
+          .insert({
+            lead_id: leadId,
+            seller_id: sellerId,
+            title: taskTitle.trim(),
+            description: taskDescription.trim() || null,
+            due_date: dueDate.toISOString(),
+            status: "pending",
+          });
 
-      if (taskError) {
-        console.error("Task error:", taskError);
-        toast.error("Vazifani yaratishda xatolik");
-        return;
+        if (taskError) {
+          console.error("Task error:", taskError);
+          toast.error("Vazifani yaratishda xatolik");
+          return;
+        }
       }
 
       // 3. Update lead stage
@@ -163,7 +178,7 @@ export function StageChangeDialog({
 
         <div className="space-y-4 py-4">
           <p className="text-sm text-muted-foreground">
-            "{newStageName}" bosqichiga o'tkazish uchun izoh va vazifa qo'shish majburiy.
+            "{newStageName}" bosqichiga o'tkazish uchun izoh {!isTaskOptional && "va vazifa qo'shish "}majburiy.
           </p>
 
           {/* Comment */}
@@ -180,12 +195,12 @@ export function StageChangeDialog({
 
           {/* Task Title */}
           <div className="space-y-2">
-            <Label htmlFor="taskTitle">Vazifa nomi *</Label>
+            <Label htmlFor="taskTitle">Vazifa nomi {!isTaskOptional && "*"}</Label>
             <Input
               id="taskTitle"
               value={taskTitle}
               onChange={(e) => setTaskTitle(e.target.value)}
-              placeholder="Vazifa nomini kiriting"
+              placeholder={isTaskOptional ? "Vazifa nomini kiriting (ixtiyoriy)" : "Vazifa nomini kiriting"}
             />
           </div>
 
@@ -204,7 +219,7 @@ export function StageChangeDialog({
           {/* Task Date & Time */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Muddat *</Label>
+              <Label>Muddat {!isTaskOptional && "*"}</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -230,7 +245,7 @@ export function StageChangeDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="taskTime">Vaqt *</Label>
+              <Label htmlFor="taskTime">Vaqt {!isTaskOptional && "*"}</Label>
               <Input
                 id="taskTime"
                 type="time"
