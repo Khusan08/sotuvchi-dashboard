@@ -103,11 +103,24 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onL
 
         {stages && stages.length > 0 && (
           <div onClick={(e) => e.stopPropagation()}>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              Bosqich
+            </label>
             <Select value={lead.stage} onValueChange={handleStageChange}>
               <SelectTrigger className="h-8 text-xs">
-                <SelectValue />
+                <SelectValue>
+                  {(() => {
+                    const currentStage = stages.find(s => s.id === lead.stage);
+                    return currentStage ? (
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${currentStage.color}`} />
+                        {currentStage.name}
+                      </div>
+                    ) : "Bosqichni tanlang";
+                  })()}
+                </SelectValue>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background border z-50">
                 {stages.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     <div className="flex items-center gap-2">
