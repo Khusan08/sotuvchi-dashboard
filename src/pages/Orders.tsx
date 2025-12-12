@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { regionsData } from "@/lib/regions";
 import { useUserRoles } from "@/hooks/useUserRoles";
+import { OrderConfirmDialog } from "@/components/OrderConfirmDialog";
 
 const Orders = () => {
   const [orders, setOrders] = useState<any[]>([]);
@@ -241,20 +242,26 @@ const Orders = () => {
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     // Prevent double submission
     if (isSubmitting) return;
     
-    // Show confirmation dialog for new orders only
+    // For new orders, show confirmation dialog
     if (!editingOrder) {
-      const confirmed = window.confirm("Haqiqatdan ham yangi zakaz yaratmoqchimisiz?");
-      if (!confirmed) return;
+      setConfirmDialogOpen(true);
+    } else {
+      // For editing, submit directly
+      submitOrder();
     }
-    
+  };
+
+  const submitOrder = async () => {
     setIsSubmitting(true);
+    setConfirmDialogOpen(false);
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -400,7 +407,8 @@ const Orders = () => {
   }
 
   return (
-    <DashboardLayout>
+    <>
+      <DashboardLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-center gap-4">
           <div className="flex-1">
@@ -429,7 +437,7 @@ const Orders = () => {
               <DialogHeader>
                 <DialogTitle>{editingOrder ? "Zakazni tahrirlash" : "Yangi zakaz qo'shish"}</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleFormSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="customer_name">Mijoz ismi</Label>
                   <Input
@@ -875,7 +883,25 @@ const Orders = () => {
             </Card>
           </div>
         </DashboardLayout>
-      );
-    };
+
+        {/* Order Confirmation Dialog */}
+        <OrderConfirmDialog
+          open={confirmDialogOpen}
+          onOpenChange={setConfirmDialogOpen}
+          onConfirm={submitOrder}
+          customerName={formData.customer_name}
+          customerPhone={formData.customer_phone}
+          customerPhone2={formData.customer_phone2}
+          region={formData.region}
+          district={formData.district}
+          items={items}
+          totalAmount={calculateTotal()}
+          advancePayment={parseFloat(formData.advance_payment) || 0}
+          notes={formData.notes}
+          isSubmitting={isSubmitting}
+        />
+      </>
+    );
+  };
     
-    export default Orders;
+export default Orders;
