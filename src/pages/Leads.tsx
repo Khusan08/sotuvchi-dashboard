@@ -42,6 +42,8 @@ const Leads = () => {
   const [filterLeadType, setFilterLeadType] = useState<string>("all");
   const [filterTimeRange, setFilterTimeRange] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [startDateFilter, setStartDateFilter] = useState<Date | undefined>(undefined);
+  const [endDateFilter, setEndDateFilter] = useState<Date | undefined>(undefined);
   const [sellers, setSellers] = useState<any[]>([]);
   const [stages, setStages] = useState<any[]>([]);
   const { isAdminOrRop } = useUserRoles();
@@ -201,6 +203,19 @@ const [formData, setFormData] = useState({
       }
 
       filtered = filtered.filter(lead => new Date(lead.created_at) >= startDate);
+    }
+
+    // Custom date range filter
+    if (startDateFilter) {
+      const start = new Date(startDateFilter);
+      start.setHours(0, 0, 0, 0);
+      filtered = filtered.filter(lead => new Date(lead.created_at) >= start);
+    }
+
+    if (endDateFilter) {
+      const end = new Date(endDateFilter);
+      end.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(lead => new Date(lead.created_at) <= end);
     }
 
     return filtered;
@@ -551,6 +566,11 @@ const [formData, setFormData] = useState({
           
           <Select value={filterTimeRange} onValueChange={(value) => {
             setFilterTimeRange(value);
+            // Reset custom date when using preset
+            if (value !== "all") {
+              setStartDateFilter(undefined);
+              setEndDateFilter(undefined);
+            }
           }}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Vaqt bo'yicha" />
@@ -563,6 +583,61 @@ const [formData, setFormData] = useState({
               ))}
             </SelectContent>
           </Select>
+
+          {/* Start Date Filter */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-[140px] justify-start text-left font-normal">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {startDateFilter ? format(startDateFilter, "dd.MM.yyyy") : "Boshlanish"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={startDateFilter}
+                onSelect={(date) => {
+                  setStartDateFilter(date);
+                  setFilterTimeRange("all");
+                }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+
+          {/* End Date Filter */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-[140px] justify-start text-left font-normal">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {endDateFilter ? format(endDateFilter, "dd.MM.yyyy") : "Tugash"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={endDateFilter}
+                onSelect={(date) => {
+                  setEndDateFilter(date);
+                  setFilterTimeRange("all");
+                }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+
+          {(startDateFilter || endDateFilter) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setStartDateFilter(undefined);
+                setEndDateFilter(undefined);
+              }}
+            >
+              Tozalash
+            </Button>
+          )}
 
           <Select value={filterLeadType} onValueChange={setFilterLeadType}>
             <SelectTrigger className="w-[160px]">
