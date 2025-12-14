@@ -13,6 +13,7 @@ interface LeadCardProps {
   stage?: any;
   stages?: any[];
   onLeadUpdate?: () => void;
+  onStageChange?: (leadId: string, newStageId: string) => void;
 }
 
 const DELIVERY_STATUS_OPTIONS = [
@@ -21,7 +22,7 @@ const DELIVERY_STATUS_OPTIONS = [
   { value: "Bekor bo'ldi", label: "Bekor bo'ldi", color: "bg-red-500" }
 ];
 
-const LeadCard = ({ lead, isDragging, onClick, stage, stages, onLeadUpdate }: LeadCardProps) => {
+const LeadCard = ({ lead, isDragging, onClick, stage, stages, onLeadUpdate, onStageChange }: LeadCardProps) => {
   const activityOptions = [
     "O'ylab ko'radi",
     "Mavjud emas",
