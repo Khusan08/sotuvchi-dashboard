@@ -319,6 +319,13 @@ const [formData, setFormData] = useState({
     const lead = leads.find(l => l.id === leadId);
     if (!lead || lead.stage === newStageId) return;
 
+    // Check if lead is in "Sotildi" stage - prevent moving out
+    const currentStage = stages.find(s => s.id === lead.stage);
+    if (currentStage?.name === "Sotildi") {
+      toast.error("Sotildi bosqichidagi lidni boshqa bosqichga o'tkazib bo'lmaydi");
+      return;
+    }
+
     const newStage = stages.find(s => s.id === newStageId);
     
     // ALL stage changes require the dialog with mandatory comment
@@ -335,6 +342,13 @@ const [formData, setFormData] = useState({
   const handleStageChange = async (leadId: string, newStageId: string) => {
     const lead = leads.find(l => l.id === leadId);
     if (!lead || lead.stage === newStageId) return;
+
+    // Check if lead is in "Sotildi" stage - prevent moving out
+    const currentStage = stages.find(s => s.id === lead.stage);
+    if (currentStage?.name === "Sotildi") {
+      toast.error("Sotildi bosqichidagi lidni boshqa bosqichga o'tkazib bo'lmaydi");
+      return;
+    }
 
     const newStage = stages.find(s => s.id === newStageId);
 
@@ -635,7 +649,6 @@ const [formData, setFormData] = useState({
                   setDetailsDialogOpen(true);
                 }}
                 stages={stages}
-                onStageChange={handleStageChange}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
               />

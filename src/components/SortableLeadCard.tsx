@@ -7,10 +7,9 @@ interface SortableLeadCardProps {
   onClick?: () => void;
   stage?: any;
   stages?: any[];
-  onStageChange?: (leadId: string, newStageId: string) => void;
 }
 
-const SortableLeadCard = ({ lead, onClick, stage, stages, onStageChange }: SortableLeadCardProps) => {
+const SortableLeadCard = ({ lead, onClick, stage, stages }: SortableLeadCardProps) => {
   const {
     attributes,
     listeners,
@@ -42,7 +41,6 @@ const SortableLeadCard = ({ lead, onClick, stage, stages, onStageChange }: Sorta
         onClick={onClick} 
         stage={stage}
         stages={stages}
-        onStageChange={onStageChange}
       />
     </div>
   );
