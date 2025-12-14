@@ -310,11 +310,28 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <DialogTitle className="text-2xl">{lead?.customer_name}</DialogTitle>
-              {currentStage && (
-                <Badge className={`${currentStage.color} text-white`}>
-                  {currentStage.name}
-                </Badge>
-              )}
+              <Select value={selectedStage} onValueChange={handleUpdateStage}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue>
+                    {currentStage && (
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${currentStage.color}`} />
+                        {currentStage.name}
+                      </div>
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {stages.map((stage) => (
+                    <SelectItem key={stage.id} value={stage.id}>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${stage.color}`} />
+                        {stage.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             {isAdmin && (
               <Button 

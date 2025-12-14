@@ -59,9 +59,9 @@ const Leads = () => {
     sellerId: string;
   } | null>(null);
 
-  // No exempt stages - ALL stage changes require the dialog with mandatory comment
-  // Task is optional for TASK_OPTIONAL_STAGE_IDS defined in StageChangeDialog
-  // This ensures stage changes from card dropdown also trigger the dialog
+  // No exempt stages - all stages require the dialog
+  // Task is optional for TASK_OPTIONAL_STAGE_IDS in StageChangeDialog
+  const EXEMPT_STAGE_IDS: string[] = [];
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -319,48 +319,68 @@ const [formData, setFormData] = useState({
     const lead = leads.find(l => l.id === leadId);
     if (!lead || lead.stage === newStageId) return;
 
-    // Check if lead is in "Sotildi" stage - prevent moving out
-    const currentStage = stages.find(s => s.id === lead.stage);
-    if (currentStage?.name === "Sotildi") {
-      toast.error("Sotildi bosqichidagi lidni boshqa bosqichga o'tkazib bo'lmaydi");
-      return;
-    }
-
     const newStage = stages.find(s => s.id === newStageId);
     
-    // ALL stage changes require the dialog with mandatory comment
-    // Open dialog for mandatory comment and task (task is optional for some stages)
-    setPendingStageChange({
-      leadId: lead.id,
-      leadName: lead.customer_name,
-      newStageId: newStageId,
-      newStageName: newStage?.name || "",
-      sellerId: lead.seller_id,
-    });
+    // Check if exempt stage - direct change allowed
+    if (EXEMPT_STAGE_IDS.includes(newStageId)) {
+      try {
+        const { error } = await supabase
+          .from("leads")
+          .update({ stage: newStageId })
+          .eq("id", leadId);
+
+        if (error) throw error;
+
+        toast.success("Lid bosqichi yangilandi!");
+        fetchLeads();
+      } catch (error) {
+        console.error("Error updating lead stage:", error);
+        toast.error("Lid bosqichini yangilashda xato");
+      }
+    } else {
+      // Open dialog for mandatory comment and task
+      setPendingStageChange({
+        leadId: lead.id,
+        leadName: lead.customer_name,
+        newStageId: newStageId,
+        newStageName: newStage?.name || "",
+        sellerId: lead.seller_id,
+      });
+    }
   };
 
   const handleStageChange = async (leadId: string, newStageId: string) => {
     const lead = leads.find(l => l.id === leadId);
     if (!lead || lead.stage === newStageId) return;
 
-    // Check if lead is in "Sotildi" stage - prevent moving out
-    const currentStage = stages.find(s => s.id === lead.stage);
-    if (currentStage?.name === "Sotildi") {
-      toast.error("Sotildi bosqichidagi lidni boshqa bosqichga o'tkazib bo'lmaydi");
-      return;
-    }
-
     const newStage = stages.find(s => s.id === newStageId);
 
-    // ALL stage changes require the dialog with mandatory comment
-    // Open dialog for mandatory comment and task (task is optional for some stages)
-    setPendingStageChange({
-      leadId: lead.id,
-      leadName: lead.customer_name,
-      newStageId: newStageId,
-      newStageName: newStage?.name || "",
-      sellerId: lead.seller_id,
-    });
+    // Check if exempt stage - direct change allowed
+    if (EXEMPT_STAGE_IDS.includes(newStageId)) {
+      try {
+        const { error } = await supabase
+          .from("leads")
+          .update({ stage: newStageId })
+          .eq("id", leadId);
+
+        if (error) throw error;
+
+        toast.success("Lid bosqichi yangilandi!");
+        fetchLeads();
+      } catch (error) {
+        console.error("Error updating lead stage:", error);
+        toast.error("Lid bosqichini yangilashda xato");
+      }
+    } else {
+      // Open dialog for mandatory comment and task
+      setPendingStageChange({
+        leadId: lead.id,
+        leadName: lead.customer_name,
+        newStageId: newStageId,
+        newStageName: newStage?.name || "",
+        sellerId: lead.seller_id,
+      });
+    }
   };
 
   if (loading) {
@@ -649,6 +669,7 @@ const [formData, setFormData] = useState({
                   setDetailsDialogOpen(true);
                 }}
                 stages={stages}
+                onStageChange={handleStageChange}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
               />
