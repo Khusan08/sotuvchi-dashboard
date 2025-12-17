@@ -5,6 +5,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Muhim stage ID - leads automatically go here
+const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
+
 interface LeadData {
   customer_name: string;
   customer_phone?: string;
@@ -16,6 +19,7 @@ interface LeadData {
   price?: number;
   lead_quality?: string;
   seller_id?: string;
+  stage?: string;
 }
 
 Deno.serve(async (req) => {
@@ -38,13 +42,14 @@ Deno.serve(async (req) => {
       customer_name: body.customer_name || body['Customer Name'] || body.name,
       customer_phone: body.customer_phone || body['Customer Phone'] || body.phone,
       customer_email: body.customer_email || body['Customer Email'] || body.email,
-      lead_type: body.lead_type || body['Lead Type'] || 'yangi',
-      activity: body.activity || body['Activity'] || 'new',
+      lead_type: body.lead_type || body['Lead Type'] || 'Yangi lid',
+      activity: body.activity || body['Activity'] || null,
       source: body.source || body['Source'] || 'Google Sheets',
       notes: body.notes || body['Notes'] || '',
       price: body.price || body['Price'] ? parseFloat(body.price || body['Price']) : undefined,
       lead_quality: body.lead_quality || body['Lead Quality'] || 'Lid sifati',
       seller_id: body.seller_id || body['Seller ID'],
+      stage: MUHIM_STAGE_ID, // Always set to Muhim stage
     };
 
     // Validate required fields
