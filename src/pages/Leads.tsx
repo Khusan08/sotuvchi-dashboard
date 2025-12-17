@@ -71,14 +71,16 @@ const Leads = () => {
     })
   );
   
-const [formData, setFormData] = useState({
+const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
+  
+  const [formData, setFormData] = useState({
     customer_name: "",
     customer_phone: "",
     employee: "",
     lead_type: "Yangi lid",
     activity: "",
     notes: "",
-    stage: "yengi_mijoz",
+    stage: MUHIM_STAGE_ID,
     source: "",
   });
 
@@ -259,7 +261,7 @@ const [formData, setFormData] = useState({
         lead_type: "Yangi lid",
         activity: "",
         notes: "",
-        stage: "yengi_mijoz",
+        stage: MUHIM_STAGE_ID,
         source: "",
       });
       fetchLeads();
@@ -486,41 +488,22 @@ const [formData, setFormData] = useState({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="stage">Bosqich *</Label>
-                    <Select
-                      value={formData.stage}
-                      onValueChange={(value) => setFormData({ ...formData, stage: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {stages.map((stage) => (
-                          <SelectItem key={stage.id} value={stage.id}>
-                            {stage.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="source">Qayerdan? *</Label>
-                    <Select
-                      value={formData.source}
-                      onValueChange={(value) => setFormData({ ...formData, source: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Manbani tanlang" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Sayt">Sayt</SelectItem>
-                        <SelectItem value="Forma">Forma</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div>
+                  <Label htmlFor="source">Qayerdan? *</Label>
+                  <Select
+                    value={formData.source}
+                    onValueChange={(value) => setFormData({ ...formData, source: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Manbani tanlang" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Sayt">Sayt</SelectItem>
+                      <SelectItem value="Forma">Forma</SelectItem>
+                      <SelectItem value="Instagram">Instagram</SelectItem>
+                      <SelectItem value="Telegram">Telegram</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
