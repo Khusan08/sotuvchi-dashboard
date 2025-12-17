@@ -333,7 +333,7 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
                 </SelectContent>
               </Select>
             </div>
-            {isAdmin && (
+            {isAdminOrRop && (
               <Button 
                 variant="destructive" 
                 size="sm"

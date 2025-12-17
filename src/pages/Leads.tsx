@@ -59,9 +59,10 @@ const Leads = () => {
     sellerId: string;
   } | null>(null);
 
-  // No exempt stages - all stages require the dialog
-  // Task is optional for TASK_OPTIONAL_STAGE_IDS in StageChangeDialog
-  const EXEMPT_STAGE_IDS: string[] = [];
+  // Exempt stages - direct change allowed without dialog
+  const EXEMPT_STAGE_IDS: string[] = [
+    "ad598efe-b15f-4809-bdf1-4afcdc9abf42", // Sotildi
+  ];
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
