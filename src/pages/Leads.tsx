@@ -498,13 +498,24 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
                     >
                       <SelectTrigger>
                         <SelectValue>
-                          {stages.find(s => s.id === formData.stage)?.name || "Muhim"}
+                          {(() => {
+                            const currentStage = stages.find(s => s.id === formData.stage);
+                            return currentStage ? (
+                              <div className="flex items-center gap-2">
+                                <div className={`w-3 h-3 rounded-full ${currentStage.color}`} />
+                                {currentStage.name}
+                              </div>
+                            ) : "Muhim";
+                          })()}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {stages.map((stage) => (
                           <SelectItem key={stage.id} value={stage.id}>
-                            {stage.name}
+                            <div className="flex items-center gap-2">
+                              <div className={`w-3 h-3 rounded-full ${stage.color}`} />
+                              {stage.name}
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
