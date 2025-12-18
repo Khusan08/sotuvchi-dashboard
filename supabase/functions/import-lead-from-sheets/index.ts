@@ -37,13 +37,13 @@ Deno.serve(async (req) => {
     const body = await req.json();
     console.log('Received data from Google Sheets:', body);
 
-    // Extract lead data from the webhook payload
+    // Extract lead data from the webhook payload - supports Uzbek field names from Google Sheets
     const leadData: LeadData = {
-      customer_name: body.customer_name || body['Customer Name'] || body.name,
-      customer_phone: body.customer_phone || body['Customer Phone'] || body.phone,
+      customer_name: body.customer_name || body['Mijoz ismi'] || body['Mijoz ismi *'] || body['Customer Name'] || body.name,
+      customer_phone: body.customer_phone || body['Telefon raqami'] || body['Telefon raqami *'] || body['Customer Phone'] || body.phone,
       customer_email: body.customer_email || body['Customer Email'] || body.email,
       lead_type: body.lead_type || body['Lead Type'] || 'Yangi lid',
-      activity: body.activity || body['Activity'] || null,
+      activity: body.activity || body['Faoliyat turi'] || body['Activity'] || null,
       source: body.source || body['Source'] || 'Google Sheets',
       notes: body.notes || body['Notes'] || '',
       price: body.price || body['Price'] ? parseFloat(body.price || body['Price']) : undefined,
