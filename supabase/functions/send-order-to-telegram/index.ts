@@ -100,6 +100,36 @@ ${sellersList || '   Hali savdo yo\'q'}
   `.trim();
 };
 
+const formatStatusChangeMessage = (
+  orderNumber: number, 
+  customerName: string, 
+  newStatus: string,
+  sellerName: string
+) => {
+  const statusEmoji = newStatus === 'delivered' ? '✅' : '❌';
+  const statusText = newStatus === 'delivered' ? 'Tasdiqlandi' : 'Bekor qilindi';
+  
+  const now = new Date();
+  const dateTime = now.toLocaleString('uz-UZ', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Tashkent'
+  });
+
+  return `
+${statusEmoji} <b>Zakaz statusi o'zgardi!</b>
+
+📋 <b>Zakaz raqami:</b> #${orderNumber}
+👤 <b>Mijoz:</b> ${customerName}
+${statusEmoji} <b>Yangi status:</b> ${statusText}
+
+📅 <b>O'zgargan vaqt:</b> ${dateTime}
+  `.trim();
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -107,7 +137,17 @@ serve(async (req) => {
   }
 
   try {
-    const { order, action = 'create' }: { order: OrderData; action?: 'create' | 'edit' } = await req.json();
+    const { order, action = 'create', statusChange }: { 
+      order?: OrderData; 
+      action?: 'create' | 'edit' | 'status_change';
+      statusChange?: {
+        order_number: number;
+        customer_name: string;
+        new_status: string;
+        seller_id: string;
+        seller_name: string;
+      };
+    } = await req.json();
 
     const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
     const CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID');
@@ -120,6 +160,70 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Handle status change notification to seller
+    if (action === 'status_change' && statusChange) {
+      console.log('Sending status change notification to seller:', statusChange);
+
+      // Get seller's telegram_user_id
+      const { data: sellerProfile, error: sellerError } = await supabase
+        .from('profiles')
+        .select('telegram_user_id, full_name')
+        .eq('id', statusChange.seller_id)
+        .single();
+
+      if (sellerError) {
+        console.error('Error fetching seller profile:', sellerError);
+      }
+
+      if (sellerProfile?.telegram_user_id) {
+        const statusMessage = formatStatusChangeMessage(
+          statusChange.order_number,
+          statusChange.customer_name,
+          statusChange.new_status,
+          statusChange.seller_name
+        );
+
+        const sellerResponse = await fetch(
+          `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: sellerProfile.telegram_user_id,
+              text: statusMessage,
+              parse_mode: 'HTML',
+            }),
+          }
+        );
+
+        const sellerData = await sellerResponse.json();
+        console.log('Seller status notification response:', sellerData);
+
+        return new Response(
+          JSON.stringify({ success: true, data: sellerData }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        );
+      } else {
+        console.log('Seller has no Telegram ID configured');
+        return new Response(
+          JSON.stringify({ success: true, message: 'Seller has no Telegram ID' }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        );
+      }
+    }
+
+    // Regular order message flow
+    if (!order) {
+      throw new Error('Order data is required');
+    }
+
     const message = formatMessage(order, action === 'edit');
 
     console.log('Sending message to Telegram topic:', { CHAT_ID, TOPIC_ID, action });
