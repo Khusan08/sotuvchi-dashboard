@@ -299,12 +299,44 @@ const AllOrders = () => {
 
   const handleQuickStatusUpdate = async (orderId: string, newStatus: string) => {
     try {
+      // Find the order to get seller info
+      const orderToUpdate = orders.find(o => o.id === orderId);
+      
       const { error } = await supabase
         .from("orders")
         .update({ status: newStatus })
         .eq("id", orderId);
 
       if (error) throw error;
+
+      // Send notification to seller for cancelled or delivered status
+      if (orderToUpdate && (newStatus === 'cancelled' || newStatus === 'delivered')) {
+        try {
+          // Get seller_id from the order
+          const { data: orderData } = await supabase
+            .from("orders")
+            .select("seller_id")
+            .eq("id", orderId)
+            .single();
+
+          if (orderData?.seller_id) {
+            await supabase.functions.invoke('send-order-to-telegram', {
+              body: {
+                action: 'status_change',
+                statusChange: {
+                  order_number: orderToUpdate.order_number,
+                  customer_name: orderToUpdate.customer_name,
+                  new_status: newStatus,
+                  seller_id: orderData.seller_id,
+                  seller_name: orderToUpdate.seller_name || "Noma'lum"
+                }
+              }
+            });
+          }
+        } catch (notifyError) {
+          console.error('Telegram xabar yuborishda xatolik:', notifyError);
+        }
+      }
 
       toast.success("Status yangilandi!");
       fetchOrders();
@@ -394,6 +426,37 @@ const AllOrders = () => {
           });
         } catch (telegramError) {
           console.error('Telegram yuborishda xatolik:', telegramError);
+        }
+
+        // Send status change notification to seller if status changed to cancelled or delivered
+        const oldStatus = editingOrder.status;
+        const newStatus = editFormData.status;
+        if (oldStatus !== newStatus && (newStatus === 'cancelled' || newStatus === 'delivered')) {
+          try {
+            // Get seller_id from the order
+            const { data: orderData } = await supabase
+              .from("orders")
+              .select("seller_id")
+              .eq("id", editingOrder.id)
+              .single();
+
+            if (orderData?.seller_id) {
+              await supabase.functions.invoke('send-order-to-telegram', {
+                body: {
+                  action: 'status_change',
+                  statusChange: {
+                    order_number: editingOrder.order_number,
+                    customer_name: editFormData.customer_name,
+                    new_status: newStatus,
+                    seller_id: orderData.seller_id,
+                    seller_name: editingOrder.seller_name || "Noma'lum"
+                  }
+                }
+              });
+            }
+          } catch (notifyError) {
+            console.error('Status o\'zgarish xabari yuborishda xatolik:', notifyError);
+          }
         }
       }
 
