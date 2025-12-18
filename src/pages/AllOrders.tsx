@@ -58,6 +58,7 @@ const AllOrders = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterSeller, setFilterSeller] = useState<string>("all");
+  const [filterRegion, setFilterRegion] = useState<string>("all");
   const [sellers, setSellers] = useState<Array<{ id: string; full_name: string }>>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -101,7 +102,7 @@ const AllOrders = () => {
 
   useEffect(() => {
     filterOrders();
-  }, [orders, startDate, endDate, searchQuery, filterStatus, filterSeller]);
+  }, [orders, startDate, endDate, searchQuery, filterStatus, filterSeller, filterRegion]);
 
   useEffect(() => {
     if (createFormData.region) {
@@ -216,6 +217,10 @@ const AllOrders = () => {
         const seller = sellers.find(s => s.id === filterSeller);
         return seller && order.seller_name === seller.full_name;
       });
+    }
+
+    if (filterRegion !== "all") {
+      filtered = filtered.filter(order => order.region === filterRegion);
     }
 
     if (searchQuery) {
@@ -790,9 +795,25 @@ const AllOrders = () => {
                     </Select>
                   </div>
                 )}
+                <div className="space-y-2">
+                  <Label htmlFor="region-filter">Viloyat</Label>
+                  <Select value={filterRegion} onValueChange={setFilterRegion}>
+                    <SelectTrigger id="region-filter">
+                      <SelectValue placeholder="Viloyatni tanlang" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Barcha viloyatlar</SelectItem>
+                      {regions.map((region) => (
+                        <SelectItem key={region} value={region}>
+                          {region}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
-            {(startDate || endDate || filterStatus !== "all" || filterSeller !== "all") && (
+            {(startDate || endDate || filterStatus !== "all" || filterSeller !== "all" || filterRegion !== "all") && (
               <Button 
                 variant="outline" 
                 onClick={() => { 
@@ -800,6 +821,7 @@ const AllOrders = () => {
                   setEndDate(undefined); 
                   setFilterStatus("all");
                   setFilterSeller("all");
+                  setFilterRegion("all");
                 }}
               >
                 Filtrni tozalash
