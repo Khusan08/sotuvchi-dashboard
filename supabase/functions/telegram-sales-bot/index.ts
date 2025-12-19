@@ -51,10 +51,10 @@ serve(async (req) => {
         const dateStr = data.replace('custom_', '');
         reportMessage = await generateReport(supabase, 'custom', dateStr);
       } else if (data === 'pick_date') {
-        // Show date picker buttons (last 7 days)
+        // Show date picker buttons (last 31 days)
         const dateButtons = [];
         const now = new Date();
-        for (let i = 0; i < 7; i++) {
+        for (let i = 0; i < 31; i++) {
           const date = new Date(now);
           date.setDate(date.getDate() - i);
           const dateStr = date.toISOString().split('T')[0];
