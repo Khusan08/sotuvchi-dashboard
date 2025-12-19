@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.send-daily-sales-report]
 verify_jwt = false
+
+[functions.telegram-sales-bot]
+verify_jwt = false
