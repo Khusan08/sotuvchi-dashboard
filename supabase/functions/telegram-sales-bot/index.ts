@@ -322,7 +322,8 @@ async function generateReport(supabase: any, reportType: string, customDate?: st
     .lte('updated_at', endDate.toISOString());
 
   // Calculate totals
-  let totalSales = 0;
+  let totalOrderAmount = 0; // Barcha zakazlar summasi
+  let totalCompletedSales = 0; // Faqat bajarilgan zakazlar
   let totalOrderCount = 0;
   let completedOrderCount = 0;
   let pendingOrderCount = 0;
@@ -332,7 +333,8 @@ async function generateReport(supabase: any, reportType: string, customDate?: st
     name: string; 
     orderCount: number; 
     completedOrders: number;
-    orderTotal: number; 
+    orderTotal: number; // Barcha zakazlar summasi
+    completedTotal: number; // Bajarilgan zakazlar
     soldLeads: number; 
     leadTotal: number 
   }> = {};
@@ -344,6 +346,7 @@ async function generateReport(supabase: any, reportType: string, customDate?: st
       orderCount: 0,
       completedOrders: 0,
       orderTotal: 0,
+      completedTotal: 0,
       soldLeads: 0,
       leadTotal: 0
     };
@@ -352,14 +355,23 @@ async function generateReport(supabase: any, reportType: string, customDate?: st
   // Calculate order stats per seller
   allOrders?.forEach((order: any) => {
     totalOrderCount++;
+    const amount = Number(order.total_amount || 0);
+    
+    // Bekor qilinmagan zakazlar summasini hisoblash
+    if (order.status !== 'cancelled') {
+      totalOrderAmount += amount;
+      if (sellerStats[order.seller_id]) {
+        sellerStats[order.seller_id].orderTotal += amount;
+      }
+    }
     
     if (order.status === 'delivered' || order.status === 'completed') {
       completedOrderCount++;
-      totalSales += Number(order.total_amount || 0);
+      totalCompletedSales += amount;
       
       if (sellerStats[order.seller_id]) {
         sellerStats[order.seller_id].completedOrders += 1;
-        sellerStats[order.seller_id].orderTotal += Number(order.total_amount || 0);
+        sellerStats[order.seller_id].completedTotal += amount;
       }
     } else if (order.status === 'pending') {
       pendingOrderCount++;
@@ -376,7 +388,8 @@ async function generateReport(supabase: any, reportType: string, customDate?: st
   soldLeads?.forEach((lead: any) => {
     const stageName = (lead.stages as any)?.name;
     if (stageName === 'Sotildi' && lead.price) {
-      totalSales += Number(lead.price || 0);
+      totalOrderAmount += Number(lead.price || 0);
+      totalCompletedSales += Number(lead.price || 0);
       if (sellerStats[lead.seller_id]) {
         sellerStats[lead.seller_id].soldLeads += 1;
         sellerStats[lead.seller_id].leadTotal += Number(lead.price || 0);
@@ -391,7 +404,8 @@ async function generateReport(supabase: any, reportType: string, customDate?: st
   message += `📅 ${periodName}\n`;
   message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
   
-  message += `💰 <b>Jami savdo:</b> ${formatNumber(totalSales)} so'm\n`;
+  message += `💰 <b>Jami savdo:</b> ${formatNumber(totalOrderAmount)} so'm\n`;
+  message += `✅ <b>Bajarilgan savdo:</b> ${formatNumber(totalCompletedSales)} so'm\n`;
   message += `📦 <b>Jami buyurtmalar:</b> ${totalOrderCount} ta\n`;
   message += `   ✅ Bajarilgan: ${completedOrderCount} ta\n`;
   message += `   ⏳ Jarayonda: ${pendingOrderCount} ta\n`;
@@ -408,13 +422,13 @@ async function generateReport(supabase: any, reportType: string, customDate?: st
     message += `<i>Bu davr uchun faoliyat yo'q</i>\n`;
   } else {
     sortedSellers.forEach((seller, index) => {
-      const total = seller.orderTotal + seller.leadTotal;
+      const totalSales = seller.orderTotal + seller.leadTotal;
       message += `${index + 1}. <b>${seller.name}</b>\n`;
       message += `   📦 Buyurtmalar: ${seller.orderCount} ta (${seller.completedOrders} bajarilgan)\n`;
       if (seller.soldLeads > 0) {
         message += `   🎯 Sotilgan lidlar: ${seller.soldLeads} ta\n`;
       }
-      message += `   💵 Jami savdo: ${formatNumber(total)} so'm\n\n`;
+      message += `   💵 Jami savdo: ${formatNumber(totalSales)} so'm\n\n`;
     });
   }
 
