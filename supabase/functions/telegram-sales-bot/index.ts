@@ -51,15 +51,19 @@ serve(async (req) => {
         const dateStr = data.replace('custom_', '');
         reportMessage = await generateReport(supabase, 'custom', dateStr);
       } else if (data === 'pick_date') {
-        // Show date picker buttons (last 31 days)
+        // Show date picker buttons (last 31 days) in Uzbek format
         const dateButtons = [];
         const now = new Date();
+        const uzMonths = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentyabr', 'oktyabr', 'noyabr', 'dekabr'];
+        
         for (let i = 0; i < 31; i++) {
           const date = new Date(now);
           date.setDate(date.getDate() - i);
           const dateStr = date.toISOString().split('T')[0];
-          const dayName = date.toLocaleDateString('uz-UZ', { weekday: 'short', day: 'numeric', month: 'short' });
-          dateButtons.push([{ text: dayName, callback_data: `custom_${dateStr}` }]);
+          const day = date.getDate();
+          const month = uzMonths[date.getMonth()];
+          const displayDate = `${day}-${month}`;
+          dateButtons.push([{ text: displayDate, callback_data: `custom_${dateStr}` }]);
         }
         dateButtons.push([{ text: '⬅️ Orqaga', callback_data: 'main_menu' }]);
 
