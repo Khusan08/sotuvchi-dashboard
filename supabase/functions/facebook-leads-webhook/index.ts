@@ -109,44 +109,6 @@ Deno.serve(async (req) => {
               }
 
               console.log('Lead successfully created:', insertedLead);
-
-              // Send Telegram notification to all admins
-              const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
-              if (BOT_TOKEN) {
-                // Get all admin profiles with telegram_user_id
-                const { data: adminProfiles } = await supabase
-                  .from('profiles')
-                  .select('id, telegram_user_id, full_name')
-                  .in('id', adminUsers.map((u: any) => u.user_id))
-                  .not('telegram_user_id', 'is', null);
-
-                if (adminProfiles && adminProfiles.length > 0) {
-                  const message = `🆕 <b>Yangi lid keldi!</b>\n\n` +
-                    `👤 <b>Ism:</b> ${newLead.customer_name}\n` +
-                    `📞 <b>Telefon:</b> ${newLead.customer_phone || "Yo'q"}\n` +
-                    `📧 <b>Email:</b> ${newLead.customer_email || "Yo'q"}\n` +
-                    `📍 <b>Manba:</b> ${newLead.source}\n` +
-                    `━━━━━━━━━━━━━━━━━━━━\n` +
-                    `🕐 ${new Date().toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' })}`;
-
-                  for (const admin of adminProfiles) {
-                    try {
-                      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          chat_id: admin.telegram_user_id,
-                          text: message,
-                          parse_mode: 'HTML',
-                        }),
-                      });
-                      console.log(`Notification sent to ${admin.full_name}`);
-                    } catch (telegramError) {
-                      console.error(`Failed to send notification to ${admin.full_name}:`, telegramError);
-                    }
-                  }
-                }
-              }
             }
           }
         }

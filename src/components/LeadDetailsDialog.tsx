@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { format } from "date-fns";
-import { CalendarIcon, User, Phone, DollarSign, Facebook, CheckCircle2, Clock, Plus, MessageSquare, Trash2, Truck, PhoneCall, PhoneMissed, PhoneOff } from "lucide-react";
+import { CalendarIcon, User, Phone, DollarSign, Facebook, CheckCircle2, Clock, Plus, MessageSquare, Trash2, Truck } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -28,15 +28,6 @@ const DELIVERY_STATUS_OPTIONS = [
   { value: "Tasdiqlandi", label: "Tasdiqlandi", color: "bg-green-500" },
   { value: "Bekor bo'ldi", label: "Bekor bo'ldi", color: "bg-red-500" }
 ];
-
-const CALL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-  answered: { label: "Javob berildi", color: "bg-green-500", icon: PhoneCall },
-  missed: { label: "O'tkazib yuborildi", color: "bg-red-500", icon: PhoneMissed },
-  no_answer: { label: "Javob yo'q", color: "bg-orange-500", icon: PhoneOff },
-  busy: { label: "Band", color: "bg-yellow-500", icon: PhoneOff },
-  ringing: { label: "Jiringlayapti", color: "bg-blue-500", icon: Phone },
-  in_progress: { label: "Gaplashmoqda", color: "bg-indigo-500", icon: PhoneCall },
-};
 
 const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages }: LeadDetailsDialogProps) => {
   const { isAdminOrRop, isAdmin } = useUserRoles();
@@ -414,45 +405,6 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
               </div>
             </div>
           </div>
-
-          {/* Call Status Section */}
-          {lead?.call_status && CALL_STATUS_CONFIG[lead.call_status] && (
-            <div className="p-4 bg-muted rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {(() => {
-                    const IconComponent = CALL_STATUS_CONFIG[lead.call_status].icon;
-                    return (
-                      <div className={`p-2 rounded-full ${CALL_STATUS_CONFIG[lead.call_status].color}`}>
-                        <IconComponent className="h-5 w-5 text-white" />
-                      </div>
-                    );
-                  })()}
-                  <div>
-                    <h3 className="font-semibold">Qo'ng'iroq holati</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {CALL_STATUS_CONFIG[lead.call_status].label}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  {lead.call_duration > 0 && (
-                    <div className="text-sm">
-                      <p className="text-muted-foreground">Davomiyligi</p>
-                      <p className="font-medium">
-                        {Math.floor(lead.call_duration / 60)}:{(lead.call_duration % 60).toString().padStart(2, '0')} min
-                      </p>
-                    </div>
-                  )}
-                  {lead.call_id && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      ID: {lead.call_id}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Facebook Ads Data */}
           {lead?.source?.toLowerCase().includes('facebook') && (

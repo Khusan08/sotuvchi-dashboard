@@ -59,9 +59,3 @@ verify_jwt = false
 
 [functions.telegram-sales-bot]
 verify_jwt = false
-
-[functions.myzvonki-webhook]
-verify_jwt = false
-
-[functions.register-myzvonki-webhook]
-verify_jwt = false

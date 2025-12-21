@@ -50,9 +50,6 @@ export type Database = {
         Row: {
           action_status: string | null
           activity: string | null
-          call_duration: number | null
-          call_id: string | null
-          call_status: string | null
           created_at: string
           customer_email: string | null
           customer_name: string
@@ -73,9 +70,6 @@ export type Database = {
         Insert: {
           action_status?: string | null
           activity?: string | null
-          call_duration?: number | null
-          call_id?: string | null
-          call_status?: string | null
           created_at?: string
           customer_email?: string | null
           customer_name: string
@@ -96,9 +90,6 @@ export type Database = {
         Update: {
           action_status?: string | null
           activity?: string | null
-          call_duration?: number | null
-          call_id?: string | null
-          call_status?: string | null
           created_at?: string
           customer_email?: string | null
           customer_name?: string
