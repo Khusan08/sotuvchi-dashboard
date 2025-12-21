@@ -51,21 +51,22 @@ serve(async (req) => {
         const dateStr = data.replace('custom_', '');
         reportMessage = await generateReport(supabase, 'custom', dateStr);
       } else if (data === 'pick_date') {
-        // Show date picker buttons (last 31 days) in Uzbek format
-        const dateButtons = [];
+        // Show month selection (last 12 months)
+        const uzMonths = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'];
         const now = new Date();
-        const uzMonths = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentyabr', 'oktyabr', 'noyabr', 'dekabr'];
+        const monthButtons = [];
         
-        for (let i = 0; i < 31; i++) {
-          const date = new Date(now);
-          date.setDate(date.getDate() - i);
-          const dateStr = date.toISOString().split('T')[0];
-          const day = date.getDate();
-          const month = uzMonths[date.getMonth()];
-          const displayDate = `${day}-${month}`;
-          dateButtons.push([{ text: displayDate, callback_data: `custom_${dateStr}` }]);
+        for (let i = 0; i < 12; i++) {
+          const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const monthIndex = date.getMonth();
+          const year = date.getFullYear();
+          const monthName = uzMonths[monthIndex];
+          monthButtons.push([{ 
+            text: `${monthName} ${year}`, 
+            callback_data: `month_${year}_${monthIndex}` 
+          }]);
         }
-        dateButtons.push([{ text: '⬅️ Orqaga', callback_data: 'main_menu' }]);
+        monthButtons.push([{ text: '⬅️ Orqaga', callback_data: 'main_menu' }]);
 
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`, {
           method: 'POST',
@@ -73,9 +74,58 @@ serve(async (req) => {
           body: JSON.stringify({
             chat_id: chatId,
             message_id: callbackQuery.message.message_id,
-            text: '📅 <b>Kunni tanlang:</b>',
+            text: '📅 <b>Oyni tanlang:</b>',
             parse_mode: 'HTML',
-            reply_markup: { inline_keyboard: dateButtons },
+            reply_markup: { inline_keyboard: monthButtons },
+          }),
+        });
+        
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } else if (data.startsWith('month_')) {
+        // Show days of selected month
+        const parts = data.replace('month_', '').split('_');
+        const year = parseInt(parts[0]);
+        const monthIndex = parseInt(parts[1]);
+        
+        const uzMonths = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'];
+        const monthName = uzMonths[monthIndex];
+        
+        // Get number of days in the month
+        const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+        const today = new Date();
+        
+        const dayButtons = [];
+        // Create rows of 7 days each
+        let row = [];
+        for (let day = 1; day <= daysInMonth; day++) {
+          const date = new Date(year, monthIndex, day);
+          // Skip future dates
+          if (date > today) continue;
+          
+          const dateStr = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          row.push({ text: String(day), callback_data: `custom_${dateStr}` });
+          
+          if (row.length === 7) {
+            dayButtons.push(row);
+            row = [];
+          }
+        }
+        if (row.length > 0) {
+          dayButtons.push(row);
+        }
+        dayButtons.push([{ text: '⬅️ Orqaga', callback_data: 'pick_date' }]);
+
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            message_id: callbackQuery.message.message_id,
+            text: `📅 <b>${monthName} ${year} - Kunni tanlang:</b>`,
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: dayButtons },
           }),
         });
         
