@@ -36,16 +36,41 @@ Deno.serve(async (req) => {
       } else {
         const body = await req.json();
         console.log('Received My Zvonki webhook data:', JSON.stringify(body, null, 2));
+        
+        // Parse event type from My Zvonki
+        const eventType = body.event || body.action || body.type;
+        
         callData = {
           phone: body.caller_id || body.phone || body.from || body.ani,
           caller_name: body.caller_name || body.name || '',
           call_id: body.call_id || body.id || body.uuid,
           call_type: body.call_type || body.type || body.direction,
-          duration: body.duration || body.talk_time,
-          status: body.status || body.call_status,
+          duration: body.duration || body.talk_time || body.billsec || 0,
+          status: body.status || body.call_status || body.disposition,
           campaign: body.campaign || body.utm_campaign,
           source: body.source || body.utm_source,
+          event: eventType,
         };
+        
+        // Determine call status based on event and disposition
+        if (eventType === 'call.finish' || eventType === 'call_finish') {
+          const disposition = (body.disposition || body.status || '').toLowerCase();
+          if (disposition.includes('answer') || disposition === 'answered' || body.billsec > 0) {
+            callData.call_status = 'answered';
+          } else if (disposition.includes('busy')) {
+            callData.call_status = 'busy';
+          } else if (disposition.includes('no_answer') || disposition === 'noanswer') {
+            callData.call_status = 'no_answer';
+          } else if (disposition.includes('cancel') || disposition.includes('reject')) {
+            callData.call_status = 'missed';
+          } else {
+            callData.call_status = 'missed';
+          }
+        } else if (eventType === 'call.start' || eventType === 'call_start') {
+          callData.call_status = 'ringing';
+        } else if (eventType === 'call.answer' || eventType === 'call_answer') {
+          callData.call_status = 'in_progress';
+        }
       }
 
       console.log('Parsed call data:', callData);
@@ -65,14 +90,26 @@ Deno.serve(async (req) => {
       // Check if lead with this phone already exists
       const { data: existingLead } = await supabase
         .from('leads')
-        .select('id')
+        .select('id, call_status')
         .or(`customer_phone.eq.${callData.phone},customer_phone.eq.+${cleanPhone},customer_phone.eq.${cleanPhone}`)
         .limit(1);
 
       if (existingLead && existingLead.length > 0) {
-        console.log('Lead already exists with this phone:', callData.phone);
+        // Update existing lead with call status if it's a call.finish event
+        if (callData.call_status && callData.event === 'call.finish') {
+          await supabase
+            .from('leads')
+            .update({
+              call_status: callData.call_status,
+              call_duration: parseInt(callData.duration) || 0,
+              call_id: callData.call_id,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingLead[0].id);
+          console.log('Updated existing lead call status:', callData.call_status);
+        }
         return new Response(
-          JSON.stringify({ success: true, message: 'Lead already exists' }),
+          JSON.stringify({ success: true, message: 'Lead updated with call status' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
         );
       }
@@ -89,16 +126,19 @@ Deno.serve(async (req) => {
         throw new Error('No admin or ROP users found to assign the lead');
       }
 
-      // Create new lead
+      // Create new lead with call status
       const newLead = {
         customer_name: callData.caller_name || `Qo'ng'iroq: ${callData.phone}`,
         customer_phone: callData.phone,
         lead_type: 'Yangi lid',
         activity: 'new',
         source: callData.source || 'My Zvonki',
-        notes: `Qo'ng'iroq ID: ${callData.call_id || 'N/A'}\nTuri: ${callData.call_type || 'N/A'}\nDavomiyligi: ${callData.duration || 'N/A'} sek\nKampaniya: ${callData.campaign || 'N/A'}`,
+        notes: callData.campaign ? `Kampaniya: ${callData.campaign}` : null,
         status: 'new',
         seller_id: adminUsers[0].user_id,
+        call_status: callData.call_status || 'ringing',
+        call_duration: parseInt(callData.duration) || 0,
+        call_id: callData.call_id,
       };
 
       console.log('Inserting lead:', newLead);

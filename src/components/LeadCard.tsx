@@ -1,10 +1,19 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Phone, User, DollarSign, Facebook } from "lucide-react";
+import { Phone, User, DollarSign, Facebook, PhoneCall, PhoneMissed, PhoneOff, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+const CALL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
+  answered: { label: "Javob berildi", color: "bg-green-500", icon: PhoneCall },
+  missed: { label: "O'tkazib yuborildi", color: "bg-red-500", icon: PhoneMissed },
+  no_answer: { label: "Javob yo'q", color: "bg-orange-500", icon: PhoneOff },
+  busy: { label: "Band", color: "bg-yellow-500", icon: PhoneOff },
+  ringing: { label: "Jiringlayapti", color: "bg-blue-500", icon: Phone },
+  in_progress: { label: "Gaplashmoqda", color: "bg-indigo-500", icon: PhoneCall },
+};
 
 interface LeadCardProps {
   lead: any;
@@ -101,6 +110,23 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onL
           <div className="flex items-center gap-2 text-sm">
             <Phone className="h-3.5 w-3.5 text-muted-foreground" />
             <span>{lead.customer_phone}</span>
+          </div>
+        )}
+
+        {/* Call Status Badge */}
+        {lead.call_status && CALL_STATUS_CONFIG[lead.call_status] && (
+          <div className="flex items-center gap-2">
+            <Badge 
+              variant="secondary" 
+              className={`text-xs text-white ${CALL_STATUS_CONFIG[lead.call_status].color}`}
+            >
+              {(() => {
+                const IconComponent = CALL_STATUS_CONFIG[lead.call_status].icon;
+                return <IconComponent className="h-3 w-3 mr-1" />;
+              })()}
+              {CALL_STATUS_CONFIG[lead.call_status].label}
+              {lead.call_duration > 0 && ` (${Math.floor(lead.call_duration / 60)}:${(lead.call_duration % 60).toString().padStart(2, '0')})`}
+            </Badge>
           </div>
         )}
 
