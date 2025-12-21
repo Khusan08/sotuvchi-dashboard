@@ -4,11 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, Phone, Facebook, MessageSquare, ExternalLink } from "lucide-react";
+import { Copy, Check, Phone, Facebook, MessageSquare, Loader2, Link } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const Integrations = () => {
   const [copiedWebhook, setCopiedWebhook] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState<string | null>(null);
 
   const webhooks = [
     {
@@ -17,8 +19,10 @@ const Integrations = () => {
       description: "Qo'ng'iroqlarni avtomatik lid sifatida qabul qilish",
       icon: Phone,
       url: "https://ffqcwcbrfzvytsokkrln.supabase.co/functions/v1/myzvonki-webhook",
+      hasAutoConnect: true,
       instructions: [
-        "My Zvonki dashboardga kiring",
+        "Quyidagi 'Ulash' tugmasini bosing",
+        "Yoki qo'lda: My Zvonki dashboardga kiring",
         "Sozlamalar → Webhooks bo'limiga o'ting",
         "Yangi webhook qo'shing va URL ni kiriting",
         "Hodisalarni tanlang: 'Kiruvchi qo'ng'iroq', 'Qo'ng'iroq tugadi'",
@@ -71,6 +75,30 @@ const Integrations = () => {
     }
   };
 
+  const connectMyZvonki = async () => {
+    setIsConnecting("myzvonki");
+    try {
+      const { data, error } = await supabase.functions.invoke('register-myzvonki-webhook');
+      
+      if (error) {
+        console.error('Error connecting My Zvonki:', error);
+        toast.error("My Zvonki bilan ulanishda xatolik: " + error.message);
+        return;
+      }
+
+      if (data?.success) {
+        toast.success("My Zvonki muvaffaqiyatli ulandi!");
+      } else {
+        toast.error("Xatolik: " + (data?.error || "Noma'lum xatolik"));
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error("Xatolik yuz berdi");
+    } finally {
+      setIsConnecting(null);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -101,6 +129,31 @@ const Integrations = () => {
                 </div>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
+                {'hasAutoConnect' in webhook && webhook.hasAutoConnect && (
+                  <div className="space-y-2">
+                    <Button
+                      onClick={connectMyZvonki}
+                      disabled={isConnecting === webhook.id}
+                      className="w-full"
+                    >
+                      {isConnecting === webhook.id ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Ulanmoqda...
+                        </>
+                      ) : (
+                        <>
+                          <Link className="mr-2 h-4 w-4" />
+                          Avtomatik ulash
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Bir tugma bilan My Zvonki webhook'ini ro'yxatdan o'tkazing
+                    </p>
+                  </div>
+                )}
+
                 {webhook.url && !webhook.url.startsWith("Bot") && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Webhook URL:</label>
