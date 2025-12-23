@@ -9,19 +9,22 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Users, ShoppingCart } from "lucide-react";
+import { Plus, Users, ShoppingCart, Copy, MessageSquare, Pencil, Bell } from "lucide-react";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useNavigate } from "react-router-dom";
-import { Copy } from "lucide-react";
 
 const Admin = () => {
   const { isAdminOrRop, loading: roleLoading } = useUserRoles();
   const navigate = useNavigate();
   const [sellers, setSellers] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [credentialsDialogOpen, setCredentialsDialogOpen] = useState(false);
+  const [telegramDialogOpen, setTelegramDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [telegramId, setTelegramId] = useState("");
   const [createdCredentials, setCreatedCredentials] = useState({ email: "", password: "" });
   const [formData, setFormData] = useState({
     email: "",
@@ -41,8 +44,26 @@ const Admin = () => {
   useEffect(() => {
     if (isAdminOrRop) {
       fetchSellers();
+      fetchAllUsers();
     }
   }, [isAdminOrRop]);
+
+  const fetchAllUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(`
+          *,
+          user_roles(role)
+        `)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setAllUsers(data || []);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
+  };
 
   const fetchSellers = async () => {
     try {
@@ -142,6 +163,34 @@ const Admin = () => {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Nusxalandi!");
+  };
+
+  const handleSaveTelegramId = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ telegram_user_id: telegramId || null })
+        .eq("id", selectedUser.id);
+
+      if (error) throw error;
+      
+      toast.success("Telegram ID saqlandi!");
+      setTelegramDialogOpen(false);
+      setSelectedUser(null);
+      setTelegramId("");
+      fetchAllUsers();
+      fetchSellers();
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const openTelegramDialog = (user: any) => {
+    setSelectedUser(user);
+    setTelegramId(user.telegram_user_id || "");
+    setTelegramDialogOpen(true);
   };
 
   if (roleLoading || loading) {
@@ -292,6 +341,34 @@ const Admin = () => {
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* Telegram ID Dialog */}
+          <Dialog open={telegramDialogOpen} onOpenChange={setTelegramDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Telegram ID sozlash</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="telegramId">Telegram ID</Label>
+                  <Input
+                    id="telegramId"
+                    value={telegramId}
+                    onChange={(e) => setTelegramId(e.target.value)}
+                    placeholder="Masalan: 123456789"
+                  />
+                </div>
+                <div className="bg-muted p-3 rounded-md">
+                  <p className="text-sm text-muted-foreground">
+                    💡 Telegram ID ni olish uchun <a href="https://t.me/daraja_zakazs_bot" target="_blank" rel="noopener noreferrer" className="text-primary underline">@daraja_zakazs_bot</a> ga <code>/start</code> yuboring.
+                  </p>
+                </div>
+                <Button onClick={handleSaveTelegramId} className="w-full">
+                  Saqlash
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
@@ -333,6 +410,76 @@ const Admin = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Telegram Notifications Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Telegram bildirishnomalari
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Kunlik hisobotlarni olish uchun foydalanuvchilarga Telegram ID qo'shing. 
+                Hisobotlar har kuni soat 21:00 da yuboriladi.
+              </p>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ism</TableHead>
+                      <TableHead>Rol</TableHead>
+                      <TableHead>Telegram ID</TableHead>
+                      <TableHead>Holat</TableHead>
+                      <TableHead>Amallar</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allUsers.filter(u => u.user_roles?.some((r: any) => r.role === 'admin' || r.role === 'rop')).map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">{user.full_name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {user.user_roles?.map((r: any) => r.role).join(', ')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {user.telegram_user_id ? (
+                            <code className="bg-muted px-2 py-1 rounded text-sm">{user.telegram_user_id}</code>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {user.telegram_user_id ? (
+                            <Badge variant="default" className="bg-green-500">
+                              <MessageSquare className="h-3 w-3 mr-1" />
+                              Ulangan
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">Ulanmagan</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openTelegramDialog(user)}
+                          >
+                            <Pencil className="h-4 w-4 mr-1" />
+                            {user.telegram_user_id ? "O'zgartirish" : "Qo'shish"}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

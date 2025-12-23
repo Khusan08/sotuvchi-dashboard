@@ -164,8 +164,37 @@ serve(async (req) => {
       });
     }
 
-    // Handle /start or /hisobot command
-    if (body.message?.text === '/start' || body.message?.text === '/hisobot') {
+    // Handle /start command - show user ID for registration
+    if (body.message?.text === '/start') {
+      const chatId = body.message.chat.id;
+      const userId = body.message.from?.id;
+      const firstName = body.message.from?.first_name || '';
+      const lastName = body.message.from?.last_name || '';
+      const username = body.message.from?.username || '';
+      
+      let welcomeMessage = `👋 <b>Assalomu alaykum${firstName ? ', ' + firstName : ''}!</b>\n\n`;
+      welcomeMessage += `🆔 <b>Sizning Telegram ID:</b>\n<code>${userId}</code>\n\n`;
+      welcomeMessage += `📋 Bu ID ni Admin panelda "Telegram ID" maydoniga kiriting, shunda sizga kunlik hisobotlar keladi.\n\n`;
+      welcomeMessage += `━━━━━━━━━━━━━━━━━━━━\n`;
+      welcomeMessage += `Hisobot olish uchun /hisobot buyrug'ini yuboring.`;
+      
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: welcomeMessage,
+          parse_mode: 'HTML',
+        }),
+      });
+      
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Handle /hisobot command
+    if (body.message?.text === '/hisobot') {
       const chatId = body.message.chat.id;
       await sendMainMenu(BOT_TOKEN, chatId);
       
