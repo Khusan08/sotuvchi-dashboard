@@ -41,6 +41,7 @@ const Leads = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [filterLeadType, setFilterLeadType] = useState<string>("all");
   const [filterTimeRange, setFilterTimeRange] = useState<string>("all");
+  const [filterSeller, setFilterSeller] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [startDateFilter, setStartDateFilter] = useState<Date | undefined>(undefined);
   const [endDateFilter, setEndDateFilter] = useState<Date | undefined>(undefined);
@@ -216,6 +217,11 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
       const end = new Date(endDateFilter);
       end.setHours(23, 59, 59, 999);
       filtered = filtered.filter(lead => new Date(lead.created_at) <= end);
+    }
+
+    // Seller filter
+    if (filterSeller !== "all") {
+      filtered = filtered.filter(lead => lead.seller_id === filterSeller);
     }
 
     return filtered;
@@ -667,6 +673,23 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
               ))}
             </SelectContent>
           </Select>
+
+          {/* Seller Filter */}
+          {isAdminOrRop && (
+            <Select value={filterSeller} onValueChange={setFilterSeller}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Xodim bo'yicha" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Barcha xodimlar</SelectItem>
+                {sellers.map((seller) => (
+                  <SelectItem key={seller.id} value={seller.id}>
+                    {seller.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
