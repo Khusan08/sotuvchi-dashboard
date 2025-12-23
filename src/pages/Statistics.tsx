@@ -193,16 +193,19 @@ const Statistics = () => {
       const totalLeadsCount = leadsCount || 0;
       const totalSalesAmount = orders?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
       const avgCheck = totalOrdersCount > 0 ? totalSalesAmount / totalOrdersCount : 0;
-      const conversion = totalLeadsCount > 0 ? (totalOrdersCount / totalLeadsCount) * 100 : 0;
+      
+      // Sifatsiz stage ID - exclude from conversion calculation
+      const SIFATSIZ_STAGE_ID = "adc7a8bf-d7c2-4dc5-b89b-6d1da828ce84";
 
       setTotalOrders(totalOrdersCount);
       setTotalLeads(totalLeadsCount);
       setTotalSales(totalSalesAmount);
       setAverageCheck(avgCheck);
-      setConversionRate(conversion);
 
       // Get leads data with stages and source for conversion and stage distribution calculation
+      // leadsMap counts leads EXCLUDING Sifatsiz for conversion calculation
       let leadsMap = new Map<string, number>();
+      // leadsStageMap includes ALL leads for stage distribution display
       let leadsStageMap = new Map<string, Map<string, any[]>>();
       
       // Fetch leads for all sellers to show rankings for everyone
@@ -228,11 +231,18 @@ const Statistics = () => {
       const sourceSalesMap = new Map<string, number>();
       const totalLeadsForSource = leadsData?.length || 0;
       
+      // Count leads excluding Sifatsiz for conversion calculation
+      let totalLeadsExcludingSifatsiz = 0;
+      
       leadsData?.forEach((lead) => {
-        const count = leadsMap.get(lead.seller_id) || 0;
-        leadsMap.set(lead.seller_id, count + 1);
+        // Only count leads that are NOT in Sifatsiz stage for conversion calculation
+        if (lead.stage !== SIFATSIZ_STAGE_ID) {
+          const count = leadsMap.get(lead.seller_id) || 0;
+          leadsMap.set(lead.seller_id, count + 1);
+          totalLeadsExcludingSifatsiz++;
+        }
         
-        // Track leads by source
+        // Track leads by source (all leads, including Sifatsiz for source stats)
         const source = lead.source || 'Noma\'lum';
         sourceLeadsMap.set(source, (sourceLeadsMap.get(source) || 0) + 1);
         
@@ -285,6 +295,10 @@ const Statistics = () => {
       });
       
       setSourceStats(sourceStatsArray);
+      
+      // Calculate conversion rate excluding Sifatsiz leads
+      const conversion = totalLeadsExcludingSifatsiz > 0 ? (totalOrdersCount / totalLeadsExcludingSifatsiz) * 100 : 0;
+      setConversionRate(conversion);
 
       // Group by seller
       const sellerMap = new Map<string, any>();
