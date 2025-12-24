@@ -9,13 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Users, ShoppingCart, Copy, MessageSquare, Pencil, Bell } from "lucide-react";
+import { Plus, Users, ShoppingCart, Copy, MessageSquare, Pencil, Bell, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useNavigate } from "react-router-dom";
 
 const Admin = () => {
-  const { isAdminOrRop, loading: roleLoading } = useUserRoles();
+  const { isAdminOrRop, isAdmin, loading: roleLoading } = useUserRoles();
   const navigate = useNavigate();
   const [sellers, setSellers] = useState<any[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -214,6 +214,23 @@ const Admin = () => {
       setTelegramDialogOpen(false);
       setSelectedUser(null);
       setTelegramId("");
+      fetchAllUsers();
+      fetchSellers();
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleRemoveTelegramId = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ telegram_user_id: null })
+        .eq("id", userId);
+
+      if (error) throw error;
+      
+      toast.success("Telegram ID o'chirildi!");
       fetchAllUsers();
       fetchSellers();
     } catch (error: any) {
@@ -451,7 +468,8 @@ const Admin = () => {
           </Card>
         </div>
 
-        {/* Telegram Notifications Section */}
+        {/* Telegram Notifications Section - faqat admin uchun */}
+        {isAdmin && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -534,10 +552,20 @@ const Admin = () => {
                             <code className="bg-muted px-2 py-1 rounded text-sm">{user.telegram_user_id}</code>
                           </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="sm" onClick={() => openTelegramDialog(user)}>
-                              <Pencil className="h-4 w-4 mr-1" />
-                              O'zgartirish
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => openTelegramDialog(user)}>
+                                <Pencil className="h-4 w-4 mr-1" />
+                                O'zgartirish
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => handleRemoveTelegramId(user.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
@@ -548,6 +576,7 @@ const Admin = () => {
             </div>
           </CardContent>
         </Card>
+        )}
 
         <Card>
           <CardHeader>
