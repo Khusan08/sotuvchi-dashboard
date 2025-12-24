@@ -19,6 +19,7 @@ const Admin = () => {
   const navigate = useNavigate();
   const [sellers, setSellers] = useState<any[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [credentialsDialogOpen, setCredentialsDialogOpen] = useState(false);
@@ -45,21 +46,54 @@ const Admin = () => {
     if (isAdminOrRop) {
       fetchSellers();
       fetchAllUsers();
+      fetchCurrentUserProfile();
     }
   }, [isAdminOrRop]);
 
-  const fetchAllUsers = async () => {
+  const fetchCurrentUserProfile = async () => {
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { data, error } = await supabase
         .from("profiles")
-        .select(`
-          *,
-          user_roles(role)
-        `)
-        .order("created_at", { ascending: false });
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
 
       if (error) throw error;
-      setAllUsers(data || []);
+      setCurrentUserProfile(data);
+    } catch (error) {
+      console.error("Error fetching current user profile:", error);
+    }
+  };
+
+  const fetchAllUsers = async () => {
+    try {
+      const [profilesRes, rolesRes] = await Promise.all([
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabase.from("user_roles").select("user_id, role"),
+      ]);
+
+      if (profilesRes.error) throw profilesRes.error;
+      if (rolesRes.error) throw rolesRes.error;
+
+      const rolesByUser = new Map<string, Array<{ role: string }>>();
+      (rolesRes.data || []).forEach((r) => {
+        const list = rolesByUser.get(r.user_id) ?? [];
+        list.push({ role: r.role });
+        rolesByUser.set(r.user_id, list);
+      });
+
+      const merged = (profilesRes.data || []).map((p) => ({
+        ...p,
+        // FK yo'q bo'lgani uchun rollarni qo'lda biriktiramiz
+        user_roles: rolesByUser.get(p.id) ?? [],
+      }));
+
+      setAllUsers(merged);
     } catch (error) {
       console.error("Error fetching users:", error);
     }
@@ -204,6 +238,17 @@ const Admin = () => {
   if (!isAdminOrRop) {
     return null;
   }
+
+  const telegramUsers = allUsers.filter((u) =>
+    u.user_roles?.some((r: any) => r.role === "admin" || r.role === "rop")
+  );
+
+  const selfForTelegram = currentUserProfile
+    ? { ...currentUserProfile, user_roles: currentUserProfile.user_roles ?? [] }
+    : null;
+
+  const telegramUsersToShow =
+    telegramUsers.length > 0 ? telegramUsers : selfForTelegram ? [selfForTelegram] : [];
 
   return (
     <DashboardLayout>
@@ -422,9 +467,22 @@ const Admin = () => {
           <CardContent>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Kunlik hisobotlarni olish uchun foydalanuvchilarga Telegram ID qo'shing. 
+                Kunlik hisobotlarni olish uchun foydalanuvchilarga Telegram ID qo'shing.
                 Hisobotlar har kuni soat 21:00 da yuboriladi.
               </p>
+
+              {selfForTelegram && (
+                <div className="flex flex-col gap-2 rounded-md border border-border/50 bg-muted/40 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    Agar pastdagi ro'yxat bo'sh bo'lsa, avval o'zingiz uchun Telegram ID ni shu yerdan qo'shing.
+                  </div>
+                  <Button variant="outline" onClick={() => openTelegramDialog(selfForTelegram)}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Telegram ID qo'shish
+                  </Button>
+                </div>
+              )}
+
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -437,43 +495,49 @@ const Admin = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {allUsers.filter(u => u.user_roles?.some((r: any) => r.role === 'admin' || r.role === 'rop')).map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.full_name}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {user.user_roles?.map((r: any) => r.role).join(', ')}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {user.telegram_user_id ? (
-                            <code className="bg-muted px-2 py-1 rounded text-sm">{user.telegram_user_id}</code>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {user.telegram_user_id ? (
-                            <Badge variant="default" className="bg-green-500">
-                              <MessageSquare className="h-3 w-3 mr-1" />
-                              Ulangan
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary">Ulanmagan</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openTelegramDialog(user)}
-                          >
-                            <Pencil className="h-4 w-4 mr-1" />
-                            {user.telegram_user_id ? "O'zgartirish" : "Qo'shish"}
-                          </Button>
+                    {telegramUsersToShow.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          Foydalanuvchilar topilmadi
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      telegramUsersToShow.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">{user.full_name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {user.user_roles?.length
+                                ? user.user_roles?.map((r: any) => r.role).join(", ")
+                                : "-"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {user.telegram_user_id ? (
+                              <code className="bg-muted px-2 py-1 rounded text-sm">{user.telegram_user_id}</code>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {user.telegram_user_id ? (
+                              <Badge variant="default" className="bg-success text-success-foreground">
+                                <MessageSquare className="h-3 w-3 mr-1" />
+                                Ulangan
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary">Ulanmagan</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="sm" onClick={() => openTelegramDialog(user)}>
+                              <Pencil className="h-4 w-4 mr-1" />
+                              {user.telegram_user_id ? "O'zgartirish" : "Qo'shish"}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </div>
