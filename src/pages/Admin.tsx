@@ -239,16 +239,11 @@ const Admin = () => {
     return null;
   }
 
-  const telegramUsers = allUsers.filter((u) =>
-    u.user_roles?.some((r: any) => r.role === "admin" || r.role === "rop")
-  );
+  // Telegram ID ulangan foydalanuvchilar
+  const telegramLinkedUsers = allUsers.filter((u) => u.telegram_user_id);
 
-  const selfForTelegram = currentUserProfile
-    ? { ...currentUserProfile, user_roles: currentUserProfile.user_roles ?? [] }
-    : null;
-
-  const telegramUsersToShow =
-    telegramUsers.length > 0 ? telegramUsers : selfForTelegram ? [selfForTelegram] : [];
+  // Barcha foydalanuvchilar (Telegram ID qo'shish uchun)
+  const availableUsersForTelegram = allUsers;
 
   return (
     <DashboardLayout>
@@ -471,18 +466,42 @@ const Admin = () => {
                 Hisobotlar har kuni soat 21:00 da yuboriladi.
               </p>
 
-              {selfForTelegram && (
-                <div className="flex flex-col gap-2 rounded-md border border-border/50 bg-muted/40 p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    Agar pastdagi ro'yxat bo'sh bo'lsa, avval o'zingiz uchun Telegram ID ni shu yerdan qo'shing.
-                  </div>
-                  <Button variant="outline" onClick={() => openTelegramDialog(selfForTelegram)}>
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Telegram ID qo'shish
-                  </Button>
+              {/* Yangi foydalanuvchi qo'shish */}
+              <div className="flex flex-col gap-2 rounded-md border border-border/50 bg-muted/40 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex-1">
+                  <Label htmlFor="addTelegramUser" className="text-sm font-medium">Foydalanuvchi qo'shish</Label>
+                  <Select onValueChange={(userId) => {
+                    const user = availableUsersForTelegram.find(u => u.id === userId);
+                    if (user) openTelegramDialog(user);
+                  }}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Foydalanuvchi tanlang..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableUsersForTelegram.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          <div className="flex items-center gap-2">
+                            <span>{user.full_name}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {user.user_roles?.length
+                                ? user.user_roles?.map((r: any) => r.role).join(", ")
+                                : "sotuvchi"}
+                            </Badge>
+                            {user.telegram_user_id && (
+                              <Badge variant="secondary" className="text-xs">
+                                <MessageSquare className="h-3 w-3 mr-1" />
+                                Ulangan
+                              </Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
+              </div>
 
+              {/* Ulangan foydalanuvchilar ro'yxati */}
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -490,49 +509,34 @@ const Admin = () => {
                       <TableHead>Ism</TableHead>
                       <TableHead>Rol</TableHead>
                       <TableHead>Telegram ID</TableHead>
-                      <TableHead>Holat</TableHead>
                       <TableHead>Amallar</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {telegramUsersToShow.length === 0 ? (
+                    {telegramLinkedUsers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                          Foydalanuvchilar topilmadi
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                          Hech kim ulanmagan. Yuqoridagi ro'yxatdan foydalanuvchi tanlang.
                         </TableCell>
                       </TableRow>
                     ) : (
-                      telegramUsersToShow.map((user) => (
+                      telegramLinkedUsers.map((user) => (
                         <TableRow key={user.id}>
                           <TableCell className="font-medium">{user.full_name}</TableCell>
                           <TableCell>
                             <Badge variant="outline">
                               {user.user_roles?.length
                                 ? user.user_roles?.map((r: any) => r.role).join(", ")
-                                : "-"}
+                                : "sotuvchi"}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {user.telegram_user_id ? (
-                              <code className="bg-muted px-2 py-1 rounded text-sm">{user.telegram_user_id}</code>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {user.telegram_user_id ? (
-                              <Badge variant="default" className="bg-success text-success-foreground">
-                                <MessageSquare className="h-3 w-3 mr-1" />
-                                Ulangan
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary">Ulanmagan</Badge>
-                            )}
+                            <code className="bg-muted px-2 py-1 rounded text-sm">{user.telegram_user_id}</code>
                           </TableCell>
                           <TableCell>
                             <Button variant="ghost" size="sm" onClick={() => openTelegramDialog(user)}>
                               <Pencil className="h-4 w-4 mr-1" />
-                              {user.telegram_user_id ? "O'zgartirish" : "Qo'shish"}
+                              O'zgartirish
                             </Button>
                           </TableCell>
                         </TableRow>
