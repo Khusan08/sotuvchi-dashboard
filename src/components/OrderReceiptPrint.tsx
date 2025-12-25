@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Printer, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -40,6 +42,10 @@ const COMMANDS = {
 export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isLoadingPrinters, setIsLoadingPrinters] = useState(false);
+  const [printers, setPrinters] = useState<string[]>([]);
+  const [selectedPrinter, setSelectedPrinter] = useState<string>("");
+
   const remaining = order.total_amount - (order.advance_payment || 0);
 
   const generateReceiptData = () => {
@@ -125,44 +131,106 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
     return receipt;
   };
 
+  const getQZ = async () => {
+    // Dynamic import of qz-tray (CJS interop-safe)
+    const qzImport: any = await import("qz-tray");
+    return qzImport?.default ?? qzImport;
+  };
+
+  const loadPrinters = async () => {
+    setIsLoadingPrinters(true);
+
+    try {
+      const qz: any = await getQZ();
+
+      if (!qz.websocket.isActive()) {
+        await qz.websocket.connect();
+      }
+
+      const found = await qz.printers.find();
+      const list: string[] = Array.isArray(found) ? found : found ? [found] : [];
+      const unique = Array.from(new Set(list)).filter(Boolean);
+
+      // Prefer real printers (avoid virtual PDF/XPS printers)
+      const virtualRe = /pdf|xps|fax|onenote/i;
+      const candidates = unique.filter((p) => !virtualRe.test(p));
+
+      const defaultPrinter: string | null = await qz.printers
+        .getDefault()
+        .then((p: any) => (typeof p === "string" ? p : null))
+        .catch(() => null);
+
+      setPrinters(candidates.length ? candidates : unique);
+
+      if (!selectedPrinter) {
+        const safeDefault = defaultPrinter && !virtualRe.test(defaultPrinter) ? defaultPrinter : "";
+        const guessed =
+          candidates.find((p) => /xprinter|xp[-\s_]?365/i.test(p)) ??
+          safeDefault ??
+          candidates[0] ??
+          unique[0] ??
+          "";
+
+        if (guessed) setSelectedPrinter(guessed);
+      }
+    } catch (error: any) {
+      console.error("QZ printers load error:", error);
+
+      const msg = error?.message ? String(error.message) : String(error);
+
+      if (/ERR_CERT|certificate|TLS|secure/i.test(msg)) {
+        toast.error(
+          "Chrome QZ Tray sertifikatini bloklayapti. Brauzerda 1 marta https://localhost:8181 ni ochib ruxsat bering, keyin qayta urinib ko'ring.",
+          { duration: 9000 }
+        );
+      } else if (/unable to connect|connection refused|failed to fetch/i.test(msg)) {
+        toast.error(
+          "QZ Tray'ga ulanib bo'lmadi. QZ Tray ochiq ekanini tekshiring va qayta urinib ko'ring.",
+          { duration: 7000 }
+        );
+      } else {
+        toast.error(`Printerlarni yuklashda xato: ${msg}`);
+      }
+
+      setPrinters([]);
+      setSelectedPrinter("");
+    } finally {
+      setIsLoadingPrinters(false);
+    }
+  };
+
+  useEffect(() => {
+    if (previewOpen) {
+      void loadPrinters();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewOpen]);
+
   const printWithQZTray = async () => {
     setIsPrinting(true);
-    
+
     try {
-      // Dynamic import of qz-tray (CJS interop-safe)
-      const qzImport: any = await import("qz-tray");
-      const qz: any = qzImport?.default ?? qzImport;
+      const qz: any = await getQZ();
 
       // Connect to QZ Tray
       if (!qz.websocket.isActive()) {
         await qz.websocket.connect();
       }
 
-      // Find printers
-      const found = await qz.printers.find();
-      const printers: string[] = Array.isArray(found) ? found : found ? [found] : [];
-      const defaultPrinter: string | null = await qz.printers
-        .getDefault()
-        .then((p: any) => (typeof p === "string" ? p : null))
-        .catch(() => null);
+      if (!selectedPrinter) {
+        await loadPrinters();
+      }
 
-      console.log("Available printers:", printers);
-      console.log("Default printer:", defaultPrinter);
-
-      // Prefer real printers (avoid virtual PDF/XPS printers)
+      const printerName = selectedPrinter?.trim();
       const virtualRe = /pdf|xps|fax|onenote/i;
-      const candidatePrinters = printers.filter((p) => !virtualRe.test(p));
-      const safeDefault = defaultPrinter && !virtualRe.test(defaultPrinter) ? defaultPrinter : null;
-
-      // Look for Xprinter XP-365B, else fallback to safe default
-      const printerName =
-        candidatePrinters.find((p) => /xprinter|xp[-\s_]?365/i.test(p)) ??
-        safeDefault ??
-        candidatePrinters[0] ??
-        printers[0];
 
       if (!printerName) {
-        toast.error("Printer topilmadi. QZ Tray va printer ulanganligini tekshiring.");
+        toast.error("Printerni tanlang (yoki 'Yangilash' ni bosing).");
+        return;
+      }
+
+      if (virtualRe.test(printerName)) {
+        toast.error("PDF printer tanlangan (shuning uchun Save chiqadi). Xprinter ni tanlang.");
         return;
       }
 
@@ -174,15 +242,11 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
         forceRaw: true,
       });
 
-      // Generate receipt data
       const receiptData = generateReceiptData();
-
-      // Print (string defaults to: raw + command + plain)
       await qz.print(config, [receiptData]);
-      
+
       toast.success(`Chek printerga yuborildi: ${printerName}`);
       setPreviewOpen(false);
-
     } catch (error: any) {
       console.error("Print error:", error);
 
@@ -193,9 +257,14 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
           "QZ Tray ishlamayapti (ishga tushmagan bo'lishi mumkin). QZ Tray'ni ochib qayta urinib ko'ring.",
           { duration: 6000 }
         );
-      } else if (/certificate|signature|sign/i.test(msg)) {
+      } else if (/ERR_CERT|certificate|TLS|secure/i.test(msg)) {
         toast.error(
-          "QZ Tray ruxsat bermayapti. QZ Tray'da 'Allow unsigned requests' ni yoqing (yoki sertifikat o'rnating), so'ng qayta urinib ko'ring.",
+          "Chrome QZ Tray sertifikatini bloklayapti. 1 marta https://localhost:8181 ni ochib ruxsat bering, keyin qayta urinib ko'ring.",
+          { duration: 9000 }
+        );
+      } else if (/signature|sign/i.test(msg)) {
+        toast.error(
+          "QZ Tray ruxsat bermayapti. QZ Tray'da 'Allow unsigned requests' ni yoqing, so'ng qayta urinib ko'ring.",
           { duration: 8000 }
         );
       } else {
@@ -218,7 +287,57 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
           <DialogHeader>
             <DialogTitle>Chek #{order.order_number}</DialogTitle>
           </DialogHeader>
-          
+
+          <div className="space-y-2">
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Label className="text-sm">Printer</Label>
+                <Select
+                  value={selectedPrinter}
+                  onValueChange={setSelectedPrinter}
+                  disabled={isLoadingPrinters || isPrinting || printers.length === 0}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue
+                      placeholder={
+                        isLoadingPrinters
+                          ? "Yuklanmoqda..."
+                          : printers.length
+                            ? "Printerni tanlang"
+                            : "Printer topilmadi"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {printers.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {p}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadPrinters}
+                disabled={isLoadingPrinters || isPrinting}
+              >
+                {isLoadingPrinters ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Yangilanmoqda...
+                  </>
+                ) : (
+                  "Yangilash"
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Agar “Save” chiqsa — PDF printer tanlangan bo‘lishi mumkin. Xprinter ni tanlang.
+            </p>
+          </div>
+
           {/* Receipt Preview */}
           <div 
             className="bg-white text-black p-4 font-mono text-sm border rounded"
@@ -296,7 +415,7 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
             <Button 
               onClick={printWithQZTray} 
               className="flex-1"
-              disabled={isPrinting}
+              disabled={isPrinting || isLoadingPrinters || !selectedPrinter}
             >
               {isPrinting ? (
                 <>
