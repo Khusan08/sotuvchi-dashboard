@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Printer, Loader2 } from "lucide-react";
+import { Printer, Loader2, CheckCircle, XCircle, CircleDot } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+
+type ConnectionStatus = "idle" | "checking" | "connected" | "error";
 
 interface OrderReceiptPrintProps {
   order: {
@@ -45,6 +47,8 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
   const [isLoadingPrinters, setIsLoadingPrinters] = useState(false);
   const [printers, setPrinters] = useState<string[]>([]);
   const [selectedPrinter, setSelectedPrinter] = useState<string>("");
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("idle");
+  const [isTesting, setIsTesting] = useState(false);
 
   const remaining = order.total_amount - (order.advance_payment || 0);
 
@@ -54,10 +58,7 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
     
     let receipt = '';
     
-    // Initialize printer
     receipt += COMMANDS.INIT;
-    
-    // Header
     receipt += COMMANDS.ALIGN_CENTER;
     receipt += COMMANDS.BOLD_ON;
     receipt += COMMANDS.DOUBLE_BOTH;
@@ -69,7 +70,6 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
     receipt += `${dateStr}\n`;
     receipt += divider + '\n';
     
-    // Customer info
     receipt += COMMANDS.ALIGN_LEFT;
     receipt += COMMANDS.BOLD_ON;
     receipt += 'Mijoz: ';
@@ -90,7 +90,6 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
       receipt += `${order.customer_phone2}\n`;
     }
     
-    // Address
     if (order.region) {
       receipt += COMMANDS.BOLD_ON;
       receipt += 'Viloyat: ';
@@ -107,7 +106,6 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
     
     receipt += divider + '\n';
     
-    // Totals
     receipt += COMMANDS.BOLD_ON;
     receipt += COMMANDS.DOUBLE_HEIGHT;
     receipt += `Jami: ${order.total_amount.toLocaleString()} so'm\n`;
@@ -116,7 +114,6 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
     
     receipt += divider + '\n';
     
-    // Remaining amount (highlighted)
     receipt += COMMANDS.ALIGN_CENTER;
     receipt += COMMANDS.BOLD_ON;
     receipt += COMMANDS.DOUBLE_BOTH;
@@ -124,7 +121,6 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
     receipt += `so'm\n`;
     receipt += COMMANDS.NORMAL;
     
-    // Feed and cut
     receipt += COMMANDS.FEED;
     receipt += COMMANDS.CUT;
     
@@ -132,7 +128,6 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
   };
 
   const getQZ = async () => {
-    // Dynamic import of qz-tray (CJS interop-safe)
     const qzImport: any = await import("qz-tray");
     return qzImport?.default ?? qzImport;
   };
@@ -151,7 +146,6 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
       const list: string[] = Array.isArray(found) ? found : found ? [found] : [];
       const unique = Array.from(new Set(list)).filter(Boolean);
 
-      // Prefer real printers (avoid virtual PDF/XPS printers)
       const virtualRe = /pdf|xps|fax|onenote/i;
       const candidates = unique.filter((p) => !virtualRe.test(p));
 
@@ -173,6 +167,8 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
 
         if (guessed) setSelectedPrinter(guessed);
       }
+
+      setConnectionStatus("connected");
     } catch (error: any) {
       console.error("QZ printers load error:", error);
 
@@ -194,6 +190,7 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
 
       setPrinters([]);
       setSelectedPrinter("");
+      setConnectionStatus("error");
     } finally {
       setIsLoadingPrinters(false);
     }
@@ -206,13 +203,116 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previewOpen]);
 
+  const testConnection = async () => {
+    setConnectionStatus("checking");
+    setIsTesting(true);
+
+    try {
+      const qz: any = await getQZ();
+
+      if (!qz.websocket.isActive()) {
+        await qz.websocket.connect();
+      }
+
+      const version = await qz.api.getVersion();
+      console.log("QZ Tray version:", version);
+
+      setConnectionStatus("connected");
+      toast.success(`QZ Tray ulangan (v${version})`);
+
+      await loadPrinters();
+    } catch (error: any) {
+      console.error("Connection test error:", error);
+      setConnectionStatus("error");
+
+      const msg = error?.message ? String(error.message) : String(error);
+
+      if (/ERR_CERT|certificate|TLS|secure/i.test(msg)) {
+        toast.error(
+          "Chrome QZ Tray sertifikatini bloklayapti. 1 marta https://localhost:8181 ni ochib ruxsat bering.",
+          { duration: 8000 }
+        );
+      } else if (/unable to connect|connection refused|failed to fetch/i.test(msg)) {
+        toast.error(
+          "QZ Tray'ga ulanib bo'lmadi. QZ Tray ochiq ekanini tekshiring.",
+          { duration: 6000 }
+        );
+      } else {
+        toast.error(`Ulanish xatosi: ${msg}`);
+      }
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const testPrint = async () => {
+    setIsTesting(true);
+
+    try {
+      const qz: any = await getQZ();
+
+      if (!qz.websocket.isActive()) {
+        await qz.websocket.connect();
+      }
+
+      const printerName = selectedPrinter?.trim();
+      const virtualRe = /pdf|xps|fax|onenote/i;
+
+      if (!printerName) {
+        toast.error("Avval printerni tanlang.");
+        return;
+      }
+
+      if (virtualRe.test(printerName)) {
+        toast.error("PDF printer tanlangan. Xprinter ni tanlang.");
+        return;
+      }
+
+      let testReceipt = "";
+      testReceipt += COMMANDS.INIT;
+      testReceipt += COMMANDS.ALIGN_CENTER;
+      testReceipt += COMMANDS.BOLD_ON;
+      testReceipt += COMMANDS.DOUBLE_BOTH;
+      testReceipt += "TEST CHEK\n";
+      testReceipt += COMMANDS.NORMAL;
+      testReceipt += "--------------------------------\n";
+      testReceipt += COMMANDS.ALIGN_LEFT;
+      testReceipt += "Printer: " + printerName + "\n";
+      testReceipt += "Vaqt: " + format(new Date(), "dd.MM.yyyy HH:mm:ss") + "\n";
+      testReceipt += "--------------------------------\n";
+      testReceipt += COMMANDS.ALIGN_CENTER;
+      testReceipt += COMMANDS.BOLD_ON;
+      testReceipt += "Ulanish muvaffaqiyatli!\n";
+      testReceipt += COMMANDS.NORMAL;
+      testReceipt += COMMANDS.FEED;
+      testReceipt += COMMANDS.CUT;
+
+      const config = qz.configs.create(printerName, {
+        encoding: "UTF-8",
+        forceRaw: true,
+      });
+
+      await qz.print(config, [testReceipt]);
+
+      setConnectionStatus("connected");
+      toast.success("Test chek muvaffaqiyatli chiqarildi!");
+    } catch (error: any) {
+      console.error("Test print error:", error);
+      setConnectionStatus("error");
+
+      const msg = error?.message ? String(error.message) : String(error);
+      toast.error(`Test chek xatosi: ${msg}`);
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
   const printWithQZTray = async () => {
     setIsPrinting(true);
 
     try {
       const qz: any = await getQZ();
 
-      // Connect to QZ Tray
       if (!qz.websocket.isActive()) {
         await qz.websocket.connect();
       }
@@ -236,7 +336,6 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
 
       console.log("Using printer:", printerName);
 
-      // Create config (raw printing)
       const config = qz.configs.create(printerName, {
         encoding: "UTF-8",
         forceRaw: true,
@@ -288,7 +387,7 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
             <DialogTitle>Chek #{order.order_number}</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-end gap-2">
               <div className="flex-1">
                 <Label className="text-sm">Printer</Label>
@@ -333,8 +432,56 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
                 )}
               </Button>
             </div>
+
+            {/* Connection status & test buttons */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                {connectionStatus === "idle" && (
+                  <CircleDot className="h-4 w-4 text-muted-foreground" />
+                )}
+                {connectionStatus === "checking" && (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+                {connectionStatus === "connected" && (
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                )}
+                {connectionStatus === "error" && (
+                  <XCircle className="h-4 w-4 text-red-500" />
+                )}
+                <span className="text-xs text-muted-foreground">
+                  {connectionStatus === "idle" && "Ulanish tekshirilmagan"}
+                  {connectionStatus === "checking" && "Tekshirilmoqda..."}
+                  {connectionStatus === "connected" && "QZ Tray ulangan"}
+                  {connectionStatus === "error" && "Ulanish xatosi"}
+                </span>
+              </div>
+              <div className="flex-1" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={testConnection}
+                disabled={isTesting || isPrinting}
+                className="text-xs h-7"
+              >
+                {isTesting ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  "Test ulanish"
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={testPrint}
+                disabled={isTesting || isPrinting || !selectedPrinter}
+                className="text-xs h-7"
+              >
+                Test chek
+              </Button>
+            </div>
+
             <p className="text-xs text-muted-foreground">
-              Agar “Save” chiqsa — PDF printer tanlangan bo‘lishi mumkin. Xprinter ni tanlang.
+              Agar "Save" chiqsa — PDF printer tanlangan bo'lishi mumkin. Xprinter ni tanlang.
             </p>
           </div>
 
