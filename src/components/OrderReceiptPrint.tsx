@@ -129,64 +129,77 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
     setIsPrinting(true);
     
     try {
-      // Dynamic import of qz-tray
-      const qz = await import('qz-tray');
-      
+      // Dynamic import of qz-tray (CJS interop-safe)
+      const qzImport: any = await import("qz-tray");
+      const qz: any = qzImport?.default ?? qzImport;
+
       // Connect to QZ Tray
       if (!qz.websocket.isActive()) {
         await qz.websocket.connect();
       }
-      
-      // Find printer
-      const printers = await qz.printers.find();
-      console.log('Available printers:', printers);
-      
-      // Look for Xprinter or use default
-      let printerName = printers.find((p: string) => 
-        p.toLowerCase().includes('xp') || 
-        p.toLowerCase().includes('365') ||
-        p.toLowerCase().includes('xprinter')
-      );
-      
-      if (!printerName && printers.length > 0) {
-        printerName = printers[0];
-      }
-      
+
+      // Find printers
+      const found = await qz.printers.find();
+      const printers: string[] = Array.isArray(found) ? found : found ? [found] : [];
+      const defaultPrinter: string | null = await qz.printers
+        .getDefault()
+        .then((p: any) => (typeof p === "string" ? p : null))
+        .catch(() => null);
+
+      console.log("Available printers:", printers);
+      console.log("Default printer:", defaultPrinter);
+
+      // Prefer real printers (avoid virtual PDF/XPS printers)
+      const virtualRe = /pdf|xps|fax|onenote/i;
+      const candidatePrinters = printers.filter((p) => !virtualRe.test(p));
+      const safeDefault = defaultPrinter && !virtualRe.test(defaultPrinter) ? defaultPrinter : null;
+
+      // Look for Xprinter XP-365B, else fallback to safe default
+      const printerName =
+        candidatePrinters.find((p) => /xprinter|xp[-\s_]?365/i.test(p)) ??
+        safeDefault ??
+        candidatePrinters[0] ??
+        printers[0];
+
       if (!printerName) {
-        toast.error("Printer topilmadi. QZ Tray o'rnatilganligini tekshiring.");
+        toast.error("Printer topilmadi. QZ Tray va printer ulanganligini tekshiring.");
         return;
       }
-      
-      console.log('Using printer:', printerName);
-      
-      // Create config
+
+      console.log("Using printer:", printerName);
+
+      // Create config (raw printing)
       const config = qz.configs.create(printerName, {
-        encoding: 'UTF-8',
+        encoding: "UTF-8",
+        forceRaw: true,
       });
-      
+
       // Generate receipt data
       const receiptData = generateReceiptData();
+
+      // Print (string defaults to: raw + command + plain)
+      await qz.print(config, [receiptData]);
       
-      // Print
-      await qz.print(config, [{
-        type: 'raw',
-        format: 'plain',
-        data: receiptData
-      }]);
-      
-      toast.success("Chek chiqarildi!");
+      toast.success(`Chek printerga yuborildi: ${printerName}`);
       setPreviewOpen(false);
-      
+
     } catch (error: any) {
-      console.error('Print error:', error);
-      
-      if (error.message?.includes('Unable to connect')) {
+      console.error("Print error:", error);
+
+      const msg = error?.message ? String(error.message) : String(error);
+
+      if (/unable to connect|connection refused|failed to fetch/i.test(msg)) {
         toast.error(
-          "QZ Tray ishlamayapti. Iltimos qz.io/download dan yuklab o'rnating.",
-          { duration: 5000 }
+          "QZ Tray ishlamayapti (ishga tushmagan bo'lishi mumkin). QZ Tray'ni ochib qayta urinib ko'ring.",
+          { duration: 6000 }
+        );
+      } else if (/certificate|signature|sign/i.test(msg)) {
+        toast.error(
+          "QZ Tray ruxsat bermayapti. QZ Tray'da 'Allow unsigned requests' ni yoqing (yoki sertifikat o'rnating), so'ng qayta urinib ko'ring.",
+          { duration: 8000 }
         );
       } else {
-        toast.error(`Xato: ${error.message || 'Noma\'lum xato'}`);
+        toast.error(`Xato: ${msg || "Noma'lum xato"}`);
       }
     } finally {
       setIsPrinting(false);
