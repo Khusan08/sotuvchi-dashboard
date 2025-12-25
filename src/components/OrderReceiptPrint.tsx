@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
 import { format } from "date-fns";
@@ -19,18 +18,24 @@ interface OrderReceiptPrintProps {
 }
 
 export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
-  const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
-    const printContent = printRef.current;
-    if (!printContent) return;
-
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-
     const remaining = order.total_amount - (order.advance_payment || 0);
 
-    printWindow.document.write(`
+    // Create iframe for printing (better for Mac + thermal printers)
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    iframe.style.left = '-9999px';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) return;
+
+    doc.open();
+    doc.write(`
       <!DOCTYPE html>
       <html>
         <head>
@@ -40,18 +45,29 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
               margin: 0;
               padding: 0;
               box-sizing: border-box;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
             }
             @page {
               size: 80mm auto;
-              margin: 2mm;
+              margin: 0;
+            }
+            @media print {
+              html, body {
+                width: 80mm;
+                margin: 0;
+                padding: 0;
+              }
             }
             body {
-              font-family: 'Courier New', monospace;
+              font-family: 'Courier New', Courier, monospace;
               font-size: 12px;
-              width: 76mm;
-              padding: 2mm;
+              width: 80mm;
+              max-width: 80mm;
+              padding: 3mm;
               background: white;
               color: black;
+              line-height: 1.3;
             }
             .receipt {
               width: 100%;
@@ -59,53 +75,59 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
             .header {
               text-align: center;
               border-bottom: 1px dashed #000;
-              padding-bottom: 4px;
-              margin-bottom: 6px;
+              padding-bottom: 5px;
+              margin-bottom: 8px;
             }
             .header h1 {
               font-size: 14px;
               font-weight: bold;
+              margin-bottom: 3px;
             }
             .order-number {
-              font-size: 16px;
+              font-size: 18px;
               font-weight: bold;
-              margin: 4px 0;
+              margin: 5px 0;
             }
             .date {
               font-size: 11px;
             }
             .section {
-              margin-bottom: 6px;
+              margin-bottom: 8px;
             }
             .row {
-              display: flex;
-              justify-content: space-between;
-              margin: 2px 0;
+              display: block;
+              margin: 3px 0;
               font-size: 11px;
+              overflow: hidden;
+            }
+            .row::after {
+              content: "";
+              display: table;
+              clear: both;
             }
             .row .label {
               font-weight: bold;
+              float: left;
+            }
+            .row .value {
+              float: right;
+              text-align: right;
             }
             .divider {
               border-top: 1px dashed #000;
-              margin: 6px 0;
+              margin: 8px 0;
             }
             .total-row {
-              font-size: 13px;
+              font-size: 14px;
               font-weight: bold;
             }
             .remaining {
-              font-size: 14px;
+              font-size: 16px;
               font-weight: bold;
               text-align: center;
-              border: 1px solid #000;
-              padding: 4px;
-              margin-top: 6px;
-            }
-            @media print {
-              body {
-                width: 76mm;
-              }
+              border: 2px solid #000;
+              padding: 6px;
+              margin-top: 8px;
             }
           </style>
         </head>
@@ -120,18 +142,18 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
             <div class="section">
               <div class="row">
                 <span class="label">Mijoz:</span>
-                <span>${order.customer_name}</span>
+                <span class="value">${order.customer_name}</span>
               </div>
               ${order.customer_phone ? `
                 <div class="row">
                   <span class="label">Tel 1:</span>
-                  <span>${order.customer_phone}</span>
+                  <span class="value">${order.customer_phone}</span>
                 </div>
               ` : ''}
               ${order.customer_phone2 ? `
                 <div class="row">
                   <span class="label">Tel 2:</span>
-                  <span>${order.customer_phone2}</span>
+                  <span class="value">${order.customer_phone2}</span>
                 </div>
               ` : ''}
             </div>
@@ -141,13 +163,13 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
                 ${order.region ? `
                   <div class="row">
                     <span class="label">Viloyat:</span>
-                    <span>${order.region}</span>
+                    <span class="value">${order.region}</span>
                   </div>
                 ` : ''}
                 ${order.district ? `
                   <div class="row">
                     <span class="label">Tuman:</span>
-                    <span>${order.district}</span>
+                    <span class="value">${order.district}</span>
                   </div>
                 ` : ''}
               </div>
@@ -157,12 +179,12 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
             
             <div class="section">
               <div class="row total-row">
-                <span>Jami:</span>
-                <span>${order.total_amount.toLocaleString()} so'm</span>
+                <span class="label">Jami:</span>
+                <span class="value">${order.total_amount.toLocaleString()} so'm</span>
               </div>
               <div class="row">
                 <span class="label">Oldindan:</span>
-                <span>${(order.advance_payment || 0).toLocaleString()} so'm</span>
+                <span class="value">${(order.advance_payment || 0).toLocaleString()} so'm</span>
               </div>
             </div>
             
@@ -173,14 +195,38 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
         </body>
       </html>
     `);
+    doc.close();
 
-    printWindow.document.close();
-    printWindow.focus();
-    
+    // Wait for content to load then print
+    iframe.onload = () => {
+      setTimeout(() => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch (e) {
+          console.error('Print error:', e);
+        }
+        // Remove iframe after printing
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+        }, 1000);
+      }, 100);
+    };
+
+    // Fallback for browsers that don't trigger onload
     setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 250);
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (e) {
+        console.error('Print fallback error:', e);
+      }
+      setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 1000);
+    }, 500);
   };
 
   return (
