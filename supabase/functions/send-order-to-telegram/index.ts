@@ -322,22 +322,6 @@ serve(async (req) => {
         if (adminProfiles && adminProfiles.length > 0) {
           const adminMessage = formatAdminSalesMessage(order, dailySales);
 
-          // Create inline keyboard buttons for receipt
-          const inlineKeyboard = {
-            inline_keyboard: [
-              [
-                { 
-                  text: '📋 Chekni ko\'rish', 
-                  url: `${supabaseUrl.replace('.supabase.co', '.lovable.app')}/all-orders?order=${order.order_id || order.order_number}`
-                },
-                { 
-                  text: '📥 PDF yuklash', 
-                  url: `${supabaseUrl.replace('.supabase.co', '.lovable.app')}/all-orders?order=${order.order_id || order.order_number}&pdf=1`
-                }
-              ]
-            ]
-          };
-
           for (const admin of adminProfiles) {
             console.log(`Sending notification to admin: ${admin.full_name} (${admin.telegram_user_id})`);
             
@@ -351,7 +335,6 @@ serve(async (req) => {
                     chat_id: admin.telegram_user_id,
                     text: adminMessage,
                     parse_mode: 'HTML',
-                    reply_markup: inlineKeyboard,
                   }),
                 }
               );
