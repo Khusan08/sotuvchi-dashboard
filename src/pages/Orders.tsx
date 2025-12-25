@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Calendar, Pencil, Trash2, Search, Printer } from "lucide-react";
+import { OrderReceiptPrint } from "@/components/OrderReceiptPrint";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -843,13 +844,16 @@ const Orders = () => {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(order)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <OrderReceiptPrint order={order} />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(order)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
