@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar, Search, Edit, Trash2, Plus, X } from "lucide-react";
+import { Calendar, Search, Edit, Trash2, Plus, X, Printer } from "lucide-react";
+import { OrderReceiptPrint } from "@/components/OrderReceiptPrint";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -984,6 +985,7 @@ const AllOrders = () => {
                     <TableCell className="max-w-[200px] truncate">{order.notes}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
+                        <OrderReceiptPrint order={order} />
                         <Button
                           size="sm"
                           variant="outline"
