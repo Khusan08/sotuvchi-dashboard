@@ -54,72 +54,42 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
 
   const generateReceiptData = () => {
     const divider = '--------------------------------';
-    const dateStr = format(new Date(order.order_date), "dd.MM.yyyy");
+    const dateStr = format(new Date(order.order_date), "yyyy-MM-dd");
+    
+    // Manzil - region va district birlashtiriladi
+    const manzilParts = [order.region, order.district].filter(Boolean);
+    const manzil = manzilParts.length > 0 ? manzilParts.join(', ') : '';
     
     let receipt = '';
     
     receipt += COMMANDS.INIT;
+    
+    // Sarlavha - DARAJA
     receipt += COMMANDS.ALIGN_CENTER;
     receipt += COMMANDS.BOLD_ON;
-    receipt += COMMANDS.DOUBLE_BOTH;
-    receipt += 'ZAKAZ CHEKI\n';
-    receipt += COMMANDS.NORMAL;
-    receipt += COMMANDS.BOLD_ON;
-    receipt += `#${order.order_number}\n`;
+    receipt += 'DARAJA\n';
     receipt += COMMANDS.BOLD_OFF;
-    receipt += `${dateStr}\n`;
     receipt += divider + '\n';
     
+    // Ma'lumotlar - chapdan
     receipt += COMMANDS.ALIGN_LEFT;
-    receipt += COMMANDS.BOLD_ON;
-    receipt += 'Mijoz: ';
-    receipt += COMMANDS.BOLD_OFF;
-    receipt += `${order.customer_name}\n`;
+    receipt += `ID: ${order.order_number}\n`;
+    receipt += `Ism: ${order.customer_name}\n`;
     
     if (order.customer_phone) {
-      receipt += COMMANDS.BOLD_ON;
-      receipt += 'Tel 1: ';
-      receipt += COMMANDS.BOLD_OFF;
-      receipt += `${order.customer_phone}\n`;
+      receipt += `Phone: ${order.customer_phone}\n`;
     }
     
-    if (order.customer_phone2) {
-      receipt += COMMANDS.BOLD_ON;
-      receipt += 'Tel 2: ';
-      receipt += COMMANDS.BOLD_OFF;
-      receipt += `${order.customer_phone2}\n`;
+    if (manzil) {
+      receipt += `Manzil: ${manzil}\n`;
     }
     
-    if (order.region) {
-      receipt += COMMANDS.BOLD_ON;
-      receipt += 'Viloyat: ';
-      receipt += COMMANDS.BOLD_OFF;
-      receipt += `${order.region}\n`;
-    }
-    
-    if (order.district) {
-      receipt += COMMANDS.BOLD_ON;
-      receipt += 'Tuman: ';
-      receipt += COMMANDS.BOLD_OFF;
-      receipt += `${order.district}\n`;
-    }
+    receipt += `Sana: ${dateStr}\n`;
+    receipt += `Kitob narxi: ${order.total_amount.toLocaleString()}\n`;
+    receipt += `Avans: ${(order.advance_payment || 0).toLocaleString()}\n`;
+    receipt += `To'lov: ${remaining.toLocaleString()}\n`;
     
     receipt += divider + '\n';
-    
-    receipt += COMMANDS.BOLD_ON;
-    receipt += COMMANDS.DOUBLE_HEIGHT;
-    receipt += `Jami: ${order.total_amount.toLocaleString()} so'm\n`;
-    receipt += COMMANDS.NORMAL;
-    receipt += `Oldindan: ${(order.advance_payment || 0).toLocaleString()} so'm\n`;
-    
-    receipt += divider + '\n';
-    
-    receipt += COMMANDS.ALIGN_CENTER;
-    receipt += COMMANDS.BOLD_ON;
-    receipt += COMMANDS.DOUBLE_BOTH;
-    receipt += `Qoldiq: ${remaining.toLocaleString()}\n`;
-    receipt += `so'm\n`;
-    receipt += COMMANDS.NORMAL;
     
     receipt += COMMANDS.FEED;
     receipt += COMMANDS.CUT;
@@ -491,63 +461,25 @@ export const OrderReceiptPrint = ({ order }: OrderReceiptPrintProps) => {
             style={{ width: '100%', maxWidth: '300px', margin: '0 auto' }}
           >
             <div className="text-center border-b border-dashed border-black pb-2 mb-3">
-              <h1 className="text-sm font-bold">ZAKAZ CHEKI</h1>
-              <div className="text-lg font-bold my-1">#{order.order_number}</div>
-              <div className="text-xs">{format(new Date(order.order_date), "dd.MM.yyyy")}</div>
+              <h1 className="text-sm font-bold">DARAJA</h1>
             </div>
             
-            <div className="mb-3 text-xs space-y-1">
-              <div className="flex justify-between">
-                <span className="font-bold">Mijoz:</span>
-                <span>{order.customer_name}</span>
-              </div>
+            <div className="text-xs space-y-0.5">
+              <div>ID: {order.order_number}</div>
+              <div>Ism: {order.customer_name}</div>
               {order.customer_phone && (
-                <div className="flex justify-between">
-                  <span className="font-bold">Tel 1:</span>
-                  <span>{order.customer_phone}</span>
-                </div>
+                <div>Phone: {order.customer_phone}</div>
               )}
-              {order.customer_phone2 && (
-                <div className="flex justify-between">
-                  <span className="font-bold">Tel 2:</span>
-                  <span>{order.customer_phone2}</span>
-                </div>
+              {(order.region || order.district) && (
+                <div>Manzil: {[order.region, order.district].filter(Boolean).join(', ')}</div>
               )}
+              <div>Sana: {format(new Date(order.order_date), "yyyy-MM-dd")}</div>
+              <div>Kitob narxi: {order.total_amount.toLocaleString()}</div>
+              <div>Avans: {(order.advance_payment || 0).toLocaleString()}</div>
+              <div>To'lov: {remaining.toLocaleString()}</div>
             </div>
             
-            {(order.region || order.district) && (
-              <div className="mb-3 text-xs space-y-1">
-                {order.region && (
-                  <div className="flex justify-between">
-                    <span className="font-bold">Viloyat:</span>
-                    <span>{order.region}</span>
-                  </div>
-                )}
-                {order.district && (
-                  <div className="flex justify-between">
-                    <span className="font-bold">Tuman:</span>
-                    <span>{order.district}</span>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            <div className="border-t border-dashed border-black my-3"></div>
-            
-            <div className="mb-2 space-y-1">
-              <div className="flex justify-between text-sm font-bold">
-                <span>Jami:</span>
-                <span>{order.total_amount.toLocaleString()} so'm</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="font-bold">Oldindan:</span>
-                <span>{(order.advance_payment || 0).toLocaleString()} so'm</span>
-              </div>
-            </div>
-            
-            <div className="text-base font-bold text-center border-2 border-black p-2 mt-3">
-              Qoldiq: {remaining.toLocaleString()} so'm
-            </div>
+            <div className="border-t border-dashed border-black mt-3"></div>
           </div>
 
           <div className="flex gap-2 mt-4">
