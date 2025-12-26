@@ -45,9 +45,10 @@ Deno.serve(async (req) => {
 
     const { 
       company_id, 
-      action, // 'extend', 'cancel', 'activate'
+      action, // 'extend', 'cancel', 'activate', 'update_settings'
       days, // for extend action
-      subscription_status // 'trial', 'basic', 'premium', 'cancelled'
+      subscription_status, // 'trial', 'basic', 'premium', 'cancelled'
+      max_users // for update_settings action
     } = await req.json()
 
     if (!company_id || !action) {
@@ -96,6 +97,13 @@ Deno.serve(async (req) => {
       updateData = {
         subscription_status: subscription_status || 'basic',
         is_active: true
+      }
+    } else if (action === 'update_settings') {
+      if (max_users !== undefined) {
+        updateData.max_users = max_users
+      }
+      if (subscription_status) {
+        updateData.subscription_status = subscription_status
       }
     } else {
       return new Response(JSON.stringify({ error: 'Invalid action' }), {
