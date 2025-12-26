@@ -142,6 +142,9 @@ Deno.serve(async (req) => {
       })
     }
 
+    // Wait a moment for trigger to create profile
+    await new Promise(resolve => setTimeout(resolve, 500))
+
     // Update profile with company_id and phone
     const { error: profileError } = await supabaseClient
       .from('profiles')
@@ -153,26 +156,33 @@ Deno.serve(async (req) => {
 
     if (profileError) {
       console.error('Error updating profile:', profileError)
+      // If profile doesn't exist, create it
+      await supabaseClient
+        .from('profiles')
+        .upsert({
+          id: authData.user.id,
+          full_name: admin_full_name,
+          company_id: companyData.id,
+          phone: admin_phone || null,
+          role: 'admin'
+        })
     }
 
-    // Add admin role for this user in this company
-    const { error: roleError } = await supabaseClient
-      .from('user_roles')
-      .update({ company_id: companyData.id })
-      .eq('user_id', authData.user.id)
-
-    if (roleError) {
-      console.error('Error updating user role:', roleError)
-    }
-
-    // Also add explicit admin role
+    // Delete any orphan roles without company_id first
     await supabaseClient
       .from('user_roles')
-      .insert({
+      .delete()
+      .eq('user_id', authData.user.id)
+      .is('company_id', null)
+
+    // Add admin role for this user in this company
+    await supabaseClient
+      .from('user_roles')
+      .upsert({
         user_id: authData.user.id,
         role: 'admin',
         company_id: companyData.id
-      })
+      }, { onConflict: 'user_id,role' })
 
     // Create default stages for the company
     const defaultStages = [
