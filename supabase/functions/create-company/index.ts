@@ -57,37 +57,48 @@ Deno.serve(async (req) => {
     } = await req.json()
 
     // Validate required fields
-    if (!company_name || !company_slug || !admin_email || !admin_password || !admin_full_name) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+    if (!company_name || !admin_email || !admin_password || !admin_full_name) {
+      return new Response(JSON.stringify({ error: 'Missing required fields: company_name, admin_email, admin_password, admin_full_name' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       })
     }
 
+    // Auto-generate slug if not provided
+    const slug = company_slug || company_name.toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim()
+
     // Check if company slug already exists
     const { data: existingCompany } = await supabaseClient
       .from('companies')
       .select('id')
-      .eq('slug', company_slug)
+      .eq('slug', slug)
       .maybeSingle()
 
     if (existingCompany) {
-      return new Response(JSON.stringify({ error: 'Company slug already exists' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      })
+      // Add random suffix if slug exists
+      const uniqueSlug = `${slug}-${Date.now().toString(36)}`
+      console.log(`Slug ${slug} exists, using ${uniqueSlug}`)
     }
 
     // Calculate subscription end date
     const subscriptionEndsAt = new Date()
     subscriptionEndsAt.setDate(subscriptionEndsAt.getDate() + subscription_days)
 
+    // Use unique slug
+    const finalSlug = existingCompany 
+      ? `${slug}-${Date.now().toString(36)}`
+      : slug
+
     // Create the company
     const { data: companyData, error: companyError } = await supabaseClient
       .from('companies')
       .insert({
         name: company_name,
-        slug: company_slug,
+        slug: finalSlug,
         subscription_status,
         subscription_ends_at: subscriptionEndsAt.toISOString(),
         max_users,
@@ -98,7 +109,7 @@ Deno.serve(async (req) => {
 
     if (companyError) {
       console.error('Error creating company:', companyError)
-      return new Response(JSON.stringify({ error: 'Failed to create company' }), {
+      return new Response(JSON.stringify({ error: 'Failed to create company: ' + companyError.message }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
       })

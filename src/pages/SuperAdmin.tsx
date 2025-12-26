@@ -309,15 +309,6 @@ const SuperAdmin = () => {
                         required
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Slug (URL uchun)</Label>
-                      <Input 
-                        value={companySlug} 
-                        onChange={(e) => setCompanySlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-                        placeholder="abc-company"
-                        required
-                      />
-                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Trial kunlari</Label>
