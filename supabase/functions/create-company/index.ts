@@ -176,13 +176,17 @@ Deno.serve(async (req) => {
       .is('company_id', null)
 
     // Add admin role for this user in this company
-    await supabaseClient
+    const { error: roleError } = await supabaseClient
       .from('user_roles')
-      .upsert({
+      .insert({
         user_id: authData.user.id,
         role: 'admin',
         company_id: companyData.id
-      }, { onConflict: 'user_id,role' })
+      })
+
+    if (roleError) {
+      console.error('Error creating admin role:', roleError)
+    }
 
     // Create default stages for the company
     const defaultStages = [
