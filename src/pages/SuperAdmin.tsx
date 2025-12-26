@@ -56,6 +56,7 @@ const SuperAdmin = () => {
   // Subscription form
   const [extendDays, setExtendDays] = useState('30');
   const [newSubscriptionStatus, setNewSubscriptionStatus] = useState('basic');
+  const [newMaxUsers, setNewMaxUsers] = useState('5');
 
   useEffect(() => {
     if (!rolesLoading && !isSuperAdmin) {
@@ -153,7 +154,7 @@ const SuperAdmin = () => {
     }
   };
 
-  const handleUpdateSubscription = async (action: 'extend' | 'cancel' | 'activate') => {
+  const handleUpdateSubscription = async (action: 'extend' | 'cancel' | 'activate' | 'update_settings') => {
     if (!selectedCompany) return;
 
     try {
@@ -165,7 +166,8 @@ const SuperAdmin = () => {
           company_id: selectedCompany.id,
           action,
           days: action === 'extend' ? parseInt(extendDays) : undefined,
-          subscription_status: action !== 'cancel' ? newSubscriptionStatus : 'cancelled'
+          subscription_status: action !== 'cancel' ? newSubscriptionStatus : 'cancelled',
+          max_users: action === 'update_settings' ? parseInt(newMaxUsers) : undefined
         }
       });
 
@@ -175,6 +177,7 @@ const SuperAdmin = () => {
       toast.success(
         action === 'extend' ? 'Obuna uzaytirildi' : 
         action === 'cancel' ? 'Obuna bekor qilindi' : 
+        action === 'update_settings' ? 'Sozlamalar yangilandi' :
         'Obuna faollashtirildi'
       );
       setIsSubscriptionDialogOpen(false);
@@ -183,6 +186,13 @@ const SuperAdmin = () => {
       console.error('Error updating subscription:', error);
       toast.error(error.message || 'Obunani yangilashda xatolik');
     }
+  };
+
+  const openSubscriptionDialog = (company: Company) => {
+    setSelectedCompany(company);
+    setNewMaxUsers(String(company.max_users || 5));
+    setNewSubscriptionStatus(company.subscription_status);
+    setIsSubscriptionDialogOpen(true);
   };
 
   const handleDeleteCompany = async (company: Company) => {
@@ -484,11 +494,7 @@ const SuperAdmin = () => {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => {
-                            setSelectedCompany(company);
-                            setNewSubscriptionStatus(company.subscription_status);
-                            setIsSubscriptionDialogOpen(true);
-                          }}
+                          onClick={() => openSubscriptionDialog(company)}
                         >
                           <Settings className="h-4 w-4 mr-1" />
                           Boshqarish
@@ -637,6 +643,27 @@ const SuperAdmin = () => {
                     <SelectItem value="premium">Premium (To'langan)</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Max Users */}
+              <div className="space-y-2">
+                <Label>Hodimlar soni (max)</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    type="number"
+                    value={newMaxUsers}
+                    onChange={(e) => setNewMaxUsers(e.target.value)}
+                    min="1"
+                    className="flex-1"
+                  />
+                  <Button 
+                    variant="outline"
+                    onClick={() => handleUpdateSubscription('update_settings')}
+                  >
+                    <Users className="h-4 w-4 mr-1" />
+                    Saqlash
+                  </Button>
+                </div>
               </div>
 
               {/* Extend Days */}
