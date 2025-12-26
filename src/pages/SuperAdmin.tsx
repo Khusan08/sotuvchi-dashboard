@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import DashboardLayout from '@/components/DashboardLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { Button } from '@/components/ui/button';
@@ -260,26 +261,15 @@ const SuperAdmin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Building2 className="h-8 w-8 text-primary" />
-            <div>
-              <h1 className="text-xl font-bold">Super Admin Panel</h1>
-              <p className="text-sm text-muted-foreground">Kompaniyalarni boshqarish</p>
-            </div>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Building2 className="h-8 w-8 text-primary" />
+          <div>
+            <h1 className="text-2xl font-bold">Super Admin Panel</h1>
+            <p className="text-sm text-muted-foreground">Kompaniyalarni boshqarish</p>
           </div>
-          <Button variant="outline" onClick={handleSignOut}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Chiqish
-          </Button>
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Card>
@@ -543,9 +533,8 @@ const SuperAdmin = () => {
             </Table>
           </CardContent>
         </Card>
-      </main>
 
-      {/* Subscription Management Dialog */}
+        {/* Subscription Management Dialog */}
       <Dialog open={isSubscriptionDialogOpen} onOpenChange={setIsSubscriptionDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -693,7 +682,8 @@ const SuperAdmin = () => {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 };
 
