@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Building2, Plus, Users, Calendar, Settings, LogOut, RefreshCw, Ban, CheckCircle } from 'lucide-react';
+import { Building2, Plus, Users, Calendar, Settings, LogOut, RefreshCw, Ban, CheckCircle, Trash2, Link, Copy, CreditCard } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format, differenceInDays } from 'date-fns';
 
 interface Company {
@@ -26,6 +27,10 @@ interface Company {
   user_count?: number;
 }
 
+const getCompanyUrl = (slug: string) => {
+  return `${window.location.origin}/?company=${slug}`;
+};
+
 const SuperAdmin = () => {
   const navigate = useNavigate();
   const { isSuperAdmin, loading: rolesLoading } = useUserRoles();
@@ -34,6 +39,7 @@ const SuperAdmin = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isSubscriptionDialogOpen, setIsSubscriptionDialogOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [creating, setCreating] = useState(false);
 
   // Form states
@@ -176,6 +182,35 @@ const SuperAdmin = () => {
       console.error('Error updating subscription:', error);
       toast.error(error.message || 'Obunani yangilashda xatolik');
     }
+  };
+
+  const handleDeleteCompany = async (company: Company) => {
+    setDeleting(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) throw new Error('Not authenticated');
+
+      // Delete company (cascades to related data)
+      const { error } = await supabase
+        .from('companies')
+        .delete()
+        .eq('id', company.id);
+
+      if (error) throw error;
+
+      toast.success('Kompaniya o\'chirildi');
+      fetchCompanies();
+    } catch (error: any) {
+      console.error('Error deleting company:', error);
+      toast.error(error.message || 'Kompaniyani o\'chirishda xatolik');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const copyCompanyLink = (slug: string) => {
+    navigator.clipboard.writeText(getCompanyUrl(slug));
+    toast.success('Link nusxalandi!');
   };
 
   const resetForm = () => {
@@ -410,7 +445,23 @@ const SuperAdmin = () => {
                     <TableCell>
                       <div>
                         <p className="font-medium">{company.name}</p>
-                        <p className="text-sm text-muted-foreground">{company.slug}</p>
+                        <div className="flex items-center gap-1 mt-1">
+                          <Link className="h-3 w-3 text-muted-foreground" />
+                          <button 
+                            onClick={() => copyCompanyLink(company.slug)}
+                            className="text-xs text-primary hover:underline cursor-pointer"
+                          >
+                            {company.slug}
+                          </button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5"
+                            onClick={() => copyCompanyLink(company.slug)}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -439,17 +490,45 @@ const SuperAdmin = () => {
                       {format(new Date(company.created_at), 'dd.MM.yyyy')}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          setSelectedCompany(company);
-                          setIsSubscriptionDialogOpen(true);
-                        }}
-                      >
-                        <Settings className="h-4 w-4 mr-1" />
-                        Boshqarish
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedCompany(company);
+                            setNewSubscriptionStatus(company.subscription_status);
+                            setIsSubscriptionDialogOpen(true);
+                          }}
+                        >
+                          <Settings className="h-4 w-4 mr-1" />
+                          Boshqarish
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Kompaniyani o'chirish</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                <strong>{company.name}</strong> kompaniyasini o'chirmoqchimisiz? 
+                                Bu amalni qaytarib bo'lmaydi va barcha ma'lumotlar o'chiriladi.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Bekor qilish</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteCompany(company)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                {deleting ? 'O\'chirilmoqda...' : 'O\'chirish'}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -468,7 +547,7 @@ const SuperAdmin = () => {
 
       {/* Subscription Management Dialog */}
       <Dialog open={isSubscriptionDialogOpen} onOpenChange={setIsSubscriptionDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Obunani Boshqarish</DialogTitle>
             <DialogDescription>
@@ -477,32 +556,103 @@ const SuperAdmin = () => {
           </DialogHeader>
           {selectedCompany && (
             <div className="space-y-4">
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">Joriy holat</p>
-                <p className="font-medium">{selectedCompany.subscription_status}</p>
+              {/* Current Status Card */}
+              <div className="p-4 bg-muted rounded-lg space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Joriy obuna:</span>
+                  <Badge className={
+                    selectedCompany.subscription_status === 'premium' ? 'bg-purple-500' :
+                    selectedCompany.subscription_status === 'basic' ? 'bg-blue-500' :
+                    selectedCompany.subscription_status === 'cancelled' ? 'bg-red-500' : 'bg-yellow-500'
+                  }>
+                    {selectedCompany.subscription_status.toUpperCase()}
+                  </Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Holat:</span>
+                  {selectedCompany.is_active ? (
+                    <Badge variant="outline" className="text-green-600 border-green-600">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Faol
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-red-600 border-red-600">
+                      <Ban className="h-3 w-3 mr-1" />
+                      Nofaol
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">To'lov:</span>
+                  {selectedCompany.subscription_status === 'premium' || selectedCompany.subscription_status === 'basic' ? (
+                    <Badge className="bg-green-500">
+                      <CreditCard className="h-3 w-3 mr-1" />
+                      To'langan
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-orange-600 border-orange-600">
+                      <CreditCard className="h-3 w-3 mr-1" />
+                      To'lanmagan
+                    </Badge>
+                  )}
+                </div>
                 {selectedCompany.subscription_ends_at && (
-                  <p className="text-sm">
-                    Tugash sanasi: {format(new Date(selectedCompany.subscription_ends_at), 'dd.MM.yyyy')}
-                  </p>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Tugash sanasi:</span>
+                    <span className="font-medium">
+                      {format(new Date(selectedCompany.subscription_ends_at), 'dd.MM.yyyy')}
+                    </span>
+                  </div>
+                )}
+                {selectedCompany.subscription_ends_at && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Qolgan kun:</span>
+                    <span className="font-bold text-lg">
+                      {Math.max(0, differenceInDays(new Date(selectedCompany.subscription_ends_at), new Date()))} kun
+                    </span>
+                  </div>
                 )}
               </div>
 
+              {/* Company Link */}
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Link className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Kompaniya linki</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyCompanyLink(selectedCompany.slug)}
+                  >
+                    <Copy className="h-4 w-4 mr-1" />
+                    Nusxalash
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 break-all">
+                  {getCompanyUrl(selectedCompany.slug)}
+                </p>
+              </div>
+
+              {/* Subscription Type */}
               <div className="space-y-2">
-                <Label>Obuna turi</Label>
+                <Label>Obuna turini o'zgartirish</Label>
                 <Select value={newSubscriptionStatus} onValueChange={setNewSubscriptionStatus}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="trial">Trial</SelectItem>
-                    <SelectItem value="basic">Basic</SelectItem>
-                    <SelectItem value="premium">Premium</SelectItem>
+                    <SelectItem value="trial">Trial (Sinov)</SelectItem>
+                    <SelectItem value="basic">Basic (To'langan)</SelectItem>
+                    <SelectItem value="premium">Premium (To'langan)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
+              {/* Extend Days */}
               <div className="space-y-2">
-                <Label>Uzaytirish (kun)</Label>
+                <Label>Obuna muddatini uzaytirish (kun)</Label>
                 <Input 
                   type="number"
                   value={extendDays}
@@ -511,7 +661,8 @@ const SuperAdmin = () => {
                 />
               </div>
 
-              <div className="flex gap-2">
+              {/* Actions */}
+              <div className="flex gap-2 pt-2">
                 <Button 
                   onClick={() => handleUpdateSubscription('extend')}
                   className="flex-1"
@@ -531,6 +682,7 @@ const SuperAdmin = () => {
                   <Button 
                     variant="outline"
                     onClick={() => handleUpdateSubscription('activate')}
+                    className="border-green-600 text-green-600 hover:bg-green-50"
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Faollashtirish
