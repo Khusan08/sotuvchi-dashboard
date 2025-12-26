@@ -102,10 +102,17 @@ const SuperAdmin = () => {
       const { data: session } = await supabase.auth.getSession();
       if (!session.session) throw new Error('Not authenticated');
 
+      console.log('Creating company with:', {
+        company_name: companyName,
+        admin_email: adminEmail,
+        admin_full_name: adminFullName,
+        subscription_days: parseInt(subscriptionDays),
+        max_users: parseInt(maxUsers),
+      });
+
       const response = await supabase.functions.invoke('create-company', {
         body: {
           company_name: companyName,
-          company_slug: companySlug.toLowerCase().replace(/\s+/g, '-'),
           admin_email: adminEmail,
           admin_password: adminPassword,
           admin_full_name: adminFullName,
@@ -116,8 +123,16 @@ const SuperAdmin = () => {
         }
       });
 
-      if (response.error) throw new Error(response.error.message);
-      if (response.data?.error) throw new Error(response.data.error);
+      console.log('Response:', response);
+
+      if (response.error) {
+        console.error('Function error:', response.error);
+        throw new Error(response.error.message || 'Funksiya xatosi');
+      }
+      if (response.data?.error) {
+        console.error('Data error:', response.data.error);
+        throw new Error(response.data.error);
+      }
 
       toast.success('Kompaniya muvaffaqiyatli yaratildi');
       setIsCreateDialogOpen(false);
@@ -165,7 +180,6 @@ const SuperAdmin = () => {
 
   const resetForm = () => {
     setCompanyName('');
-    setCompanySlug('');
     setAdminEmail('');
     setAdminPassword('');
     setAdminFullName('');
