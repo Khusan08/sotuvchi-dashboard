@@ -541,6 +541,17 @@ const AllOrders = () => {
         return;
       }
 
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('company_id, full_name')
+        .eq('id', user.id)
+        .single();
+
+      if (!userProfile?.company_id) {
+        toast.error("Kompaniya topilmadi");
+        return;
+      }
+
       if (!createFormData.customer_name.trim()) {
         toast.error("Mijoz ismini kiriting");
         return;
@@ -572,6 +583,7 @@ const AllOrders = () => {
           notes: createFormData.notes,
           total_amount: createFormData.total_amount,
           seller_id: user.id,
+          company_id: userProfile.company_id,
           status: 'pending'
         })
         .select()
@@ -592,13 +604,6 @@ const AllOrders = () => {
 
       if (itemsError) throw itemsError;
 
-      // Get seller profile for Telegram message
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', user.id)
-        .single();
-
       // Send order to Telegram
       try {
         await supabase.functions.invoke('send-order-to-telegram', {
@@ -618,7 +623,7 @@ const AllOrders = () => {
               total_amount: createFormData.total_amount,
               advance_payment: createFormData.advance_payment,
               notes: createFormData.notes,
-              seller_name: profileData?.full_name || "Noma'lum"
+              seller_name: userProfile?.full_name || "Noma'lum"
             }
           }
         });
