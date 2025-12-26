@@ -244,38 +244,6 @@ const Admin = () => {
     setTelegramDialogOpen(true);
   };
 
-  const handleDeleteUser = async (userId: string, userName: string) => {
-    if (!confirm(`"${userName}" sotuvchini o'chirishni tasdiqlaysizmi?\n\nBu amalni qaytarib bo'lmaydi!`)) {
-      return;
-    }
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_id: userId }),
-      });
-
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to delete user');
-      }
-
-      toast.success(`"${userName}" o'chirildi!`);
-      fetchSellers();
-      fetchAllUsers();
-    } catch (error: any) {
-      toast.error(error.message);
-    }
-  };
-
   if (roleLoading || loading) {
     return (
       <DashboardLayout>
@@ -625,13 +593,12 @@ const Admin = () => {
                     <TableHead>Zakazlar</TableHead>
                     <TableHead>Daromad</TableHead>
                     <TableHead>Ro'yxatdan o'tgan</TableHead>
-                    <TableHead>Amallar</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {sellers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                         Sotuvchilar topilmadi
                       </TableCell>
                     </TableRow>
@@ -653,16 +620,6 @@ const Admin = () => {
                         <TableCell className="font-medium">{seller.totalRevenue.toLocaleString()} so'm</TableCell>
                         <TableCell className="text-muted-foreground text-sm">
                           {new Date(seller.created_at).toLocaleDateString('uz-UZ')}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDeleteUser(seller.id, seller.full_name)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
                         </TableCell>
                       </TableRow>
                     ))

@@ -3,7 +3,7 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, LayoutDashboard, ShoppingCart, User, Shield, Users, Package, CheckSquare, UserCog, BarChart3, Building2 } from "lucide-react";
+import { LogOut, LayoutDashboard, ShoppingCart, User, Shield, Users, Package, CheckSquare, UserCog, BarChart3, Warehouse } from "lucide-react";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import TaskNotifications from "./TaskNotifications";
@@ -17,7 +17,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [overdueTasksCount, setOverdueTasksCount] = useState(0);
-  const { isAdminOrRop, isSuperAdmin, loading: rolesLoading } = useUserRoles();
+  const { isAdminOrRop, loading: rolesLoading } = useUserRoles();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -107,13 +107,13 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { path: "/all-orders", icon: Package, label: "Barcha zakazlar" },
     { path: "/tasks", icon: CheckSquare, label: "Tasklar" },
     { path: "/statistics", icon: BarChart3, label: "Statistika" },
+    ...(isAdminOrRop ? [
+      { path: "/inventory", icon: Warehouse, label: "Ombor" },
+    ] : []),
     { path: "/sellers", icon: UserCog, label: "Hodimlar" },
     { path: "/profile", icon: User, label: "Profil" },
     ...(isAdminOrRop ? [
       { path: "/admin", icon: Shield, label: "Boshqaruv" }
-    ] : []),
-    ...(isSuperAdmin ? [
-      { path: "/super-admin", icon: Building2, label: "Kompaniyalar" }
     ] : []),
   ];
 

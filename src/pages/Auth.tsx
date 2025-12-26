@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,58 +7,21 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2 } from "lucide-react";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const companySlug = searchParams.get('company');
-  
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [companyInfo, setCompanyInfo] = useState<{ name: string; slug: string } | null>(null);
 
   useEffect(() => {
-    // Check if there's a company slug in the URL
-    if (companySlug) {
-      fetchCompanyInfo(companySlug);
-    }
-    
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         navigate("/");
       }
     });
-  }, [navigate, companySlug]);
-
-  const fetchCompanyInfo = async (slug: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('name, slug, is_active, subscription_status')
-        .eq('slug', slug)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching company:', error);
-        return;
-      }
-
-      if (data) {
-        if (!data.is_active || data.subscription_status === 'cancelled') {
-          toast.error("Bu kompaniyaning obunasi tugagan yoki bekor qilingan");
-          return;
-        }
-        setCompanyInfo({ name: data.name, slug: data.slug });
-      } else {
-        toast.error("Kompaniya topilmadi");
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
+  }, [navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,30 +75,16 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-1">
-          {companyInfo ? (
-            <>
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <Building2 className="h-6 w-6 text-primary" />
-              </div>
-              <CardTitle className="text-2xl font-bold text-center">{companyInfo.name}</CardTitle>
-              <CardDescription className="text-center">
-                Tizimga kirish
-              </CardDescription>
-            </>
-          ) : (
-            <>
-              <CardTitle className="text-2xl font-bold text-center">ROP Seller</CardTitle>
-              <CardDescription className="text-center">
-                Sotuvchilar boshqaruv tizimi
-              </CardDescription>
-            </>
-          )}
+          <CardTitle className="text-2xl font-bold text-center">ROP Seller</CardTitle>
+          <CardDescription className="text-center">
+            Sotuvchilar boshqaruv tizimi
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">
-            <TabsList className={`grid w-full ${companyInfo ? 'grid-cols-1' : 'grid-cols-2'}`}>
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Kirish</TabsTrigger>
-              {!companyInfo && <TabsTrigger value="signup">Ro'yxat</TabsTrigger>}
+              <TabsTrigger value="signup">Ro'yxat</TabsTrigger>
             </TabsList>
             
             <TabsContent value="signin">

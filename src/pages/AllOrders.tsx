@@ -14,8 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar, Search, Edit, Trash2, Plus, X, Printer, UserPlus } from "lucide-react";
-import { OrderReceiptPrint } from "@/components/OrderReceiptPrint";
+import { Calendar, Search, Edit, Trash2, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -693,10 +692,6 @@ const AllOrders = () => {
                 className="pl-9 w-[200px] sm:w-[300px]"
               />
             </div>
-            <Button variant="outline" onClick={() => window.location.href = '/leads'}>
-              <UserPlus className="mr-2 h-4 w-4" />
-              Uchrashuv yaratish
-            </Button>
             <Button onClick={() => setCreateDialogOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Yaratish
@@ -989,7 +984,6 @@ const AllOrders = () => {
                     <TableCell className="max-w-[200px] truncate">{order.notes}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <OrderReceiptPrint order={order} />
                         <Button
                           size="sm"
                           variant="outline"
