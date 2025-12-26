@@ -14,6 +14,7 @@ import Admin from "./pages/Admin";
 import Tasks from "./pages/Tasks";
 import Sellers from "./pages/Sellers";
 import Statistics from "./pages/Statistics";
+import SuperAdmin from "./pages/SuperAdmin";
 
 import NotFound from "./pages/NotFound";
 import { OrderStatusNotificationProvider } from "./components/OrderStatusNotificationProvider";
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/sellers" element={<Sellers />} />
             <Route path="/statistics" element={<Statistics />} />
+            <Route path="/super-admin" element={<SuperAdmin />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
