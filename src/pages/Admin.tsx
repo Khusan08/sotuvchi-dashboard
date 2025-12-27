@@ -588,11 +588,11 @@ const Admin = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Ism</TableHead>
+                    <TableHead>Email</TableHead>
                     <TableHead>Telefon</TableHead>
-                    <TableHead>Telegram ID</TableHead>
                     <TableHead>Zakazlar</TableHead>
                     <TableHead>Daromad</TableHead>
-                    <TableHead>Ro'yxatdan o'tgan</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -606,20 +606,12 @@ const Admin = () => {
                     sellers.map((seller) => (
                       <TableRow key={seller.id}>
                         <TableCell className="font-medium">{seller.full_name}</TableCell>
+                        <TableCell>{seller.id}</TableCell>
                         <TableCell>{seller.phone || "-"}</TableCell>
+                        <TableCell>{seller.totalOrders}</TableCell>
+                        <TableCell>{seller.totalRevenue.toLocaleString()} so'm</TableCell>
                         <TableCell>
-                          {seller.telegram_user_id ? (
-                            <code className="bg-muted px-2 py-1 rounded text-xs">{seller.telegram_user_id}</code>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">{seller.totalOrders}</Badge>
-                        </TableCell>
-                        <TableCell className="font-medium">{seller.totalRevenue.toLocaleString()} so'm</TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          {new Date(seller.created_at).toLocaleDateString('uz-UZ')}
+                          <Badge variant="default">Active</Badge>
                         </TableCell>
                       </TableRow>
                     ))
