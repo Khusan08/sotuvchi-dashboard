@@ -560,6 +560,19 @@ const AllOrders = () => {
 
       const itemPrice = calculateItemPrice();
 
+      // Get seller profile (company_id is required by backend security)
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('company_id, full_name')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) throw profileError;
+      if (!profileData?.company_id) {
+        toast.error("Kompaniya topilmadi!");
+        return;
+      }
+
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -572,6 +585,7 @@ const AllOrders = () => {
           notes: createFormData.notes,
           total_amount: createFormData.total_amount,
           seller_id: user.id,
+          company_id: profileData.company_id,
           status: 'pending'
         })
         .select()
@@ -591,13 +605,6 @@ const AllOrders = () => {
         .insert(orderItems);
 
       if (itemsError) throw itemsError;
-
-      // Get seller profile for Telegram message
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', user.id)
-        .single();
 
       // Send order to Telegram
       try {
