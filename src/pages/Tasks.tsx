@@ -163,6 +163,13 @@ const Tasks = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Foydalanuvchi topilmadi");
 
+      // Get user's company_id
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", user.id)
+        .single();
+
       const { error } = await supabase
         .from("tasks")
         .insert({
@@ -170,6 +177,7 @@ const Tasks = () => {
           description: formData.description,
           due_date: new Date(formData.due_date).toISOString(),
           seller_id: user.id,
+          company_id: profile?.company_id,
         });
 
       if (error) throw error;

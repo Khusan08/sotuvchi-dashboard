@@ -105,6 +105,13 @@ export function StageChangeDialog({
 
       // 2. Create task with time (only if task fields are filled or required)
       if (taskTitle.trim() && taskDate) {
+        // Get user's company_id
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("company_id")
+          .eq("id", user.id)
+          .single();
+
         const [hours, minutes] = taskTime.split(":").map(Number);
         const dueDate = new Date(taskDate);
         dueDate.setHours(hours, minutes, 0, 0);
@@ -118,6 +125,7 @@ export function StageChangeDialog({
             description: taskDescription.trim() || null,
             due_date: dueDate.toISOString(),
             status: "pending",
+            company_id: profile?.company_id,
           });
 
         if (taskError) {
