@@ -102,6 +102,13 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not found");
 
+      // Get user's company_id
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", user.id)
+        .single();
+
       // Combine date and time
       const [hours, minutes] = taskForm.due_time.split(':');
       const dueDateTime = new Date(taskForm.due_date);
@@ -113,7 +120,8 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
         due_date: dueDateTime.toISOString(),
         seller_id: lead.seller_id,
         lead_id: lead.id,
-        status: "pending"
+        status: "pending",
+        company_id: profile?.company_id
       });
 
       if (error) throw error;
