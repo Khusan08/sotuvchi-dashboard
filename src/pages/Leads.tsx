@@ -245,6 +245,24 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
     }
 
     try {
+      // Get user's company_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Foydalanuvchi topilmadi");
+        return;
+      }
+      
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", user.id)
+        .single();
+      
+      if (!profile?.company_id) {
+        toast.error("Kompaniya topilmadi");
+        return;
+      }
+
       const { error } = await supabase.from("leads").insert({
         seller_id: formData.employee,
         customer_name: formData.customer_name,
@@ -255,6 +273,7 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
         activity: formData.activity || null,
         stage: formData.stage,
         source: formData.source || null,
+        company_id: profile.company_id,
       });
 
       if (error) throw error;
