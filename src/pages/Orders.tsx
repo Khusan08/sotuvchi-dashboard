@@ -267,6 +267,18 @@ const Orders = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Get user's company_id
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.company_id) {
+        toast.error("Kompaniya topilmadi!");
+        return;
+      }
+
       const totalAmount = items.reduce((sum, item) => {
         return sum + (parseInt(item.quantity) * parseFloat(item.price));
       }, 0);
@@ -313,11 +325,12 @@ const Orders = () => {
 
         toast.success("Zakaz yangilandi!");
       } else {
-        // Create single order
+        // Create single order with company_id
         const { data: orderData, error: orderError } = await supabase
           .from("orders")
           .insert({
             seller_id: user.id,
+            company_id: profile.company_id,
             customer_name: formData.customer_name,
             customer_phone: formData.customer_phone,
             customer_phone2: formData.customer_phone2,
