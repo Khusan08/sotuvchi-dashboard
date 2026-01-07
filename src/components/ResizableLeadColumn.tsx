@@ -1,11 +1,13 @@
+import { useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import SortableLeadCard from "./SortableLeadCard";
+import { GripVertical } from "lucide-react";
 
-interface LeadColumnProps {
+interface ResizableLeadColumnProps {
   stage: string;
   title: string;
   leads: any[];
@@ -18,13 +20,69 @@ interface LeadColumnProps {
   onLeadUpdate?: () => void;
   getTasksForLead?: (leadId: string) => any[];
   onTaskUpdate?: () => void;
+  columnWidth: number;
+  onWidthChange: (width: number) => void;
 }
 
-const LeadColumn = ({ stage, title, leads, color, onLeadClick, stageData, stages, onStageChange, onRequestStageChange, onLeadUpdate, getTasksForLead, onTaskUpdate }: LeadColumnProps) => {
+const ResizableLeadColumn = ({ 
+  stage, 
+  title, 
+  leads, 
+  color, 
+  onLeadClick, 
+  stageData, 
+  stages, 
+  onStageChange, 
+  onRequestStageChange, 
+  onLeadUpdate, 
+  getTasksForLead, 
+  onTaskUpdate,
+  columnWidth,
+  onWidthChange
+}: ResizableLeadColumnProps) => {
   const { setNodeRef } = useDroppable({ id: stage });
+  const [isResizing, setIsResizing] = useState(false);
+  const columnRef = useRef<HTMLDivElement>(null);
+  const startXRef = useRef(0);
+  const startWidthRef = useRef(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+    startXRef.current = e.clientX;
+    startWidthRef.current = columnWidth;
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const diff = e.clientX - startXRef.current;
+      const newWidth = Math.max(250, Math.min(500, startWidthRef.current + diff));
+      onWidthChange(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing, onWidthChange]);
 
   return (
-    <div className="flex flex-col h-full min-w-[280px] w-[320px]">
+    <div 
+      ref={columnRef}
+      className="flex flex-col h-full shrink-0 relative"
+      style={{ width: columnWidth }}
+    >
       <div className={`p-4 rounded-t-lg ${color}`}>
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-white">{title}</h2>
@@ -65,8 +123,20 @@ const LeadColumn = ({ stage, title, leads, color, onLeadClick, stageData, stages
           </div>
         </ScrollArea>
       </Card>
+
+      {/* Resize Handle */}
+      <div
+        className={`absolute top-0 right-0 w-2 h-full cursor-col-resize group hover:bg-primary/20 transition-colors ${
+          isResizing ? "bg-primary/30" : ""
+        }`}
+        onMouseDown={handleMouseDown}
+      >
+        <div className="absolute top-1/2 right-0 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <GripVertical className="h-6 w-6 text-muted-foreground" />
+        </div>
+      </div>
     </div>
   );
 };
 
-export default LeadColumn;
+export default ResizableLeadColumn;

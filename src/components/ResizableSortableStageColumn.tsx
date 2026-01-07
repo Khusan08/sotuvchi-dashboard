@@ -1,9 +1,9 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { DndContext, DragEndEvent, DragStartEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import LeadColumn from "./LeadColumn";
+import ResizableLeadColumn from "./ResizableLeadColumn";
 
-interface SortableStageColumnProps {
+interface ResizableSortableStageColumnProps {
   stage: any;
   leads: any[];
   onLeadClick: (lead: any) => void;
@@ -15,9 +15,11 @@ interface SortableStageColumnProps {
   onLeadUpdate?: () => void;
   getTasksForLead?: (leadId: string) => any[];
   onTaskUpdate?: () => void;
+  columnWidth: number;
+  onWidthChange: (width: number) => void;
 }
 
-const SortableStageColumn = ({
+const ResizableSortableStageColumn = ({
   stage,
   leads,
   onLeadClick,
@@ -28,8 +30,10 @@ const SortableStageColumn = ({
   onDragEnd,
   onLeadUpdate,
   getTasksForLead,
-  onTaskUpdate
-}: SortableStageColumnProps) => {
+  onTaskUpdate,
+  columnWidth,
+  onWidthChange
+}: ResizableSortableStageColumnProps) => {
   const {
     attributes,
     listeners,
@@ -43,6 +47,7 @@ const SortableStageColumn = ({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    width: columnWidth,
   };
 
   const sensors = useSensors(
@@ -54,7 +59,7 @@ const SortableStageColumn = ({
   );
 
   return (
-    <div ref={setNodeRef} style={style} className="min-w-[280px] w-[320px] shrink-0">
+    <div ref={setNodeRef} style={style} className="shrink-0">
       <div 
         {...attributes} 
         {...listeners}
@@ -67,7 +72,7 @@ const SortableStageColumn = ({
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
       >
-        <LeadColumn
+        <ResizableLeadColumn
           stage={stage.id}
           title={stage.name}
           leads={leads.filter((lead) => lead.stage === stage.id)}
@@ -80,10 +85,12 @@ const SortableStageColumn = ({
           onLeadUpdate={onLeadUpdate}
           getTasksForLead={getTasksForLead}
           onTaskUpdate={onTaskUpdate}
+          columnWidth={columnWidth}
+          onWidthChange={onWidthChange}
         />
       </DndContext>
     </div>
   );
 };
 
-export default SortableStageColumn;
+export default ResizableSortableStageColumn;

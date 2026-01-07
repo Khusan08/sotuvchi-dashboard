@@ -16,11 +16,10 @@ import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCenter } from "@dnd-kit/core";
 import { SortableContext, horizontalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
-import LeadColumn from "@/components/LeadColumn";
 import LeadCard from "@/components/LeadCard";
 import LeadDetailsDialog from "@/components/LeadDetailsDialog";
 import StageManagement from "@/components/StageManagement";
-import SortableStageColumn from "@/components/SortableStageColumn";
+import ResizableSortableStageColumn from "@/components/ResizableSortableStageColumn";
 import { StageChangeDialog } from "@/components/StageChangeDialog";
 
 const LEAD_TYPE_OPTIONS = ["Yangi lid", "Baza"];
@@ -60,6 +59,20 @@ const Leads = () => {
     newStageName: string;
     sellerId: string;
   } | null>(null);
+  
+  // Column widths - stored in localStorage
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+    const saved = localStorage.getItem("leadColumnWidths");
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const getColumnWidth = (stageId: string) => columnWidths[stageId] || 320;
+  
+  const handleColumnWidthChange = (stageId: string, width: number) => {
+    const newWidths = { ...columnWidths, [stageId]: width };
+    setColumnWidths(newWidths);
+    localStorage.setItem("leadColumnWidths", JSON.stringify(newWidths));
+  };
 
   // Exempt stages - direct change allowed without dialog
   const EXEMPT_STAGE_IDS: string[] = [
@@ -761,7 +774,7 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
         <SortableContext items={stages.map(s => s.id)} strategy={horizontalListSortingStrategy}>
           <div className="flex gap-4 overflow-x-auto pb-4">
             {stages.map((stage) => (
-              <SortableStageColumn
+              <ResizableSortableStageColumn
                 key={stage.id}
                 stage={stage}
                 leads={getLeadsByStage(stage.id)}
@@ -789,6 +802,8 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
                 onLeadUpdate={fetchLeads}
                 getTasksForLead={getTasksForLead}
                 onTaskUpdate={fetchTasks}
+                columnWidth={getColumnWidth(stage.id)}
+                onWidthChange={(width) => handleColumnWidthChange(stage.id, width)}
               />
             ))}
           </div>
