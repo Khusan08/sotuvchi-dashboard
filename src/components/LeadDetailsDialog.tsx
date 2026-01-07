@@ -13,6 +13,10 @@ import { format } from "date-fns";
 import { CalendarIcon, User, Phone, DollarSign, Facebook, CheckCircle2, Clock, Plus, MessageSquare, Trash2, Truck } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { StageChangeDialog } from "./StageChangeDialog";
+
+// Stages where direct change is allowed (no dialog)
+const EXEMPT_STAGE_IDS = ["ad598efe-b15f-4809-bdf1-4afcdc9abf42"]; // Sotildi
 
 interface LeadDetailsDialogProps {
   lead: any;
@@ -46,6 +50,10 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
     due_time: "12:00",
     showForm: false
   });
+  const [pendingStageChange, setPendingStageChange] = useState<{
+    newStageId: string;
+    newStageName: string;
+  } | null>(null);
 
   useEffect(() => {
     if (open && lead) {
@@ -290,7 +298,24 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
     }
   };
 
-  const handleUpdateStage = async (newStageId: string) => {
+  const handleStageSelectChange = (newStageId: string) => {
+    if (newStageId === selectedStage) return;
+
+    const newStage = stages.find(s => s.id === newStageId);
+
+    // Check if exempt stage - direct change allowed
+    if (EXEMPT_STAGE_IDS.includes(newStageId)) {
+      handleDirectStageUpdate(newStageId);
+    } else {
+      // Open dialog for mandatory comment and task
+      setPendingStageChange({
+        newStageId: newStageId,
+        newStageName: newStage?.name || "",
+      });
+    }
+  };
+
+  const handleDirectStageUpdate = async (newStageId: string) => {
     try {
       const { error } = await supabase
         .from("leads")
@@ -318,7 +343,7 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <DialogTitle className="text-2xl">{lead?.customer_name}</DialogTitle>
-              <Select value={selectedStage} onValueChange={handleUpdateStage}>
+              <Select value={selectedStage} onValueChange={handleStageSelectChange}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue>
                     {currentStage && (
@@ -669,6 +694,24 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
           </div>
         </div>
       </DialogContent>
+
+      {/* Stage Change Dialog */}
+      {pendingStageChange && (
+        <StageChangeDialog
+          open={!!pendingStageChange}
+          onOpenChange={(open) => !open && setPendingStageChange(null)}
+          leadId={lead.id}
+          leadName={lead.customer_name}
+          newStageId={pendingStageChange.newStageId}
+          newStageName={pendingStageChange.newStageName}
+          sellerId={lead.seller_id}
+          onSuccess={() => {
+            setSelectedStage(pendingStageChange.newStageId);
+            setPendingStageChange(null);
+            onUpdate();
+          }}
+        />
+      )}
     </Dialog>
   );
 };
