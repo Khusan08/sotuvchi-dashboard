@@ -730,8 +730,22 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
                 }}
                 stages={stages}
                 onStageChange={handleStageChange}
+                onRequestStageChange={(leadId, newStageId) => {
+                  const lead = leads.find(l => l.id === leadId);
+                  const newStage = stages.find(s => s.id === newStageId);
+                  if (lead && newStage) {
+                    setPendingStageChange({
+                      leadId: lead.id,
+                      leadName: lead.customer_name,
+                      newStageId: newStageId,
+                      newStageName: newStage.name,
+                      sellerId: lead.seller_id,
+                    });
+                  }
+                }}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
+                onLeadUpdate={fetchLeads}
               />
             ))}
           </div>
