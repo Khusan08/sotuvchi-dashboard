@@ -54,7 +54,7 @@ const SortableStageColumn = ({
   );
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef} style={style} className="w-80 min-w-80 max-w-80 shrink-0">
       <div 
         {...attributes} 
         {...listeners}
