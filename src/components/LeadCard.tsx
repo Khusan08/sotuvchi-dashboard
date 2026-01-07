@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Phone, User, DollarSign, Facebook } from "lucide-react";
+import { Phone, User, DollarSign, Facebook, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +14,7 @@ interface LeadCardProps {
   stages?: any[];
   onStageChange?: (leadId: string, newStageId: string) => void;
   onLeadUpdate?: () => void;
+  onRequestStageChange?: (leadId: string, newStageId: string) => void;
 }
 
 const DELIVERY_STATUS_OPTIONS = [
@@ -22,7 +23,7 @@ const DELIVERY_STATUS_OPTIONS = [
   { value: "Bekor bo'ldi", label: "Bekor bo'ldi", color: "bg-red-500" }
 ];
 
-const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onLeadUpdate }: LeadCardProps) => {
+const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onLeadUpdate, onRequestStageChange }: LeadCardProps) => {
   const activityOptions = [
     "O'ylab ko'radi",
     "Mavjud emas",
@@ -68,6 +69,21 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onL
 
   // Check if lead is in "Sotildi" stage
   const isSoldStage = stage?.name === "Sotildi" || stages?.find(s => s.id === lead.stage)?.name === "Sotildi";
+
+  // Stages where stage change is exempt from dialog
+  const EXEMPT_STAGE_IDS = ["ad598efe-b15f-4809-bdf1-4afcdc9abf42"]; // Sotildi
+
+  const handleStageSelectChange = (newStageId: string) => {
+    if (newStageId === lead.stage) return;
+    
+    // If exempt stage, change directly
+    if (EXEMPT_STAGE_IDS.includes(newStageId)) {
+      onStageChange?.(lead.id, newStageId);
+    } else {
+      // Request stage change with dialog
+      onRequestStageChange?.(lead.id, newStageId);
+    }
+  };
 
   return (
     <Card 
@@ -141,6 +157,31 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onL
             </SelectContent>
           </Select>
         </div>
+
+        {/* Stage selector */}
+        {stages && stages.length > 0 && (
+          <div className="mt-2 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              <ArrowRight className="h-3 w-3 inline mr-1" />
+              Bosqichni o'zgartirish
+            </label>
+            <Select value={lead.stage || ""} onValueChange={handleStageSelectChange}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Bosqichni tanlang" />
+              </SelectTrigger>
+              <SelectContent>
+                {stages.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${s.color}`} />
+                      {s.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Delivery Status - Only for Sotildi stage */}
         {isSoldStage && (
