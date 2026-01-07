@@ -24,7 +24,7 @@ const LeadColumn = ({ stage, title, leads, color, onLeadClick, stageData, stages
   const { setNodeRef } = useDroppable({ id: stage });
 
   return (
-    <div className="flex flex-col h-full min-w-[320px]">
+    <div className="flex flex-col h-full w-80 min-w-80 max-w-80 shrink-0">
       <div className={`p-4 rounded-t-lg ${color}`}>
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-white">{title}</h2>
