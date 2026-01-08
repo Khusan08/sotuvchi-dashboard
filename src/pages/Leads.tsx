@@ -306,14 +306,9 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
         source: "",
       });
       fetchLeads();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error creating lead:", error);
-      // Check for duplicate phone error from trigger
-      if (error?.message?.includes("PHONE_ALREADY_EXISTS") || error?.code === "P0001") {
-        toast.error("Bu telefon raqam CRM da mavjud!");
-      } else {
-        toast.error("Lid qo'shishda xato");
-      }
+      toast.error("Lid qo'shishda xato");
     }
   };
 
