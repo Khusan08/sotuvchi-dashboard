@@ -58,7 +58,7 @@ const ResizableLeadColumn = ({
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
       const diff = e.clientX - startXRef.current;
-      const newWidth = Math.max(250, Math.min(500, startWidthRef.current + diff));
+      const newWidth = Math.max(280, Math.min(520, startWidthRef.current + diff));
       onWidthChange(newWidth);
     };
 

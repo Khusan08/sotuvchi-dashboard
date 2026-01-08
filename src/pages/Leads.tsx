@@ -62,23 +62,47 @@ const Leads = () => {
   
   // Column widths - stored in localStorage
   const DEFAULT_COLUMN_WIDTH = 320;
+  const MIN_COLUMN_WIDTH = 280;
+  const MAX_COLUMN_WIDTH = 520;
+  const COLUMN_WIDTH_STORAGE_KEY = "leadColumnWidths_v2";
+
+  const clampWidth = (w: number) => Math.max(MIN_COLUMN_WIDTH, Math.min(MAX_COLUMN_WIDTH, w));
+
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
-    const saved = localStorage.getItem("leadColumnWidths");
-    return saved ? JSON.parse(saved) : {};
+    const saved = localStorage.getItem(COLUMN_WIDTH_STORAGE_KEY);
+    if (!saved) return {};
+    try {
+      const parsed = JSON.parse(saved);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
   });
 
-  const getColumnWidth = (stageId: string) => columnWidths[stageId] || DEFAULT_COLUMN_WIDTH;
-  
+  // Clear legacy saved widths (fixes cases like "Muhim" being stretched)
+  useEffect(() => {
+    if (localStorage.getItem("leadColumnWidths")) {
+      localStorage.removeItem("leadColumnWidths");
+      setColumnWidths({});
+    }
+  }, []);
+
+  const getColumnWidth = (stageId: string) => {
+    const w = columnWidths[stageId];
+    return typeof w === "number" && Number.isFinite(w) ? clampWidth(w) : DEFAULT_COLUMN_WIDTH;
+  };
+
   // Reset all column widths to default
   const resetColumnWidths = () => {
     setColumnWidths({});
+    localStorage.removeItem(COLUMN_WIDTH_STORAGE_KEY);
     localStorage.removeItem("leadColumnWidths");
   };
-  
+
   const handleColumnWidthChange = (stageId: string, width: number) => {
-    const newWidths = { ...columnWidths, [stageId]: width };
+    const newWidths = { ...columnWidths, [stageId]: clampWidth(width) };
     setColumnWidths(newWidths);
-    localStorage.setItem("leadColumnWidths", JSON.stringify(newWidths));
+    localStorage.setItem(COLUMN_WIDTH_STORAGE_KEY, JSON.stringify(newWidths));
   };
 
   // Exempt stages - direct change allowed without dialog
@@ -664,6 +688,9 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
 
         <div className="flex gap-2 items-center flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
+          <Button variant="outline" size="sm" onClick={resetColumnWidths}>
+            Kenglikni reset
+          </Button>
           
           <Select value={filterTimeRange} onValueChange={(value) => {
             setFilterTimeRange(value);
