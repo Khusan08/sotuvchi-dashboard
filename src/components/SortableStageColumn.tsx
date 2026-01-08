@@ -9,10 +9,8 @@ interface SortableStageColumnProps {
   onLeadClick: (lead: any) => void;
   stages: any[];
   onStageChange: (leadId: string, newStageId: string) => void;
-  onRequestStageChange: (leadId: string, newStageId: string) => void;
   onDragStart: (event: DragStartEvent) => void;
   onDragEnd: (event: DragEndEvent) => void;
-  onLeadUpdate?: () => void;
 }
 
 const SortableStageColumn = ({
@@ -21,10 +19,8 @@ const SortableStageColumn = ({
   onLeadClick,
   stages,
   onStageChange,
-  onRequestStageChange,
   onDragStart,
-  onDragEnd,
-  onLeadUpdate
+  onDragEnd
 }: SortableStageColumnProps) => {
   const {
     attributes,
@@ -72,8 +68,6 @@ const SortableStageColumn = ({
           stageData={stage}
           stages={stages}
           onStageChange={onStageChange}
-          onRequestStageChange={onRequestStageChange}
-          onLeadUpdate={onLeadUpdate}
         />
       </DndContext>
     </div>

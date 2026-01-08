@@ -13,10 +13,6 @@ import { format } from "date-fns";
 import { CalendarIcon, User, Phone, DollarSign, Facebook, CheckCircle2, Clock, Plus, MessageSquare, Trash2, Truck } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { StageChangeDialog } from "./StageChangeDialog";
-
-// Stages where direct change is allowed (no dialog)
-const EXEMPT_STAGE_IDS = ["ad598efe-b15f-4809-bdf1-4afcdc9abf42"]; // Sotildi
 
 interface LeadDetailsDialogProps {
   lead: any;
@@ -50,10 +46,6 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
     due_time: "12:00",
     showForm: false
   });
-  const [pendingStageChange, setPendingStageChange] = useState<{
-    newStageId: string;
-    newStageName: string;
-  } | null>(null);
 
   useEffect(() => {
     if (open && lead) {
@@ -110,13 +102,6 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not found");
 
-      // Get user's company_id
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("company_id")
-        .eq("id", user.id)
-        .single();
-
       // Combine date and time
       const [hours, minutes] = taskForm.due_time.split(':');
       const dueDateTime = new Date(taskForm.due_date);
@@ -128,8 +113,7 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
         due_date: dueDateTime.toISOString(),
         seller_id: lead.seller_id,
         lead_id: lead.id,
-        status: "pending",
-        company_id: profile?.company_id
+        status: "pending"
       });
 
       if (error) throw error;
@@ -298,24 +282,7 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
     }
   };
 
-  const handleStageSelectChange = (newStageId: string) => {
-    if (newStageId === selectedStage) return;
-
-    const newStage = stages.find(s => s.id === newStageId);
-
-    // Check if exempt stage - direct change allowed
-    if (EXEMPT_STAGE_IDS.includes(newStageId)) {
-      handleDirectStageUpdate(newStageId);
-    } else {
-      // Open dialog for mandatory comment and task
-      setPendingStageChange({
-        newStageId: newStageId,
-        newStageName: newStage?.name || "",
-      });
-    }
-  };
-
-  const handleDirectStageUpdate = async (newStageId: string) => {
+  const handleUpdateStage = async (newStageId: string) => {
     try {
       const { error } = await supabase
         .from("leads")
@@ -343,7 +310,7 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <DialogTitle className="text-2xl">{lead?.customer_name}</DialogTitle>
-              <Select value={selectedStage} onValueChange={handleStageSelectChange}>
+              <Select value={selectedStage} onValueChange={handleUpdateStage}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue>
                     {currentStage && (
@@ -694,24 +661,6 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
           </div>
         </div>
       </DialogContent>
-
-      {/* Stage Change Dialog */}
-      {pendingStageChange && (
-        <StageChangeDialog
-          open={!!pendingStageChange}
-          onOpenChange={(open) => !open && setPendingStageChange(null)}
-          leadId={lead.id}
-          leadName={lead.customer_name}
-          newStageId={pendingStageChange.newStageId}
-          newStageName={pendingStageChange.newStageName}
-          sellerId={lead.seller_id}
-          onSuccess={() => {
-            setSelectedStage(pendingStageChange.newStageId);
-            setPendingStageChange(null);
-            onUpdate();
-          }}
-        />
-      )}
     </Dialog>
   );
 };
