@@ -806,7 +806,7 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
         onDragEnd={handleStageDragEnd}
       >
         <SortableContext items={stages.map(s => s.id)} strategy={horizontalListSortingStrategy}>
-          <div className="flex gap-4 overflow-x-auto pb-4">
+          <div className="flex gap-2 overflow-x-auto pb-4">
             {stages.map((stage) => (
               <ResizableSortableStageColumn
                 key={stage.id}
