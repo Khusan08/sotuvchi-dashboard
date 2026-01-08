@@ -137,21 +137,21 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onL
       onClick={onClick}
     >
       <CardContent className="p-4 space-y-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold text-base">{lead.customer_name}</h3>
+              <h3 className="font-semibold text-base truncate">{lead.customer_name}</h3>
               {lead.source?.toLowerCase().includes('facebook') && (
-                <Facebook className="h-4 w-4 text-blue-600" />
+                <Facebook className="h-4 w-4 text-blue-600 shrink-0" />
               )}
             </div>
             <p className="text-xs text-muted-foreground">
               {format(new Date(lead.created_at), 'dd.MM.yyyy HH:mm')}
             </p>
           </div>
-          <div className="flex flex-col gap-1 items-end">
+          <div className="flex flex-col gap-1 items-end shrink-0">
             {lead.lead_type && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="text-xs whitespace-nowrap">
                 {lead.lead_type}
               </Badge>
             )}
@@ -160,16 +160,16 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onL
 
 
         {lead.customer_phone && (
-          <div className="flex items-center gap-2 text-sm">
-            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-            <span>{lead.customer_phone}</span>
+          <div className="flex items-center gap-2 text-sm min-w-0">
+            <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="truncate">{lead.customer_phone}</span>
           </div>
         )}
 
         {lead.profiles?.full_name && (
-          <div className="flex items-center gap-2 text-sm">
-            <User className="h-3.5 w-3.5 text-muted-foreground" />
-            <span>{lead.profiles.full_name}</span>
+          <div className="flex items-center gap-2 text-sm min-w-0">
+            <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="truncate">{lead.profiles.full_name}</span>
           </div>
         )}
 
