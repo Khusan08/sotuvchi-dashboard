@@ -60,13 +60,6 @@ const ResizableSortableStageColumn = ({
 
   return (
     <div ref={setNodeRef} style={style} className="shrink-0">
-      <div 
-        {...attributes} 
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing mb-2 p-2 bg-muted/50 rounded-lg"
-      >
-        <h3 className="font-semibold text-center">{stage.name}</h3>
-      </div>
       <DndContext
         sensors={sensors}
         onDragStart={onDragStart}
@@ -87,6 +80,7 @@ const ResizableSortableStageColumn = ({
           onTaskUpdate={onTaskUpdate}
           columnWidth={columnWidth}
           onWidthChange={onWidthChange}
+          dragHandleProps={{ ...attributes, ...listeners }}
         />
       </DndContext>
     </div>
