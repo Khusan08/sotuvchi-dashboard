@@ -61,12 +61,19 @@ const Leads = () => {
   } | null>(null);
   
   // Column widths - stored in localStorage
+  const DEFAULT_COLUMN_WIDTH = 320;
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
     const saved = localStorage.getItem("leadColumnWidths");
     return saved ? JSON.parse(saved) : {};
   });
 
-  const getColumnWidth = (stageId: string) => columnWidths[stageId] || 320;
+  const getColumnWidth = (stageId: string) => columnWidths[stageId] || DEFAULT_COLUMN_WIDTH;
+  
+  // Reset all column widths to default
+  const resetColumnWidths = () => {
+    setColumnWidths({});
+    localStorage.removeItem("leadColumnWidths");
+  };
   
   const handleColumnWidthChange = (stageId: string, width: number) => {
     const newWidths = { ...columnWidths, [stageId]: width };
