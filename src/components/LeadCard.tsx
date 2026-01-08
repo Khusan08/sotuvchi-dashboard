@@ -1,18 +1,10 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Phone, User, DollarSign, Facebook, ArrowRight, CheckCircle, Circle, Trash2, ListTodo } from "lucide-react";
+import { Phone, User, DollarSign, Facebook, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-interface Task {
-  id: string;
-  title: string;
-  status: string;
-  due_date: string;
-}
 
 interface LeadCardProps {
   lead: any;
@@ -23,8 +15,6 @@ interface LeadCardProps {
   onStageChange?: (leadId: string, newStageId: string) => void;
   onLeadUpdate?: () => void;
   onRequestStageChange?: (leadId: string, newStageId: string) => void;
-  tasks?: Task[];
-  onTaskUpdate?: () => void;
 }
 
 const DELIVERY_STATUS_OPTIONS = [
@@ -33,7 +23,7 @@ const DELIVERY_STATUS_OPTIONS = [
   { value: "Bekor bo'ldi", label: "Bekor bo'ldi", color: "bg-red-500" }
 ];
 
-const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onLeadUpdate, onRequestStageChange, tasks = [], onTaskUpdate }: LeadCardProps) => {
+const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onLeadUpdate, onRequestStageChange }: LeadCardProps) => {
   const activityOptions = [
     "O'ylab ko'radi",
     "Mavjud emas",
@@ -94,42 +84,6 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onL
       onRequestStageChange?.(lead.id, newStageId);
     }
   };
-
-  const handleToggleTask = async (taskId: string, currentStatus: string) => {
-    try {
-      const newStatus = currentStatus === "completed" ? "pending" : "completed";
-      const { error } = await supabase
-        .from("tasks")
-        .update({ status: newStatus })
-        .eq("id", taskId);
-
-      if (error) throw error;
-      toast.success(newStatus === "completed" ? "Task bajarildi!" : "Task qayta ochildi");
-      onTaskUpdate?.();
-    } catch (error) {
-      console.error("Error toggling task:", error);
-      toast.error("Taskni yangilashda xato");
-    }
-  };
-
-  const handleDeleteTask = async (taskId: string) => {
-    try {
-      const { error } = await supabase
-        .from("tasks")
-        .delete()
-        .eq("id", taskId);
-
-      if (error) throw error;
-      toast.success("Task o'chirildi!");
-      onTaskUpdate?.();
-    } catch (error) {
-      console.error("Error deleting task:", error);
-      toast.error("Taskni o'chirishda xato");
-    }
-  };
-
-  // Filter pending tasks for this lead
-  const pendingTasks = tasks.filter(t => t.status !== "completed");
 
   return (
     <Card 
@@ -250,57 +204,6 @@ const LeadCard = ({ lead, isDragging, onClick, stage, stages, onStageChange, onL
                 ))}
               </SelectContent>
             </Select>
-          </div>
-        )}
-
-        {/* Tasks Section */}
-        {tasks.length > 0 && (
-          <div className="mt-2 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
-            <label className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
-              <ListTodo className="h-3 w-3" />
-              Tasklar ({pendingTasks.length}/{tasks.length})
-            </label>
-            <div className="space-y-1.5">
-              {tasks.slice(0, 3).map((task) => (
-                <div 
-                  key={task.id} 
-                  className={`flex items-center justify-between gap-2 p-1.5 rounded text-xs ${
-                    task.status === "completed" ? "bg-green-50 dark:bg-green-950/30" : "bg-muted/50"
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-5 w-5 shrink-0"
-                      onClick={() => handleToggleTask(task.id, task.status)}
-                    >
-                      {task.status === "completed" ? (
-                        <CheckCircle className="h-3.5 w-3.5 text-green-600" />
-                      ) : (
-                        <Circle className="h-3.5 w-3.5 text-muted-foreground" />
-                      )}
-                    </Button>
-                    <span className={`truncate ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
-                      {task.title}
-                    </span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5 shrink-0 text-destructive hover:text-destructive"
-                    onClick={() => handleDeleteTask(task.id)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
-              {tasks.length > 3 && (
-                <p className="text-xs text-muted-foreground text-center">
-                  +{tasks.length - 3} ta yana...
-                </p>
-              )}
-            </div>
           </div>
         )}
       </CardContent>

@@ -16,11 +16,9 @@ interface LeadColumnProps {
   onStageChange?: (leadId: string, newStageId: string) => void;
   onRequestStageChange?: (leadId: string, newStageId: string) => void;
   onLeadUpdate?: () => void;
-  getTasksForLead?: (leadId: string) => any[];
-  onTaskUpdate?: () => void;
 }
 
-const LeadColumn = ({ stage, title, leads, color, onLeadClick, stageData, stages, onStageChange, onRequestStageChange, onLeadUpdate, getTasksForLead, onTaskUpdate }: LeadColumnProps) => {
+const LeadColumn = ({ stage, title, leads, color, onLeadClick, stageData, stages, onStageChange, onRequestStageChange, onLeadUpdate }: LeadColumnProps) => {
   const { setNodeRef } = useDroppable({ id: stage });
 
   return (
@@ -51,8 +49,6 @@ const LeadColumn = ({ stage, title, leads, color, onLeadClick, stageData, stages
                   onStageChange={onStageChange}
                   onRequestStageChange={onRequestStageChange}
                   onLeadUpdate={onLeadUpdate}
-                  tasks={getTasksForLead?.(lead.id) || []}
-                  onTaskUpdate={onTaskUpdate}
                 />
               ))}
             </SortableContext>

@@ -37,7 +37,6 @@ const TIME_FILTER_OPTIONS = [
 
 const Leads = () => {
   const [leads, setLeads] = useState<any[]>([]);
-  const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [filterLeadType, setFilterLeadType] = useState<string>("all");
@@ -91,7 +90,6 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
     fetchLeads();
     fetchSellers();
     fetchStages();
-    fetchTasks();
   }, []);
 
   // Handle opening specific lead from URL parameter
@@ -157,25 +155,6 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
     } catch (error) {
       console.error("Error fetching stages:", error);
     }
-  };
-
-  const fetchTasks = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("tasks")
-        .select("id, title, status, due_date, lead_id")
-        .not("lead_id", "is", null)
-        .order("due_date");
-
-      if (error) throw error;
-      setTasks(data || []);
-    } catch (error) {
-      console.error("Error fetching tasks:", error);
-    }
-  };
-
-  const getTasksForLead = (leadId: string) => {
-    return tasks.filter(t => t.lead_id === leadId);
   };
 
   const getFilteredLeads = () => {
@@ -787,8 +766,6 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
                 onLeadUpdate={fetchLeads}
-                getTasksForLead={getTasksForLead}
-                onTaskUpdate={fetchTasks}
               />
             ))}
           </div>
