@@ -16,10 +16,11 @@ import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCenter } from "@dnd-kit/core";
 import { SortableContext, horizontalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import LeadColumn from "@/components/LeadColumn";
 import LeadCard from "@/components/LeadCard";
 import LeadDetailsDialog from "@/components/LeadDetailsDialog";
 import StageManagement from "@/components/StageManagement";
-import ResizableSortableStageColumn from "@/components/ResizableSortableStageColumn";
+import SortableStageColumn from "@/components/SortableStageColumn";
 import { StageChangeDialog } from "@/components/StageChangeDialog";
 
 const LEAD_TYPE_OPTIONS = ["Yangi lid", "Baza"];
@@ -59,51 +60,6 @@ const Leads = () => {
     newStageName: string;
     sellerId: string;
   } | null>(null);
-  
-  // Column widths - stored in localStorage
-  const DEFAULT_COLUMN_WIDTH = 320;
-  const MIN_COLUMN_WIDTH = 280;
-  const MAX_COLUMN_WIDTH = 520;
-  const COLUMN_WIDTH_STORAGE_KEY = "leadColumnWidths_v2";
-
-  const clampWidth = (w: number) => Math.max(MIN_COLUMN_WIDTH, Math.min(MAX_COLUMN_WIDTH, w));
-
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
-    const saved = localStorage.getItem(COLUMN_WIDTH_STORAGE_KEY);
-    if (!saved) return {};
-    try {
-      const parsed = JSON.parse(saved);
-      return parsed && typeof parsed === "object" ? parsed : {};
-    } catch {
-      return {};
-    }
-  });
-
-  // Clear legacy saved widths (fixes cases like "Muhim" being stretched)
-  useEffect(() => {
-    if (localStorage.getItem("leadColumnWidths")) {
-      localStorage.removeItem("leadColumnWidths");
-      setColumnWidths({});
-    }
-  }, []);
-
-  const getColumnWidth = (stageId: string) => {
-    const w = columnWidths[stageId];
-    return typeof w === "number" && Number.isFinite(w) ? clampWidth(w) : DEFAULT_COLUMN_WIDTH;
-  };
-
-  // Reset all column widths to default
-  const resetColumnWidths = () => {
-    setColumnWidths({});
-    localStorage.removeItem(COLUMN_WIDTH_STORAGE_KEY);
-    localStorage.removeItem("leadColumnWidths");
-  };
-
-  const handleColumnWidthChange = (stageId: string, width: number) => {
-    const newWidths = { ...columnWidths, [stageId]: clampWidth(width) };
-    setColumnWidths(newWidths);
-    localStorage.setItem(COLUMN_WIDTH_STORAGE_KEY, JSON.stringify(newWidths));
-  };
 
   // Exempt stages - direct change allowed without dialog
   const EXEMPT_STAGE_IDS: string[] = [
@@ -688,9 +644,6 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
 
         <div className="flex gap-2 items-center flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
-          <Button variant="outline" size="sm" onClick={resetColumnWidths}>
-            Kenglikni reset
-          </Button>
           
           <Select value={filterTimeRange} onValueChange={(value) => {
             setFilterTimeRange(value);
@@ -806,9 +759,9 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
         onDragEnd={handleStageDragEnd}
       >
         <SortableContext items={stages.map(s => s.id)} strategy={horizontalListSortingStrategy}>
-          <div className="flex gap-2 overflow-x-auto pb-4">
+          <div className="flex gap-4 overflow-x-auto pb-4">
             {stages.map((stage) => (
-              <ResizableSortableStageColumn
+              <SortableStageColumn
                 key={stage.id}
                 stage={stage}
                 leads={getLeadsByStage(stage.id)}
@@ -836,8 +789,6 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
                 onLeadUpdate={fetchLeads}
                 getTasksForLead={getTasksForLead}
                 onTaskUpdate={fetchTasks}
-                columnWidth={getColumnWidth(stage.id)}
-                onWidthChange={(width) => handleColumnWidthChange(stage.id, width)}
               />
             ))}
           </div>
