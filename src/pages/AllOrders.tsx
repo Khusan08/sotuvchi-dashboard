@@ -546,18 +546,8 @@ const AllOrders = () => {
         return;
       }
 
-      if (!createFormData.district || !createFormData.district.trim()) {
-        toast.error("Tumanni tanlash majburiy!");
-        return;
-      }
-
       if (!createFormData.total_amount || createFormData.total_amount <= 0) {
         toast.error("Umumiy summani kiriting");
-        return;
-      }
-
-      if (createFormData.advance_payment <= 0) {
-        toast.error("Avans 0 dan katta bo'lishi kerak!");
         return;
       }
 
