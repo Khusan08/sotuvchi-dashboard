@@ -22,6 +22,7 @@ interface ResizableLeadColumnProps {
   onTaskUpdate?: () => void;
   columnWidth: number;
   onWidthChange: (width: number) => void;
+  dragHandleProps?: Record<string, any>;
 }
 
 const ResizableLeadColumn = ({ 
@@ -38,7 +39,8 @@ const ResizableLeadColumn = ({
   getTasksForLead, 
   onTaskUpdate,
   columnWidth,
-  onWidthChange
+  onWidthChange,
+  dragHandleProps
 }: ResizableLeadColumnProps) => {
   const { setNodeRef } = useDroppable({ id: stage });
   const [isResizing, setIsResizing] = useState(false);
@@ -83,7 +85,10 @@ const ResizableLeadColumn = ({
       className="flex flex-col h-full shrink-0 relative"
       style={{ width: columnWidth }}
     >
-      <div className={`p-4 rounded-t-lg ${color}`}>
+      <div 
+        className={`p-4 rounded-t-lg ${color} cursor-grab active:cursor-grabbing`}
+        {...dragHandleProps}
+      >
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-white">{title}</h2>
           <Badge variant="secondary" className="bg-white/20 text-white border-0">
