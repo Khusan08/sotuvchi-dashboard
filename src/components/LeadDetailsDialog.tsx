@@ -99,31 +99,52 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange, onUpdate, sellers, stages
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("User not found");
 
+      // Get user's company_id (required by backend security policies)
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+
+      const companyId = profile?.company_id ?? lead?.company_id;
+      if (!companyId) throw new Error("Kompaniya topilmadi");
+
       // Combine date and time
-      const [hours, minutes] = taskForm.due_time.split(':');
+      const [hours, minutes] = taskForm.due_time.split(":");
       const dueDateTime = new Date(taskForm.due_date);
       dueDateTime.setHours(parseInt(hours), parseInt(minutes));
 
       const { error } = await supabase.from("tasks").insert({
-        title: taskForm.title,
-        description: taskForm.description,
+        title: taskForm.title.trim(),
+        description: taskForm.description?.trim() || null,
         due_date: dueDateTime.toISOString(),
         seller_id: lead.seller_id,
         lead_id: lead.id,
-        status: "pending"
+        status: "pending",
+        company_id: companyId,
       });
 
       if (error) throw error;
 
       toast.success("Vazifa qo'shildi");
-      setTaskForm({ title: "", description: "", due_date: new Date(), due_time: "12:00", showForm: false });
+      setTaskForm({
+        title: "",
+        description: "",
+        due_date: new Date(),
+        due_time: "12:00",
+        showForm: false,
+      });
       fetchTasks();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding task:", error);
-      toast.error("Vazifa qo'shishda xato");
+      toast.error(error?.message || "Vazifa qo'shishda xato");
     }
   };
 
