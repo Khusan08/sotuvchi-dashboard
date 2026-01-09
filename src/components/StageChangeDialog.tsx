@@ -88,6 +88,18 @@ export function StageChangeDialog({
         return;
       }
 
+      // Get user's company_id
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.company_id) {
+        toast.error("Kompaniya topilmadi");
+        return;
+      }
+
       // 1. Save comment
       const { error: commentError } = await supabase
         .from("lead_comments")
@@ -118,6 +130,7 @@ export function StageChangeDialog({
             description: taskDescription.trim() || null,
             due_date: dueDate.toISOString(),
             status: "pending",
+            company_id: profile.company_id,
           });
 
         if (taskError) {
