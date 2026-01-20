@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar, Search, Edit, Trash2, Plus, X } from "lucide-react";
+import { Calendar, Search, Edit, Trash2, Plus, X, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -238,6 +239,62 @@ const AllOrders = () => {
 
   const calculateTotalSales = () => {
     return filteredOrders.reduce((total, order) => total + Number(order.total_amount), 0);
+  };
+
+  const exportToExcel = () => {
+    const exportData = filteredOrders.map((order, index) => {
+      const products = order.items.map(item => 
+        `${item.product_name} (${item.quantity} dona)`
+      ).join(", ");
+      
+      const remaining = Number(order.total_amount) - Number(order.advance_payment || 0);
+      
+      const statusLabels: Record<string, string> = {
+        pending: "Jarayonda",
+        delivered: "Yetkazildi",
+        cancelled: "Bekor qilindi"
+      };
+
+      return {
+        "#": index + 1,
+        "Buyurtma ID": order.order_number,
+        "Mijoz": order.customer_name,
+        "Telefon": order.customer_phone || "",
+        "Manzil": `${order.region || ""} ${order.district || ""}`.trim(),
+        "Mahsulotlar": products,
+        "Jami summa (so'm)": Number(order.total_amount),
+        "Oldindan to'lov": Number(order.advance_payment || 0),
+        "Qoldiq": remaining,
+        "To'lov turi / Izoh": order.notes || "",
+        "Sotuvchi": order.seller_name || "",
+        "Status": statusLabels[order.status] || order.status
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Zakazlar");
+    
+    // Auto-size columns
+    const colWidths = [
+      { wch: 5 },   // #
+      { wch: 12 },  // Buyurtma ID
+      { wch: 20 },  // Mijoz
+      { wch: 15 },  // Telefon
+      { wch: 25 },  // Manzil
+      { wch: 40 },  // Mahsulotlar
+      { wch: 18 },  // Jami summa
+      { wch: 18 },  // Oldindan to'lov
+      { wch: 15 },  // Qoldiq
+      { wch: 25 },  // To'lov turi / Izoh
+      { wch: 20 },  // Sotuvchi
+      { wch: 15 },  // Status
+    ];
+    ws['!cols'] = colWidths;
+    
+    const fileName = `Zakazlar_${format(new Date(), "yyyy-MM-dd_HH-mm")}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    toast.success("Zakazlar muvaffaqiyatli yuklandi!");
   };
 
   const addProductToOrder = (product: any) => {
@@ -699,6 +756,12 @@ const AllOrders = () => {
                 className="pl-9 w-[200px] sm:w-[300px]"
               />
             </div>
+            {isAdmin && (
+              <Button variant="outline" onClick={exportToExcel}>
+                <Download className="mr-2 h-4 w-4" />
+                Yuklash
+              </Button>
+            )}
             <Button onClick={() => setCreateDialogOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Yaratish
