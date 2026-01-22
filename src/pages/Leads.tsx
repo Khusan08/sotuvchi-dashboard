@@ -75,6 +75,8 @@ const Leads = () => {
   
 const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
   
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  
   const [formData, setFormData] = useState({
     customer_name: "",
     customer_phone: "",
@@ -90,7 +92,15 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
     fetchLeads();
     fetchSellers();
     fetchStages();
+    fetchCurrentUser();
   }, []);
+
+  const fetchCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setCurrentUserId(user.id);
+    }
+  };
 
   // Handle opening specific lead from URL parameter
   useEffect(() => {
@@ -234,13 +244,11 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.employee) {
+    // For sellers, auto-assign to themselves
+    const employeeId = isAdminOrRop ? formData.employee : currentUserId;
+    
+    if (!employeeId) {
       toast.error("Iltimos, xodimni tanlang");
-      return;
-    }
-
-    if (!isAdminOrRop) {
-      toast.error("Sizda lid qo'shish huquqi yo'q");
       return;
     }
 
@@ -264,10 +272,10 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
       }
 
       const { error } = await supabase.from("leads").insert({
-        seller_id: formData.employee,
+        seller_id: employeeId,
         customer_name: formData.customer_name,
         customer_phone: formData.customer_phone,
-        employee: sellers.find(s => s.id === formData.employee)?.full_name || "",
+        employee: sellers.find(s => s.id === employeeId)?.full_name || "",
         lead_type: formData.lead_type,
         notes: formData.notes || null,
         activity: formData.activity || null,
@@ -461,42 +469,41 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
       </div>
 
       <div className="flex gap-4 mb-6 flex-wrap items-center">
-        {isAdminOrRop && (
-          <>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Yangi lid
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Yangi lid qo'shish</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="customer_name">Mijoz ismi *</Label>
-                    <Input
-                      id="customer_name"
-                      value={formData.customer_name}
-                      onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="customer_phone">Telefon raqami *</Label>
-                    <Input
-                      id="customer_phone"
-                      value={formData.customer_phone}
-                      onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
-                      required
-                    />
-                  </div>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Yangi lid
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Yangi lid qo'shish</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="customer_name">Mijoz ismi *</Label>
+                  <Input
+                    id="customer_name"
+                    value={formData.customer_name}
+                    onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
+                    required
+                  />
                 </div>
+                <div>
+                  <Label htmlFor="customer_phone">Telefon raqami *</Label>
+                  <Input
+                    id="customer_phone"
+                    value={formData.customer_phone}
+                    onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                {isAdminOrRop ? (
                   <div>
                     <Label htmlFor="employee">Xodim *</Label>
                     <Select
@@ -515,112 +522,122 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
                       </SelectContent>
                     </Select>
                   </div>
-
+                ) : (
                   <div>
-                    <Label htmlFor="lead_type">Lead turi *</Label>
-                    <Select
-                      value={formData.lead_type}
-                      onValueChange={(value) => setFormData({ ...formData, lead_type: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LEAD_TYPE_OPTIONS.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            {type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Xodim</Label>
+                    <Input
+                      value={sellers.find(s => s.id === currentUserId)?.full_name || "Siz"}
+                      disabled
+                      className="bg-muted"
+                    />
                   </div>
-                </div>
+                )}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="stage">Bosqich</Label>
-                    <Select
-                      value={formData.stage}
-                      onValueChange={(value) => setFormData({ ...formData, stage: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue>
-                          {(() => {
-                            const currentStage = stages.find(s => s.id === formData.stage);
-                            return currentStage ? (
-                              <div className="flex items-center gap-2">
-                                <div className={`w-3 h-3 rounded-full ${currentStage.color}`} />
-                                {currentStage.name}
-                              </div>
-                            ) : "Muhim";
-                          })()}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {stages.map((stage) => (
-                          <SelectItem key={stage.id} value={stage.id}>
+                <div>
+                  <Label htmlFor="lead_type">Lead turi *</Label>
+                  <Select
+                    value={formData.lead_type}
+                    onValueChange={(value) => setFormData({ ...formData, lead_type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LEAD_TYPE_OPTIONS.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="stage">Bosqich</Label>
+                  <Select
+                    value={formData.stage}
+                    onValueChange={(value) => setFormData({ ...formData, stage: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue>
+                        {(() => {
+                          const currentStage = stages.find(s => s.id === formData.stage);
+                          return currentStage ? (
                             <div className="flex items-center gap-2">
-                              <div className={`w-3 h-3 rounded-full ${stage.color}`} />
-                              {stage.name}
+                              <div className={`w-3 h-3 rounded-full ${currentStage.color}`} />
+                              {currentStage.name}
                             </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="source">Qayerdan? *</Label>
-                    <Select
-                      value={formData.source}
-                      onValueChange={(value) => setFormData({ ...formData, source: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Manbani tanlang" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Sayt">Sayt</SelectItem>
-                        <SelectItem value="Forma">Forma</SelectItem>
-                        <SelectItem value="Instagram">Instagram</SelectItem>
-                        <SelectItem value="Telegram">Telegram</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                          ) : "Muhim";
+                        })()}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stages.map((stage) => (
+                        <SelectItem key={stage.id} value={stage.id}>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded-full ${stage.color}`} />
+                            {stage.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
-                  <Label htmlFor="activity">Faoliyat turi</Label>
-                  <Input
-                    id="activity"
-                    type="text"
-                    value={formData.activity}
-                    onChange={(e) => setFormData({ ...formData, activity: e.target.value })}
-                    placeholder="Masalan: Konsultatsiya, Savdo"
-                  />
+                  <Label htmlFor="source">Qayerdan? *</Label>
+                  <Select
+                    value={formData.source}
+                    onValueChange={(value) => setFormData({ ...formData, source: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Manbani tanlang" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Sayt">Sayt</SelectItem>
+                      <SelectItem value="Forma">Forma</SelectItem>
+                      <SelectItem value="Instagram">Instagram</SelectItem>
+                      <SelectItem value="Telegram">Telegram</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
 
-                <div>
-                  <Label htmlFor="notes">Izoh</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    rows={3}
-                  />
-                </div>
+              <div>
+                <Label htmlFor="activity">Faoliyat turi</Label>
+                <Input
+                  id="activity"
+                  type="text"
+                  value={formData.activity}
+                  onChange={(e) => setFormData({ ...formData, activity: e.target.value })}
+                  placeholder="Masalan: Konsultatsiya, Savdo"
+                />
+              </div>
 
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                    Bekor qilish
-                  </Button>
-                  <Button type="submit">Saqlash</Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+              <div>
+                <Label htmlFor="notes">Izoh</Label>
+                <Textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  rows={3}
+                />
+              </div>
 
-            <StageManagement onUpdate={fetchStages} />
-          </>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                  Bekor qilish
+                </Button>
+                <Button type="submit">Saqlash</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {isAdminOrRop && (
+          <StageManagement onUpdate={fetchStages} />
         )}
 
         <div className="flex gap-2 items-center flex-wrap">
@@ -628,7 +645,6 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
           
           <Select value={filterTimeRange} onValueChange={(value) => {
             setFilterTimeRange(value);
-            // Reset custom date when using preset
             if (value !== "all") {
               setStartDateFilter(undefined);
               setEndDateFilter(undefined);
@@ -646,7 +662,6 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
             </SelectContent>
           </Select>
 
-          {/* Start Date Filter */}
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-[140px] justify-start text-left font-normal">
@@ -667,7 +682,6 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
             </PopoverContent>
           </Popover>
 
-          {/* End Date Filter */}
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-[140px] justify-start text-left font-normal">
@@ -715,7 +729,6 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
             </SelectContent>
           </Select>
 
-          {/* Seller Filter */}
           {isAdminOrRop && (
             <Select value={filterSeller} onValueChange={setFilterSeller}>
               <SelectTrigger className="w-[180px]">
@@ -788,13 +801,6 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
         />
       )}
 
-      {!isAdminOrRop && (
-        <div className="mt-4 p-4 bg-muted rounded-lg">
-          <p className="text-sm text-muted-foreground">
-            Lidlarni faqat ko'rish mumkin. Yaratish va tahrirlash uchun admin yoki ROP huquqi kerak.
-          </p>
-        </div>
-      )}
     </DashboardLayout>
   );
 };
