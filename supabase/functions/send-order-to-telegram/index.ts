@@ -151,6 +151,7 @@ serve(async (req) => {
 
     const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
     const CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID');
+    const CHAT_ID_2 = Deno.env.get('TELEGRAM_CHAT_ID_2');
     const TOPIC_ID = Deno.env.get('TELEGRAM_TOPIC_ID');
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -226,9 +227,9 @@ serve(async (req) => {
 
     const message = formatMessage(order, action === 'edit');
 
-    console.log('Sending message to Telegram topic:', { CHAT_ID, TOPIC_ID, action });
+    console.log('Sending message to Telegram topic:', { CHAT_ID, CHAT_ID_2, TOPIC_ID, action });
 
-    // Send message to Telegram topic
+    // Send message to Telegram topic (primary group)
     const telegramResponse = await fetch(
       `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
       {
@@ -250,6 +251,32 @@ serve(async (req) => {
 
     if (!telegramResponse.ok) {
       throw new Error(`Telegram API error: ${JSON.stringify(telegramData)}`);
+    }
+
+    // Send message to second Telegram group (without topic)
+    if (CHAT_ID_2) {
+      console.log('Sending message to second Telegram group:', CHAT_ID_2);
+      try {
+        const telegram2Response = await fetch(
+          `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              chat_id: CHAT_ID_2,
+              text: message,
+              parse_mode: 'HTML',
+            }),
+          }
+        );
+
+        const telegram2Data = await telegram2Response.json();
+        console.log('Second Telegram group response:', telegram2Data);
+      } catch (err) {
+        console.error('Error sending to second Telegram group:', err);
+      }
     }
 
     // Save message_id to orders table if order_id provided
