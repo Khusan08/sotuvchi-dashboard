@@ -26,6 +26,56 @@ interface OrderData {
   status?: string;
 }
 
+type TelegramSendMessageResponse =
+  | { ok: true; result: { message_id: number } & Record<string, unknown> }
+  | { ok: false; error_code?: number; description?: string };
+
+const normalizeChatId = (value: string | undefined | null) => (value ?? '').trim();
+
+const getAltChatId = (chatId: string) => {
+  const trimmed = chatId.trim();
+  if (!trimmed) return null;
+  // If it looks like a plain group id, try supergroup id and vice versa.
+  if (trimmed.startsWith('-100')) {
+    const rest = trimmed.slice(4);
+    if (!rest) return null;
+    return `-${rest}`;
+  }
+  if (trimmed.startsWith('-')) {
+    const rest = trimmed.slice(1);
+    if (!rest) return null;
+    return `-100${rest}`;
+  }
+  return null;
+};
+
+const sendTelegramMessage = async (args: {
+  botToken: string;
+  chatId: string;
+  text: string;
+  parseMode?: 'HTML' | 'MarkdownV2';
+  messageThreadId?: number;
+}) => {
+  const payload: Record<string, unknown> = {
+    chat_id: args.chatId,
+    text: args.text,
+    parse_mode: args.parseMode ?? 'HTML',
+  };
+
+  if (typeof args.messageThreadId === 'number') {
+    payload.message_thread_id = args.messageThreadId;
+  }
+
+  const res = await fetch(`https://api.telegram.org/bot${args.botToken}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const data = (await res.json()) as TelegramSendMessageResponse;
+  return { res, data };
+};
+
 const formatMessage = (order: OrderData, isEdit: boolean = false) => {
   // Format products list
   const productsList = order.products
@@ -149,10 +199,10 @@ serve(async (req) => {
       };
     } = await req.json();
 
-    const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
-    const CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID');
-    const CHAT_ID_2 = Deno.env.get('TELEGRAM_CHAT_ID_2');
-    const TOPIC_ID = Deno.env.get('TELEGRAM_TOPIC_ID');
+    const BOT_TOKEN = normalizeChatId(Deno.env.get('TELEGRAM_BOT_TOKEN'));
+    const CHAT_ID = normalizeChatId(Deno.env.get('TELEGRAM_CHAT_ID'));
+    const CHAT_ID_2 = normalizeChatId(Deno.env.get('TELEGRAM_CHAT_ID_2'));
+    const TOPIC_ID = normalizeChatId(Deno.env.get('TELEGRAM_TOPIC_ID'));
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -185,20 +235,12 @@ serve(async (req) => {
           statusChange.seller_name
         );
 
-        const sellerResponse = await fetch(
-          `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: sellerProfile.telegram_user_id,
-              text: statusMessage,
-              parse_mode: 'HTML',
-            }),
-          }
-        );
-
-        const sellerData = await sellerResponse.json();
+        const { data: sellerData } = await sendTelegramMessage({
+          botToken: BOT_TOKEN,
+          chatId: String(sellerProfile.telegram_user_id).trim(),
+          text: statusMessage,
+          parseMode: 'HTML',
+        });
         console.log('Seller status notification response:', sellerData);
 
         return new Response(
@@ -230,60 +272,61 @@ serve(async (req) => {
     console.log('Sending message to Telegram topic:', { CHAT_ID, CHAT_ID_2, TOPIC_ID, action });
 
     // Send message to Telegram topic (primary group)
-    const telegramResponse = await fetch(
-      `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chat_id: CHAT_ID,
-          message_thread_id: parseInt(TOPIC_ID),
-          text: message,
-          parse_mode: 'HTML',
-        }),
-      }
-    );
-
-    const telegramData = await telegramResponse.json();
+    const { res: telegramResponse, data: telegramData } = await sendTelegramMessage({
+      botToken: BOT_TOKEN,
+      chatId: CHAT_ID,
+      messageThreadId: parseInt(TOPIC_ID),
+      text: message,
+      parseMode: 'HTML',
+    });
     console.log('Telegram topic response:', telegramData);
 
-    if (!telegramResponse.ok) {
+    if (!telegramResponse.ok || !telegramData.ok) {
       throw new Error(`Telegram API error: ${JSON.stringify(telegramData)}`);
     }
+
+    const telegramMessageId = telegramData.result?.message_id;
 
     // Send message to second Telegram group (without topic)
     if (CHAT_ID_2) {
       console.log('Sending message to second Telegram group:', CHAT_ID_2);
       try {
-        const telegram2Response = await fetch(
-          `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              chat_id: CHAT_ID_2,
-              text: message,
-              parse_mode: 'HTML',
-            }),
-          }
-        );
+        const attempt1 = await sendTelegramMessage({
+          botToken: BOT_TOKEN,
+          chatId: CHAT_ID_2,
+          text: message,
+          parseMode: 'HTML',
+        });
+        console.log('Second Telegram group response:', attempt1.data);
 
-        const telegram2Data = await telegram2Response.json();
-        console.log('Second Telegram group response:', telegram2Data);
+        const attempt1FailedChatNotFound =
+          !attempt1.data.ok &&
+          typeof attempt1.data.description === 'string' &&
+          attempt1.data.description.toLowerCase().includes('chat not found');
+
+        if (attempt1FailedChatNotFound) {
+          const alt = getAltChatId(CHAT_ID_2);
+          if (alt && alt !== CHAT_ID_2) {
+            console.log('Retrying second Telegram group with alternative chat id:', alt);
+            const attempt2 = await sendTelegramMessage({
+              botToken: BOT_TOKEN,
+              chatId: alt,
+              text: message,
+              parseMode: 'HTML',
+            });
+            console.log('Second Telegram group response (alt):', attempt2.data);
+          }
+        }
       } catch (err) {
         console.error('Error sending to second Telegram group:', err);
       }
     }
 
     // Save message_id to orders table if order_id provided
-    if (order.order_id && telegramData.result?.message_id) {
+    if (order.order_id && telegramMessageId) {
       await supabase
         .from('orders')
-        .update({ telegram_message_id: telegramData.result.message_id })
+        .update({ telegram_message_id: telegramMessageId })
         .eq('id', order.order_id);
     }
 
@@ -353,20 +396,12 @@ serve(async (req) => {
             console.log(`Sending notification to admin: ${admin.full_name} (${admin.telegram_user_id})`);
             
             try {
-              const adminResponse = await fetch(
-                `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    chat_id: admin.telegram_user_id,
-                    text: adminMessage,
-                    parse_mode: 'HTML',
-                  }),
-                }
-              );
-
-              const adminData = await adminResponse.json();
+              const { data: adminData } = await sendTelegramMessage({
+                botToken: BOT_TOKEN,
+                chatId: String(admin.telegram_user_id).trim(),
+                text: adminMessage,
+                parseMode: 'HTML',
+              });
               console.log(`Admin notification response for ${admin.full_name}:`, adminData);
             } catch (err) {
               console.error(`Error sending to admin ${admin.full_name}:`, err);
@@ -379,7 +414,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, data: telegramData, message_id: telegramData.result?.message_id }),
+      JSON.stringify({ success: true, data: telegramData, message_id: telegramMessageId }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
