@@ -201,7 +201,6 @@ serve(async (req) => {
 
     const BOT_TOKEN = normalizeChatId(Deno.env.get('TELEGRAM_BOT_TOKEN'));
     const CHAT_ID = normalizeChatId(Deno.env.get('TELEGRAM_CHAT_ID'));
-    const CHAT_ID_2 = normalizeChatId(Deno.env.get('TELEGRAM_CHAT_ID_2'));
     const TOPIC_ID = normalizeChatId(Deno.env.get('TELEGRAM_TOPIC_ID'));
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -269,9 +268,9 @@ serve(async (req) => {
 
     const message = formatMessage(order, action === 'edit');
 
-    console.log('Sending message to Telegram topic:', { CHAT_ID, CHAT_ID_2, TOPIC_ID, action });
+    console.log('Sending message to Telegram topic:', { CHAT_ID, TOPIC_ID, action });
 
-    // Send message to Telegram topic (primary group)
+    // Send message to Telegram topic
     const { res: telegramResponse, data: telegramData } = await sendTelegramMessage({
       botToken: BOT_TOKEN,
       chatId: CHAT_ID,
@@ -286,41 +285,6 @@ serve(async (req) => {
     }
 
     const telegramMessageId = telegramData.result?.message_id;
-
-    // Send message to second Telegram group (without topic)
-    if (CHAT_ID_2) {
-      console.log('Sending message to second Telegram group:', CHAT_ID_2);
-      try {
-        const attempt1 = await sendTelegramMessage({
-          botToken: BOT_TOKEN,
-          chatId: CHAT_ID_2,
-          text: message,
-          parseMode: 'HTML',
-        });
-        console.log('Second Telegram group response:', attempt1.data);
-
-        const attempt1FailedChatNotFound =
-          !attempt1.data.ok &&
-          typeof attempt1.data.description === 'string' &&
-          attempt1.data.description.toLowerCase().includes('chat not found');
-
-        if (attempt1FailedChatNotFound) {
-          const alt = getAltChatId(CHAT_ID_2);
-          if (alt && alt !== CHAT_ID_2) {
-            console.log('Retrying second Telegram group with alternative chat id:', alt);
-            const attempt2 = await sendTelegramMessage({
-              botToken: BOT_TOKEN,
-              chatId: alt,
-              text: message,
-              parseMode: 'HTML',
-            });
-            console.log('Second Telegram group response (alt):', attempt2.data);
-          }
-        }
-      } catch (err) {
-        console.error('Error sending to second Telegram group:', err);
-      }
-    }
 
     // Save message_id to orders table if order_id provided
     if (order.order_id && telegramMessageId) {
