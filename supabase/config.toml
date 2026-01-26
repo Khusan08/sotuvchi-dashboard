@@ -59,6 +59,3 @@ verify_jwt = false
 
 [functions.telegram-sales-bot]
 verify_jwt = false
-
-[functions.sync-to-sheets]
-verify_jwt = false
