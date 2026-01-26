@@ -276,29 +276,7 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
         company_id: profile.company_id,
       });
 
-      if (error) {
-        // Handle duplicate phone error - open existing lead instead
-        if (error.message === "PHONE_ALREADY_EXISTS") {
-          // Find existing lead with this phone
-          const phoneNorm = formData.customer_phone.replace(/\D/g, "");
-          const existingLead = leads.find(
-            (l) => l.customer_phone_norm === phoneNorm
-          );
-          
-          if (existingLead) {
-            toast.info("Bu telefon raqam allaqachon mavjud. Lid ochildi.");
-            setDialogOpen(false);
-            setSelectedLead(existingLead);
-            setDetailsDialogOpen(true);
-          } else {
-            // Lead exists but not in current list - refetch and then open
-            await fetchLeads();
-            toast.info("Bu telefon raqam allaqachon mavjud");
-          }
-          return;
-        }
-        throw error;
-      }
+      if (error) throw error;
 
       toast.success("Lid muvaffaqiyatli qo'shildi!");
       setDialogOpen(false);
@@ -313,9 +291,9 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
         source: "",
       });
       fetchLeads();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error creating lead:", error);
-      toast.error(error?.message || "Lid qo'shishda xato");
+      toast.error("Lid qo'shishda xato");
     }
   };
 

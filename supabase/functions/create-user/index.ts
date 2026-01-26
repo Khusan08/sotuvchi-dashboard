@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
     // Check if user is admin or rop
     const { data: roleData } = await supabaseClient
       .from('user_roles')
-      .select('role, company_id')
+      .select('role')
       .eq('user_id', user.id)
       .in('role', ['admin', 'rop'])
       .maybeSingle()
@@ -42,8 +42,6 @@ Deno.serve(async (req) => {
         status: 403,
       })
     }
-
-    const creatorCompanyId = roleData.company_id
 
     // Get request body
     const { email, password, full_name, phone, role } = await req.json()
@@ -80,25 +78,20 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Update profile with phone and company_id
-    const profileUpdate: Record<string, any> = {}
-    if (phone) profileUpdate.phone = phone
-    if (creatorCompanyId) profileUpdate.company_id = creatorCompanyId
-
-    if (Object.keys(profileUpdate).length > 0) {
+    // Update profile with phone
+    if (phone) {
       await supabaseClient
         .from('profiles')
-        .update(profileUpdate)
+        .update({ phone })
         .eq('id', authData.user.id)
     }
 
-    // Add the specified role with company_id
+    // Add the specified role
     const { error: roleError } = await supabaseClient
       .from('user_roles')
       .insert({
         user_id: authData.user.id,
-        role: role,
-        company_id: creatorCompanyId
+        role: role
       })
 
     if (roleError) {

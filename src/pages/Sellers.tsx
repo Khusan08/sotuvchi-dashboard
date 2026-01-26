@@ -77,35 +77,44 @@ const Sellers = () => {
     e.preventDefault();
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-
-      // Create user via edge function to properly assign company_id
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          full_name: formData.full_name,
-          phone: formData.phone,
-          role: formData.role,
-        }),
+      // Create user via Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.full_name,
+            phone: formData.phone,
+          }
+        }
       });
 
-      const result = await response.json();
+      if (authError) throw authError;
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to create user');
+      if (authData.user) {
+        // Update profile with phone
+        await supabase
+          .from("profiles")
+          .update({ phone: formData.phone })
+          .eq("id", authData.user.id);
+
+        // Assign role if not sotuvchi (default role is assigned by trigger)
+        if (formData.role !== "sotuvchi") {
+          await supabase
+            .from("user_roles")
+            .delete()
+            .eq("user_id", authData.user.id);
+
+          await supabase
+            .from("user_roles")
+            .insert({ user_id: authData.user.id, role: formData.role });
+        }
+
+        toast.success("Hodim muvaffaqiyatli qo'shildi!");
+        setDialogOpen(false);
+        setFormData({ full_name: "", email: "", password: "", phone: "", role: "sotuvchi" });
+        fetchSellers();
       }
-
-      toast.success("Hodim muvaffaqiyatli qo'shildi!");
-      setDialogOpen(false);
-      setFormData({ full_name: "", email: "", password: "", phone: "", role: "sotuvchi" });
-      fetchSellers();
     } catch (error: any) {
       toast.error("Xatolik: " + error.message);
     }
