@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.sheets-sync-webhook]
 verify_jwt = false
+
+[functions.push-to-sheets]
+verify_jwt = false
