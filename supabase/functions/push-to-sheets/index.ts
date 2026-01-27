@@ -111,7 +111,20 @@ serve(async (req) => {
       );
     }
 
-    const serviceAccountKey = JSON.parse(serviceAccountKeyStr);
+    console.log('Service account key length:', serviceAccountKeyStr.length);
+    console.log('First 50 chars:', serviceAccountKeyStr.substring(0, 50));
+    
+    let serviceAccountKey;
+    try {
+      serviceAccountKey = JSON.parse(serviceAccountKeyStr);
+    } catch (parseError) {
+      console.error('Failed to parse service account key:', parseError);
+      console.error('Key value (first 100 chars):', serviceAccountKeyStr.substring(0, 100));
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid service account key format' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
     const auth = await getAccessToken(serviceAccountKey);
 
     if (type === 'order') {
