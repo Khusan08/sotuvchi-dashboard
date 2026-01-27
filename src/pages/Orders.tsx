@@ -267,10 +267,10 @@ const Orders = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Get user's company_id
+      // Get user's company_id and full_name
       const { data: profile } = await supabase
         .from("profiles")
-        .select("company_id")
+        .select("company_id, full_name")
         .eq("id", user.id)
         .single();
 
@@ -359,6 +359,37 @@ const Orders = () => {
           .insert(orderItems);
 
         if (itemsError) throw itemsError;
+
+        // Sync to Google Sheets
+        try {
+          await supabase.functions.invoke('push-to-sheets', {
+            body: {
+              type: 'order',
+              data: {
+                id: orderData.id,
+                order_number: orderData.order_number,
+                customer_name: formData.customer_name,
+                customer_phone: formData.customer_phone,
+                customer_phone2: formData.customer_phone2,
+                region: formData.region,
+                district: formData.district,
+                items: items.map(item => ({
+                  product_name: item.product_name,
+                  quantity: parseInt(item.quantity),
+                  price: parseFloat(item.price)
+                })),
+                total_amount: totalAmount,
+                advance_payment: advancePayment,
+                notes: formData.notes,
+                seller_name: profile?.full_name || "Noma'lum",
+                status: 'pending',
+                created_at: orderData.created_at
+              }
+            }
+          });
+        } catch (sheetsError) {
+          console.error('Google Sheets sync error:', sheetsError);
+        }
 
         toast.success("Zakaz qo'shildi!");
       }
