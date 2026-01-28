@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.push-to-sheets]
 verify_jwt = false
+
+[functions.trigger-sheets-sync]
+verify_jwt = false
