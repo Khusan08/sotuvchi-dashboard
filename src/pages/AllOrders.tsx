@@ -691,9 +691,33 @@ const AllOrders = () => {
         // Don't fail the order creation if Telegram fails
       }
 
-      // Sync to Google Sheets via Apps Script
+      // Sync to Google Sheets
       try {
-        await supabase.functions.invoke('trigger-sheets-sync');
+        await supabase.functions.invoke('push-to-sheets', {
+          body: {
+            type: 'order',
+            data: {
+              id: orderData.id,
+              order_number: orderData.order_number,
+              customer_name: createFormData.customer_name,
+              customer_phone: createFormData.customer_phone,
+              customer_phone2: createFormData.customer_phone2,
+              region: createFormData.region,
+              district: createFormData.district,
+              items: validItems.map(item => ({
+                product_name: item.product_name,
+                quantity: item.quantity,
+                price: itemPrice
+              })),
+              total_amount: createFormData.total_amount,
+              advance_payment: createFormData.advance_payment,
+              notes: createFormData.notes,
+              seller_name: profileData?.full_name || "Noma'lum",
+              status: 'pending',
+              created_at: orderData.created_at
+            }
+          }
+        });
       } catch (sheetsError) {
         console.error('Google Sheets sync error:', sheetsError);
         // Don't fail if sheets sync fails
