@@ -132,6 +132,13 @@ const Orders = () => {
 
       if (error) throw error;
 
+      // Sync status change to Google Sheets
+      try {
+        await supabase.functions.invoke('trigger-sheets-sync');
+      } catch (sheetsError) {
+        console.error('Google Sheets sync error:', sheetsError);
+      }
+
       toast.success("Zakaz statusi yangilandi!");
       fetchOrders();
     } catch (error: any) {
@@ -233,6 +240,13 @@ const Orders = () => {
         .eq("id", orderId);
 
       if (error) throw error;
+
+      // Sync status change to Google Sheets
+      try {
+        await supabase.functions.invoke('trigger-sheets-sync');
+      } catch (sheetsError) {
+        console.error('Google Sheets sync error:', sheetsError);
+      }
 
       toast.success("Status yangilandi!");
       fetchOrders();
@@ -360,33 +374,9 @@ const Orders = () => {
 
         if (itemsError) throw itemsError;
 
-        // Sync to Google Sheets
+        // Sync to Google Sheets via Apps Script trigger
         try {
-          await supabase.functions.invoke('push-to-sheets', {
-            body: {
-              type: 'order',
-              data: {
-                id: orderData.id,
-                order_number: orderData.order_number,
-                customer_name: formData.customer_name,
-                customer_phone: formData.customer_phone,
-                customer_phone2: formData.customer_phone2,
-                region: formData.region,
-                district: formData.district,
-                items: items.map(item => ({
-                  product_name: item.product_name,
-                  quantity: parseInt(item.quantity),
-                  price: parseFloat(item.price)
-                })),
-                total_amount: totalAmount,
-                advance_payment: advancePayment,
-                notes: formData.notes,
-                seller_name: profile?.full_name || "Noma'lum",
-                status: 'pending',
-                created_at: orderData.created_at
-              }
-            }
-          });
+          await supabase.functions.invoke('trigger-sheets-sync');
         } catch (sheetsError) {
           console.error('Google Sheets sync error:', sheetsError);
         }

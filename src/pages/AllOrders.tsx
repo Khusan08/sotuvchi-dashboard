@@ -366,6 +366,13 @@ const AllOrders = () => {
 
       if (error) throw error;
 
+      // Sync status change to Google Sheets
+      try {
+        await supabase.functions.invoke('trigger-sheets-sync');
+      } catch (sheetsError) {
+        console.error('Google Sheets sync error:', sheetsError);
+      }
+
       // Send notification to seller for cancelled or delivered status
       if (orderToUpdate && (newStatus === 'cancelled' || newStatus === 'delivered')) {
         try {
