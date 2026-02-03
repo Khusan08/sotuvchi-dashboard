@@ -8,6 +8,25 @@ const corsHeaders = {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const looksLikeHtml = (text: string) => {
+  const t = (text || '').trimStart().toLowerCase();
+  return t.startsWith('<!doctype html') || t.startsWith('<html');
+};
+
+const looksLikeGoogleSignIn = (finalUrl: string, bodyText: string) => {
+  // When Apps Script isn't truly public, server-to-server requests often land on accounts.google.com
+  // and return an HTML sign-in page (status can still be 200).
+  const url = (finalUrl || '').toLowerCase();
+  const body = (bodyText || '').toLowerCase();
+  return (
+    url.includes('accounts.google.com') ||
+    body.includes('accounts.google.com') ||
+    body.includes('signin') ||
+    body.includes('choose an account') ||
+    looksLikeHtml(bodyText)
+  );
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -38,20 +57,41 @@ serve(async (req) => {
     for (let attempt = 1; attempt <= 3; attempt++) {
       const response = await fetch(url.toString(), {
         method: 'GET',
+        // If Google redirects to a sign-in page, following redirects can mask the real problem.
+        // We still follow by default, but we also detect sign-in HTML in the final response.
         redirect: 'follow',
         headers: {
           'Cache-Control': 'no-cache',
+          'Accept': 'application/json,text/plain,*/*',
         },
       });
 
       lastStatus = response.status;
       lastBody = await response.text();
-      console.log(`Apps Script response (attempt ${attempt}):`, lastStatus, lastBody);
+      const finalUrl = response.url;
+      const isSignIn = looksLikeGoogleSignIn(finalUrl, lastBody);
+      console.log(
+        `Apps Script response (attempt ${attempt}): status=${lastStatus} url=${finalUrl} signIn=${isSignIn} body=${lastBody?.slice?.(0, 250) ?? ''}`
+      );
 
-      if (response.ok) {
+      if (response.ok && !isSignIn) {
         return new Response(
           JSON.stringify({ success: true, message: 'Google Sheets sync triggered' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        );
+      }
+
+      // Treat sign-in HTML as a hard auth/config error (not transient)
+      if (isSignIn) {
+        console.error('Apps Script requires sign-in / not publicly accessible.');
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Apps Script is not publicly accessible (Google sign-in page returned).',
+            details:
+              'Deploy the Apps Script as a Web App with “Execute as: Me” and “Who has access: Anyone”. Then use the /exec URL from that deployment.',
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
         );
       }
 
