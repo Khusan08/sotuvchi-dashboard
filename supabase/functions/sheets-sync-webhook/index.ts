@@ -3,8 +3,25 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
+
+function formatDateUz(iso: string | null | undefined) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Tashkent',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  return `${get('day')}.${get('month')}.${get('year')} ${get('hour')}:${get('minute')}`;
+}
 
 // Using 'any' types since Supabase returns dynamic data
 // The actual response shape may differ from static typing
@@ -12,7 +29,7 @@ const corsHeaders = {
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
@@ -93,7 +110,9 @@ serve(async (req) => {
           notes: order.notes || '',
           seller_name: sellerName,
           status: order.status,
-          created_at: order.created_at,
+          // Display-friendly date for Sheets (Toshkent time)
+          created_at: formatDateUz(order.created_at),
+          // Keep raw updated_at ISO for incremental sync logic
           updated_at: order.updated_at,
         };
       });
@@ -133,9 +152,6 @@ serve(async (req) => {
           seller_id,
           profiles:seller_id (
             full_name
-          ),
-          stages:stage (
-            name
           )
         `)
         .order('created_at', { ascending: false })
@@ -152,6 +168,26 @@ serve(async (req) => {
         throw error;
       }
 
+      // NOTE: leads.stage is not declared as a foreign key in DB, so PostgREST can't join automatically.
+      // We resolve stage name manually.
+      const stageIds = Array.from(
+        new Set((leads || []).map((l: any) => l.stage).filter(Boolean))
+      ) as string[];
+
+      const stageNameById = new Map<string, string>();
+      if (stageIds.length) {
+        const { data: stages, error: stagesError } = await supabase
+          .from('stages')
+          .select('id,name')
+          .in('id', stageIds);
+
+        if (stagesError) {
+          console.warn('Warning: could not load stages for leads sync:', stagesError);
+        } else {
+          (stages || []).forEach((s: any) => stageNameById.set(s.id, s.name));
+        }
+      }
+
       // Format leads for Google Sheets
       const formattedLeads = (leads || []).map((lead: any) => ({
         id: lead.id,
@@ -160,7 +196,7 @@ serve(async (req) => {
         customer_email: lead.customer_email || '',
         lead_type: lead.lead_type || '',
         source: lead.source || '',
-        stage_name: lead.stages?.name || '',
+        stage_name: lead.stage ? (stageNameById.get(lead.stage) ?? lead.stage) : '',
         status: lead.status,
         notes: lead.notes || '',
         activity: lead.activity || '',
@@ -168,7 +204,9 @@ serve(async (req) => {
         delivery_status: lead.delivery_status || '',
         price: lead.price || 0,
         seller_name: lead.profiles?.full_name || 'Belgilanmagan',
-        created_at: lead.created_at,
+        // Display-friendly date for Sheets (Toshkent time)
+        created_at: formatDateUz(lead.created_at),
+        // Keep raw updated_at ISO for incremental sync logic
         updated_at: lead.updated_at,
       }));
 
