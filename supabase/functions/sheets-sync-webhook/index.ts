@@ -86,8 +86,10 @@ serve(async (req) => {
         throw error;
       }
 
-      // Format orders for Google Sheets (12 columns)
-      // Order, Client, Phone1, Address, Products, Total, Prepayment, Balance, Note, Seller, Status, Date
+      // Format orders for Google Sheets (15 columns matching user's spreadsheet)
+      // A: telegram_message_id, B: message, C: order_number, D: Mijoz, E: Telefon, F: Manzil, 
+      // G: Mahsulotlar, H: Jami summa, I: Oldindan to'lov, J: Qoldiq, K: Status, L: Sotuvchi, 
+      // M: Izoh, N: Buyurtma sanasi, O: Phone2
       const formattedOrders = (orders || []).map((order: any) => {
         const items = order.order_items || [];
         const products = items
@@ -98,6 +100,8 @@ serve(async (req) => {
         const sellerName = order.profiles?.full_name || 'Noma\'lum';
 
         return {
+          telegram_message_id: order.telegram_message_id || '',
+          message: `Yangi buyurtma #${order.order_number}`,
           order_number: order.order_number,
           customer_name: order.customer_name,
           customer_phone: order.customer_phone || '',
@@ -106,10 +110,11 @@ serve(async (req) => {
           total_amount: order.total_amount || 0,
           advance_payment: order.advance_payment || 0,
           remaining_payment: remainingPayment,
-          notes: order.notes || '',
-          seller_name: sellerName,
           status: order.status,
+          seller_name: sellerName,
+          notes: order.notes || '',
           created_at: formatDateUz(order.created_at),
+          customer_phone2: order.customer_phone2 || '',
           // For internal tracking
           id: order.id,
           updated_at: order.updated_at,
