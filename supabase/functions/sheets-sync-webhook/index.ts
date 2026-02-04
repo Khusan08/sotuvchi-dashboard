@@ -86,7 +86,8 @@ serve(async (req) => {
         throw error;
       }
 
-      // Format orders for Google Sheets
+      // Format orders for Google Sheets (12 columns)
+      // Order, Client, Phone1, Address, Products, Total, Prepayment, Balance, Note, Seller, Status, Date
       const formattedOrders = (orders || []).map((order: any) => {
         const items = order.order_items || [];
         const products = items
@@ -97,11 +98,9 @@ serve(async (req) => {
         const sellerName = order.profiles?.full_name || 'Noma\'lum';
 
         return {
-          id: order.id,
           order_number: order.order_number,
           customer_name: order.customer_name,
           customer_phone: order.customer_phone || '',
-          customer_phone2: order.customer_phone2 || '',
           address: `${order.region || ''}, ${order.district || ''}`.replace(/^, |, $/, ''),
           products: products,
           total_amount: order.total_amount || 0,
@@ -110,9 +109,9 @@ serve(async (req) => {
           notes: order.notes || '',
           seller_name: sellerName,
           status: order.status,
-          // Display-friendly date for Sheets (Toshkent time)
           created_at: formatDateUz(order.created_at),
-          // Keep raw updated_at ISO for incremental sync logic
+          // For internal tracking
+          id: order.id,
           updated_at: order.updated_at,
         };
       });
