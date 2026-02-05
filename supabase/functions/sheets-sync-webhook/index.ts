@@ -86,18 +86,28 @@ serve(async (req) => {
         throw error;
       }
 
-      // Format orders for Google Sheets (15 columns matching user's spreadsheet)
-      // A: telegram_message_id, B: message, C: order_number, D: Mijoz, E: Telefon, F: Manzil, 
-      // G: Mahsulotlar, H: Jami summa, I: Oldindan to'lov, J: Qoldiq, K: Status, L: Sotuvchi, 
-      // M: Izoh, N: Buyurtma sanasi, O: Phone2
+      // Format orders for Google Sheets (16 columns matching user's spreadsheet)
+      // A: telegram_message_id, B: message, C: order_number, D: Mijoz, E: Telefon, F: Manzil,
+      // G: Mahsulotlar, H: Jami summa, I: Oldindan to'lov, J: Qoldiq, K: Status, L: Sotuvchi,
+      // M: Izoh, N: Buyurtma sanasi, O: Phone2, P: Sales
       const formattedOrders = (orders || []).map((order: any) => {
         const items = order.order_items || [];
         const products = items
-          .map((item: any) => `${item.product_name} (${item.quantity}x${item.price?.toLocaleString() || 0})`)
-          .join(', ');
+          .map((item: any) => item.product_name)
+          .join(';');
 
         const remainingPayment = (order.total_amount || 0) - (order.advance_payment || 0);
         const sellerName = order.profiles?.full_name || 'Noma\'lum';
+        
+        // Format date as M/D/YYYY
+        const formatShortDate = (iso: string | null | undefined) => {
+          if (!iso) return '';
+          const d = new Date(iso);
+          const month = d.getMonth() + 1;
+          const day = d.getDate();
+          const year = d.getFullYear();
+          return `${month}/${day}/${year}`;
+        };
 
         return {
           telegram_message_id: order.telegram_message_id || '',
@@ -106,15 +116,16 @@ serve(async (req) => {
           customer_name: order.customer_name,
           customer_phone: order.customer_phone || '',
           address: `${order.region || ''}, ${order.district || ''}`.replace(/^, |, $/, ''),
-          products: products,
+          products: products ? `["${products.split(';').join('","')}"]` : '',
           total_amount: order.total_amount || 0,
           advance_payment: order.advance_payment || 0,
           remaining_payment: remainingPayment,
           status: order.status,
           seller_name: sellerName,
           notes: order.notes || '',
-          created_at: formatDateUz(order.created_at),
+          created_at: formatShortDate(order.created_at),
           customer_phone2: order.customer_phone2 || '',
+          source: 'WEB',
           // For internal tracking
           id: order.id,
           updated_at: order.updated_at,
