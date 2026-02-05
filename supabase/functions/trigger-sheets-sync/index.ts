@@ -53,6 +53,17 @@ serve(async (req) => {
     let lastStatus = 0;
     let lastBody = '';
 
+    const tryParseJson = (text: string) => {
+      const trimmed = (text || '').trim();
+      if (!trimmed) return null;
+      if (!(trimmed.startsWith('{') || trimmed.startsWith('['))) return null;
+      try {
+        return JSON.parse(trimmed);
+      } catch {
+        return null;
+      }
+    };
+
     // Retry a couple of times on transient errors (Apps Script can intermittently return 429/5xx)
     for (let attempt = 1; attempt <= 3; attempt++) {
       const response = await fetch(url.toString(), {
@@ -70,11 +81,28 @@ serve(async (req) => {
       lastBody = await response.text();
       const finalUrl = response.url;
       const isSignIn = looksLikeGoogleSignIn(finalUrl, lastBody);
+
+      const parsed = tryParseJson(lastBody);
+      const reportedSuccess = typeof parsed?.success === 'boolean' ? parsed.success : null;
+      const reportedError = typeof parsed?.error === 'string' ? parsed.error : null;
+
       console.log(
-        `Apps Script response (attempt ${attempt}): status=${lastStatus} url=${finalUrl} signIn=${isSignIn} body=${lastBody?.slice?.(0, 250) ?? ''}`
+        `Apps Script response (attempt ${attempt}): status=${lastStatus} url=${finalUrl} signIn=${isSignIn} success=${reportedSuccess} error=${reportedError} body=${lastBody?.slice?.(0, 250) ?? ''}`
       );
 
       if (response.ok && !isSignIn) {
+        // Apps Script can return HTTP 200 with a JSON error payload.
+        if (reportedSuccess === false) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'Apps Script reported failure',
+              details: parsed ?? lastBody?.slice?.(0, 1000) ?? String(lastBody),
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+          );
+        }
+
         return new Response(
           JSON.stringify({ success: true, message: 'Google Sheets sync triggered' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
