@@ -120,7 +120,28 @@ serve(async (req) => {
       throw new Error('GOOGLE_SHEETS_SPREADSHEET_ID is not configured');
     }
 
-    const serviceAccountKey = JSON.parse(serviceAccountKeyStr);
+    // Try to parse the service account key - handle different formats
+    let serviceAccountKey: any;
+    try {
+      // First, try direct JSON parse
+      serviceAccountKey = JSON.parse(serviceAccountKeyStr);
+    } catch (parseError) {
+      console.error('Initial JSON parse failed, trying alternatives...');
+      console.error('Key preview (first 100 chars):', serviceAccountKeyStr.substring(0, 100));
+      
+      // Try to fix common issues: escaped quotes, extra whitespace
+      try {
+        const cleanedKey = serviceAccountKeyStr
+          .trim()
+          .replace(/^\uFEFF/, '') // Remove BOM if present
+          .replace(/\\n/g, '\n') // Handle escaped newlines in private_key
+          .replace(/\\"/g, '"'); // Handle escaped quotes
+        serviceAccountKey = JSON.parse(cleanedKey);
+      } catch {
+        throw new Error(`Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY. Please ensure it is valid JSON. Error: ${parseError}`);
+      }
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Get access token
