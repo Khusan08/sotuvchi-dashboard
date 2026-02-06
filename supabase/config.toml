@@ -60,11 +60,8 @@ verify_jwt = false
 [functions.telegram-sales-bot]
 verify_jwt = false
 
-[functions.sheets-sync-webhook]
+[functions.sheets-sync-direct]
 verify_jwt = false
 
 [functions.push-to-sheets]
-verify_jwt = false
-
-[functions.trigger-sheets-sync]
 verify_jwt = false

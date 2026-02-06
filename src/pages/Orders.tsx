@@ -134,7 +134,7 @@ const Orders = () => {
 
       // Sync status change to Google Sheets
       try {
-        await supabase.functions.invoke('trigger-sheets-sync');
+        await supabase.functions.invoke('sheets-sync-direct');
       } catch (sheetsError) {
         console.error('Google Sheets sync error:', sheetsError);
       }
@@ -243,7 +243,7 @@ const Orders = () => {
 
       // Sync status change to Google Sheets
       try {
-        await supabase.functions.invoke('trigger-sheets-sync');
+        await supabase.functions.invoke('sheets-sync-direct');
       } catch (sheetsError) {
         console.error('Google Sheets sync error:', sheetsError);
       }
@@ -374,9 +374,9 @@ const Orders = () => {
 
         if (itemsError) throw itemsError;
 
-        // Sync to Google Sheets via Apps Script trigger
+        // Sync to Google Sheets via direct API
         try {
-          await supabase.functions.invoke('trigger-sheets-sync');
+          await supabase.functions.invoke('sheets-sync-direct');
         } catch (sheetsError) {
           console.error('Google Sheets sync error:', sheetsError);
         }
