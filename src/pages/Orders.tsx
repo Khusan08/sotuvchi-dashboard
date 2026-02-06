@@ -243,7 +243,7 @@ const Orders = () => {
 
       // Sync status change to Google Sheets
       try {
-        await supabase.functions.invoke('trigger-sheets-sync');
+        await supabase.functions.invoke('sheets-sync-direct');
       } catch (sheetsError) {
         console.error('Google Sheets sync error:', sheetsError);
       }
