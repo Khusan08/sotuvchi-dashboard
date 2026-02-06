@@ -698,9 +698,9 @@ const AllOrders = () => {
         // Don't fail the order creation if Telegram fails
       }
 
-      // Sync to Google Sheets via Apps Script
+      // Sync to Google Sheets via direct API
       try {
-        await supabase.functions.invoke('trigger-sheets-sync');
+        await supabase.functions.invoke('sheets-sync-direct');
       } catch (sheetsError) {
         console.error('Google Sheets sync error:', sheetsError);
         // Don't fail if sheets sync fails
