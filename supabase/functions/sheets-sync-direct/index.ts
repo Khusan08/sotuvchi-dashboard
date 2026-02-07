@@ -31,123 +31,29 @@ function formatDateUz(iso: string | null | undefined): string {
   return `${get('day')}.${get('month')}.${get('year')} ${get('hour')}:${get('minute')}`;
 }
 
-// Create JWT for Google API authentication
-async function createGoogleJWT(serviceAccountKey: any): Promise<string> {
-  const header = { alg: 'RS256', typ: 'JWT' };
-  const now = Math.floor(Date.now() / 1000);
-  const payload = {
-    iss: serviceAccountKey.client_email,
-    scope: 'https://www.googleapis.com/auth/spreadsheets',
-    aud: 'https://oauth2.googleapis.com/token',
-    exp: now + 3600,
-    iat: now,
-  };
-
-  const encoder = new TextEncoder();
-  const headerB64 = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  const payloadB64 = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  const unsignedToken = `${headerB64}.${payloadB64}`;
-
-  // Import private key
-  const pemContents = serviceAccountKey.private_key
-    .replace('-----BEGIN PRIVATE KEY-----', '')
-    .replace('-----END PRIVATE KEY-----', '')
-    .replace(/\n/g, '');
-  const binaryKey = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
-
-  const cryptoKey = await crypto.subtle.importKey(
-    'pkcs8',
-    binaryKey,
-    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-
-  const signature = await crypto.subtle.sign(
-    'RSASSA-PKCS1-v1_5',
-    cryptoKey,
-    encoder.encode(unsignedToken)
-  );
-
-  const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
-
-  return `${unsignedToken}.${signatureB64}`;
-}
-
-// Get access token from Google
-async function getGoogleAccessToken(serviceAccountKey: any): Promise<string> {
-  const jwt = await createGoogleJWT(serviceAccountKey);
-
-  const response = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion: jwt,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to get access token: ${errorText}`);
-  }
-
-  const data = await response.json();
-  return data.access_token;
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    console.log('Starting direct Google Sheets sync...');
+    console.log('Starting Google Sheets sync via Apps Script...');
 
-    // Get environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const serviceAccountKeyStr = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
-    const spreadsheetId = Deno.env.get('GOOGLE_SHEETS_SPREADSHEET_ID');
+    const appsScriptUrl = Deno.env.get('GOOGLE_APPS_SCRIPT_URL');
 
-    if (!serviceAccountKeyStr) {
-      throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY is not configured');
-    }
-    if (!spreadsheetId) {
-      throw new Error('GOOGLE_SHEETS_SPREADSHEET_ID is not configured');
+    if (!appsScriptUrl) {
+      throw new Error('GOOGLE_APPS_SCRIPT_URL is not configured');
     }
 
-    // Try to parse the service account key - handle different formats
-    let serviceAccountKey: any;
-    try {
-      // First, try direct JSON parse
-      serviceAccountKey = JSON.parse(serviceAccountKeyStr);
-    } catch (parseError) {
-      console.error('Initial JSON parse failed, trying alternatives...');
-      console.error('Key preview (first 100 chars):', serviceAccountKeyStr.substring(0, 100));
-      
-      // Try to fix common issues: escaped quotes, extra whitespace
-      try {
-        const cleanedKey = serviceAccountKeyStr
-          .trim()
-          .replace(/^\uFEFF/, '') // Remove BOM if present
-          .replace(/\\n/g, '\n') // Handle escaped newlines in private_key
-          .replace(/\\"/g, '"'); // Handle escaped quotes
-        serviceAccountKey = JSON.parse(cleanedKey);
-      } catch {
-        throw new Error(`Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY. Please ensure it is valid JSON. Error: ${parseError}`);
-      }
-    }
-    
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get access token
-    console.log('Getting Google access token...');
-    const accessToken = await getGoogleAccessToken(serviceAccountKey);
-    console.log('Access token obtained successfully');
+    // Parse request body for optional single order sync
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch { /* empty body is fine for full sync */ }
 
     // Fetch orders from Supabase
     console.log('Fetching orders from Supabase...');
@@ -166,7 +72,6 @@ serve(async (req) => {
         notes,
         status,
         created_at,
-        updated_at,
         telegram_message_id,
         seller_id,
         order_items (
@@ -187,10 +92,7 @@ serve(async (req) => {
 
     console.log(`Fetched ${orders?.length || 0} orders`);
 
-    // Format orders for Google Sheets (13 columns)
-    // A: telegram_message_id, B: message, C: Yangi buyurtma, D: Mijoz, E: Telefon,
-    // F: Manzil, G: Mahsulotlar, H: Jami summa, I: Oldindan to'lov, J: Note,
-    // K: Qoldiq, L: Status, M: Sotuvchi
+    // Headers matching user's sheet: 13 columns
     const headers = [
       'telegram_message_id', 'message', 'Yangi buyurtma', 'Mijoz', 'Telefon',
       'Manzil', 'Mahsulotlar', 'Jami summa', "Oldindan to'lov", 'Note',
@@ -199,11 +101,8 @@ serve(async (req) => {
 
     const rows = (orders || []).map((order: any) => {
       const items = order.order_items || [];
-      const products = items
-        .map((item: any) => item.product_name)
-        .filter(Boolean);
+      const products = items.map((item: any) => item.product_name).filter(Boolean);
       const productsStr = products.length > 0 ? `["${products.join('","')}"]` : '';
-
       const remainingPayment = (order.total_amount || 0) - (order.advance_payment || 0);
       const sellerName = order.profiles?.full_name || "Noma'lum";
       const statusUz = statusMap[order.status] || order.status || '';
@@ -226,60 +125,37 @@ serve(async (req) => {
       ];
     });
 
-    // Prepare data with headers
     const allData = [headers, ...rows];
-    const sheetName = 'Zakazlar';
 
-    // Clear existing data and write new data
-    console.log(`Writing ${allData.length} rows to Google Sheets...`);
+    // Send data to Google Apps Script
+    console.log(`Sending ${allData.length} rows to Google Apps Script...`);
+    const response = await fetch(appsScriptUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'syncAll',
+        sheetName: 'Zakazlar',
+        data: allData,
+      }),
+      redirect: 'follow',
+    });
 
-    // First, clear the sheet
-    const clearResponse = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sheetName}!A:M:clear`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    const resultText = await response.text();
+    console.log('Apps Script response status:', response.status);
+    console.log('Apps Script response:', resultText);
 
-    if (!clearResponse.ok) {
-      const clearError = await clearResponse.text();
-      console.warn('Clear response (may be okay if sheet is new):', clearError);
+    let result: any;
+    try {
+      result = JSON.parse(resultText);
+    } catch {
+      result = { raw: resultText };
     }
-
-    // Write the data
-    const writeResponse = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sheetName}!A1?valueInputOption=USER_ENTERED`,
-      {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          range: `${sheetName}!A1`,
-          majorDimension: 'ROWS',
-          values: allData,
-        }),
-      }
-    );
-
-    if (!writeResponse.ok) {
-      const writeError = await writeResponse.text();
-      throw new Error(`Failed to write to Google Sheets: ${writeError}`);
-    }
-
-    const writeResult = await writeResponse.json();
-    console.log('Write result:', writeResult);
 
     return new Response(
       JSON.stringify({
         success: true,
         message: `Synced ${orders?.length || 0} orders to Google Sheets`,
-        updatedCells: writeResult.updatedCells,
+        appsScriptResponse: result,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
