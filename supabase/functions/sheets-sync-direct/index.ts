@@ -187,14 +187,14 @@ serve(async (req) => {
 
     console.log(`Fetched ${orders?.length || 0} orders`);
 
-    // Format orders for Google Sheets (16 columns)
-    // A: telegram_message_id, B: message, C: order_number, D: customer_name, E: customer_phone,
-    // F: address, G: products, H: total_amount, I: advance_payment, J: remaining_payment,
-    // K: status, L: seller_name, M: notes, N: created_at, O: customer_phone2, P: source
+    // Format orders for Google Sheets (13 columns)
+    // A: telegram_message_id, B: message, C: Yangi buyurtma, D: Mijoz, E: Telefon,
+    // F: Manzil, G: Mahsulotlar, H: Jami summa, I: Oldindan to'lov, J: Note,
+    // K: Qoldiq, L: Status, M: Sotuvchi
     const headers = [
-      'telegram_message_id', 'message', 'order_number', 'Mijoz', 'Telefon',
-      'Manzil', 'Mahsulotlar', 'Jami summa', 'Oldindan to\'lov', 'Qoldiq',
-      'Status', 'Sotuvchi', 'Izoh', 'Buyurtma sanasi', 'Phone 2', 'Source'
+      'telegram_message_id', 'message', 'Yangi buyurtma', 'Mijoz', 'Telefon',
+      'Manzil', 'Mahsulotlar', 'Jami summa', "Oldindan to'lov", 'Note',
+      'Qoldiq', 'Status', 'Sotuvchi'
     ];
 
     const rows = (orders || []).map((order: any) => {
@@ -219,13 +219,10 @@ serve(async (req) => {
         productsStr,
         order.total_amount || 0,
         order.advance_payment || 0,
+        order.notes || '',
         remainingPayment,
         statusUz,
-        sellerName,
-        order.notes || '',
-        formatDateUz(order.created_at),
-        order.customer_phone2 || '',
-        'WEB'
+        sellerName
       ];
     });
 
@@ -238,7 +235,7 @@ serve(async (req) => {
 
     // First, clear the sheet
     const clearResponse = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sheetName}!A:P:clear`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sheetName}!A:M:clear`,
       {
         method: 'POST',
         headers: {
