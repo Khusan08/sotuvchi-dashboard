@@ -1069,7 +1069,26 @@ const AllOrders = () => {
                     </TableCell>
                     <TableCell className="max-w-[200px] truncate">{order.notes}</TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => printReceipt({
+                            order_number: order.order_number,
+                            customer_name: order.customer_name,
+                            customer_phone: order.customer_phone || '',
+                            region: order.region,
+                            district: order.district,
+                            order_date: order.order_date,
+                            items: order.items || [],
+                            total_amount: Number(order.total_amount),
+                            advance_payment: Number(order.advance_payment || 0),
+                            notes: order.notes,
+                          })}
+                          title="Chek chiqarish"
+                        >
+                          <Printer className="h-4 w-4" />
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
