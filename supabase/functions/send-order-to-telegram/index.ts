@@ -294,9 +294,9 @@ serve(async (req) => {
         .eq('id', order.order_id);
     }
 
-    // Send personal notification to all admins when a new order is created
+    // Send personal notification to ALL users with telegram_user_id when a new order is created
     if (action === 'create') {
-      console.log('Sending personal notifications to admins...');
+      console.log('Sending personal notifications to all telegram users...');
 
       // Get today's sales data
       const today = new Date();
@@ -331,49 +331,36 @@ serve(async (req) => {
         }
       }
 
-      // Fetch all admin users with telegram_user_id
-      const { data: adminUsers, error: adminError } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'admin');
+      // Fetch ALL profiles with telegram_user_id (not just admins)
+      const { data: telegramProfiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, telegram_user_id, full_name')
+        .not('telegram_user_id', 'is', null);
 
-      if (adminError) {
-        console.error('Error fetching admin users:', adminError);
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
       }
 
-      if (adminUsers && adminUsers.length > 0) {
-        const adminUserIds = adminUsers.map(u => u.user_id);
-        const { data: adminProfiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, telegram_user_id, full_name')
-          .in('id', adminUserIds)
-          .not('telegram_user_id', 'is', null);
+      if (telegramProfiles && telegramProfiles.length > 0) {
+        const adminMessage = formatAdminSalesMessage(order, dailySales);
 
-        if (profilesError) {
-          console.error('Error fetching admin profiles:', profilesError);
-        }
-
-        if (adminProfiles && adminProfiles.length > 0) {
-          const adminMessage = formatAdminSalesMessage(order, dailySales);
-
-          for (const admin of adminProfiles) {
-            console.log(`Sending notification to admin: ${admin.full_name} (${admin.telegram_user_id})`);
-            
-            try {
-              const { data: adminData } = await sendTelegramMessage({
-                botToken: BOT_TOKEN,
-                chatId: String(admin.telegram_user_id).trim(),
-                text: adminMessage,
-                parseMode: 'HTML',
-              });
-              console.log(`Admin notification response for ${admin.full_name}:`, adminData);
-            } catch (err) {
-              console.error(`Error sending to admin ${admin.full_name}:`, err);
-            }
+        for (const profile of telegramProfiles) {
+          console.log(`Sending notification to: ${profile.full_name} (${profile.telegram_user_id})`);
+          
+          try {
+            const { data: notifData } = await sendTelegramMessage({
+              botToken: BOT_TOKEN,
+              chatId: String(profile.telegram_user_id).trim(),
+              text: adminMessage,
+              parseMode: 'HTML',
+            });
+            console.log(`Notification response for ${profile.full_name}:`, notifData);
+          } catch (err) {
+            console.error(`Error sending to ${profile.full_name}:`, err);
           }
-        } else {
-          console.log('No admin users with Telegram ID configured');
         }
+      } else {
+        console.log('No users with Telegram ID configured');
       }
     }
 
