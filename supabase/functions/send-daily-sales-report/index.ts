@@ -22,33 +22,23 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch all admin users with telegram_user_id
-    const { data: adminUsers, error: adminError } = await supabase
-      .from('user_roles')
-      .select('user_id')
-      .eq('role', 'admin');
-
-    if (adminError) throw adminError;
-
-    // Get telegram IDs for admin users
-    const adminUserIds = adminUsers?.map(u => u.user_id) || [];
-    const { data: adminProfiles, error: profilesError } = await supabase
+    // Fetch ALL profiles with telegram_user_id (not just admins)
+    const { data: allProfiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, telegram_user_id, full_name')
-      .in('id', adminUserIds)
       .not('telegram_user_id', 'is', null);
 
     if (profilesError) throw profilesError;
 
-    if (!adminProfiles || adminProfiles.length === 0) {
-      console.log('No admin users with Telegram ID configured');
+    if (!allProfiles || allProfiles.length === 0) {
+      console.log('No users with Telegram ID configured');
       return new Response(
-        JSON.stringify({ success: true, message: 'No admin users with Telegram ID' }),
+        JSON.stringify({ success: true, message: 'No users with Telegram ID' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
-    console.log(`Found ${adminProfiles.length} admin(s) with Telegram ID`);
+    console.log(`Found ${allProfiles.length} user(s) with Telegram ID`);
 
     // Get request body to check report type
     let reportType = 'daily';
@@ -66,11 +56,9 @@ serve(async (req) => {
     let periodName: string;
     
     if (reportType === 'monthly') {
-      // Start of current month
       startDate = new Date(uzbekistanTime.getFullYear(), uzbekistanTime.getMonth(), 1);
       periodName = `${uzbekistanTime.toLocaleString('uz-UZ', { month: 'long', year: 'numeric' })} oylik`;
     } else {
-      // Start of today
       startDate = new Date(uzbekistanTime.getFullYear(), uzbekistanTime.getMonth(), uzbekistanTime.getDate());
       periodName = uzbekistanTime.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' });
     }
@@ -112,7 +100,6 @@ serve(async (req) => {
     let totalSales = 0;
     const sellerStats: Record<string, { name: string; orderCount: number; orderTotal: number; soldLeads: number; leadTotal: number }> = {};
 
-    // Initialize seller stats
     sellers?.forEach(seller => {
       sellerStats[seller.id] = {
         name: seller.full_name,
@@ -123,7 +110,6 @@ serve(async (req) => {
       };
     });
 
-    // Calculate order stats per seller
     orders?.forEach(order => {
       totalSales += Number(order.total_amount || 0);
       if (sellerStats[order.seller_id]) {
@@ -132,7 +118,6 @@ serve(async (req) => {
       }
     });
 
-    // Calculate sold leads stats per seller
     soldLeads?.forEach(lead => {
       const stageName = (lead.stages as any)?.name;
       if (stageName === 'Sotildi' && lead.price) {
@@ -144,7 +129,6 @@ serve(async (req) => {
       }
     });
 
-    // Format message
     const formatNumber = (num: number) => num.toLocaleString('uz-UZ');
     
     let message = `📊 <b>${reportType === 'monthly' ? 'OYLIK' : 'KUNLIK'} SAVDO HISOBOTI</b>\n`;
@@ -153,7 +137,6 @@ serve(async (req) => {
     message += `💰 <b>Jami savdo:</b> ${formatNumber(totalSales)} so'm\n\n`;
     message += `👥 <b>Sotuvchilar bo'yicha:</b>\n\n`;
 
-    // Sort sellers by total sales
     const sortedSellers = Object.values(sellerStats)
       .filter(s => s.orderTotal > 0 || s.leadTotal > 0)
       .sort((a, b) => (b.orderTotal + b.leadTotal) - (a.orderTotal + a.leadTotal));
@@ -177,10 +160,10 @@ serve(async (req) => {
     message += `━━━━━━━━━━━━━━━━━━━━\n`;
     message += `🕐 Hisobot vaqti: ${uzbekistanTime.toLocaleString('uz-UZ')}`;
 
-    // Send to all admin users
+    // Send to ALL users with telegram_user_id
     const results = [];
-    for (const admin of adminProfiles) {
-      console.log(`Sending report to admin: ${admin.full_name} (${admin.telegram_user_id})`);
+    for (const profile of allProfiles) {
+      console.log(`Sending report to: ${profile.full_name} (${profile.telegram_user_id})`);
       
       try {
         const telegramResponse = await fetch(
@@ -189,7 +172,7 @@ serve(async (req) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              chat_id: admin.telegram_user_id,
+              chat_id: profile.telegram_user_id,
               text: message,
               parse_mode: 'HTML',
             }),
@@ -197,17 +180,17 @@ serve(async (req) => {
         );
 
         const telegramData = await telegramResponse.json();
-        console.log(`Telegram response for ${admin.full_name}:`, telegramData);
+        console.log(`Telegram response for ${profile.full_name}:`, telegramData);
         
         results.push({
-          admin: admin.full_name,
+          user: profile.full_name,
           success: telegramResponse.ok,
           data: telegramData
         });
       } catch (err: any) {
-        console.error(`Error sending to ${admin.full_name}:`, err);
+        console.error(`Error sending to ${profile.full_name}:`, err);
         results.push({
-          admin: admin.full_name,
+          user: profile.full_name,
           success: false,
           error: err.message
         });
