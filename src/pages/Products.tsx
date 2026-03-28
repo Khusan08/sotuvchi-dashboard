@@ -97,9 +97,19 @@ const Products = () => {
         if (error) throw error;
         toast.success("Mahsulot yangilandi!");
       } else {
+        // Get user's company_id
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Foydalanuvchi topilmadi");
+        
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("company_id")
+          .eq("id", user.id)
+          .single();
+
         const { error } = await supabase
           .from("products")
-          .insert(productData);
+          .insert({ ...productData, company_id: profile?.company_id });
 
         if (error) throw error;
         toast.success("Mahsulot qo'shildi!");
