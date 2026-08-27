@@ -1,10 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildCorsHeaders, errorResponse, hasValidSharedSecret, jsonResponse, requireUserOrInternalSecret, unauthorized } from '../_shared/security.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 interface OrderData {
   order_id?: string;
@@ -183,8 +180,11 @@ ${statusEmoji} <b>Yangi status:</b> ${statusText}
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: buildCorsHeaders(req) });
   }
+
+  const caller = await requireUserOrInternalSecret(req);
+  if (!caller) return unauthorized(req);
 
   try {
     const { order, action = 'create', statusChange }: { 
@@ -245,7 +245,7 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ success: true, data: sellerData }),
           {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
             status: 200,
           }
         );
@@ -254,7 +254,7 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ success: true, message: 'Seller has no Telegram ID' }),
           {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
             status: 200,
           }
         );
@@ -367,18 +367,11 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ success: true, data: telegramData, message_id: telegramMessageId }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
         status: 200,
       }
     );
-  } catch (error: any) {
-    console.error('Error sending to Telegram:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      }
-    );
+  } catch (error) {
+    return errorResponse(req, 'send-order-to-telegram', error, 500, 'Notification failed');
   }
 });

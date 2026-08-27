@@ -1,10 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildCorsHeaders, errorResponse, hasValidSharedSecret, jsonResponse, requireUserOrInternalSecret, unauthorized } from '../_shared/security.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 interface TaskReminderData {
   task_id: string;
@@ -18,8 +15,11 @@ interface TaskReminderData {
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: buildCorsHeaders(req) });
   }
+
+  const caller = await requireUserOrInternalSecret(req);
+  if (!caller) return unauthorized(req);
 
   try {
     const { task }: { task: TaskReminderData } = await req.json();
@@ -51,7 +51,7 @@ serve(async (req) => {
       console.log('No telegram_user_id found for seller:', task.seller_id);
       return new Response(
         JSON.stringify({ success: false, error: 'Seller has no telegram_user_id configured' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        { headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
@@ -101,13 +101,9 @@ ${task.task_description ? `📝 <b>Tavsif:</b> ${task.task_description}` : ''}
 
     return new Response(
       JSON.stringify({ success: true, data: telegramData }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      { headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' }, status: 200 }
     );
-  } catch (error: any) {
-    console.error('Error sending task reminder:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-    );
+  } catch (error) {
+    return errorResponse(req, 'send-task-reminder', error, 500, 'Notification failed');
   }
 });

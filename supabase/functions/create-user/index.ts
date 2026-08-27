@@ -1,13 +1,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1'
+import { buildCorsHeaders, errorResponse } from '../_shared/security.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: buildCorsHeaders(req) })
   }
 
   try {
@@ -23,7 +20,7 @@ Deno.serve(async (req) => {
 
     if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
         status: 401,
       })
     }
@@ -38,7 +35,7 @@ Deno.serve(async (req) => {
 
     if (!roleData) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
         status: 403,
       })
     }
@@ -51,7 +48,7 @@ Deno.serve(async (req) => {
     // Validate role
     if (!role || !['admin', 'rop', 'sotuvchi'].includes(role)) {
       return new Response(JSON.stringify({ error: 'Invalid role. Must be admin, rop or sotuvchi' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
         status: 400,
       })
     }
@@ -68,14 +65,14 @@ Deno.serve(async (req) => {
 
     if (authError) {
       return new Response(JSON.stringify({ error: authError.message }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
         status: 400,
       })
     }
 
     if (!authData.user) {
       return new Response(JSON.stringify({ error: 'Failed to create user' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
         status: 500,
       })
     }
@@ -104,20 +101,16 @@ Deno.serve(async (req) => {
     if (roleError) {
       console.error('Error assigning role:', roleError)
       return new Response(JSON.stringify({ error: 'Failed to assign role' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
         status: 500,
       })
     }
 
     return new Response(JSON.stringify({ success: true, user: authData.user }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
       status: 200,
     })
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'An error occurred'
-    return new Response(JSON.stringify({ error: errorMessage }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
-    })
+    return errorResponse(req, 'create-user', error, 500, 'Operation failed')
   }
 })

@@ -1,11 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  buildCorsHeaders,
+  errorResponse,
+  jsonResponse,
+  requireUserOrInternalSecret,
+  unauthorized,
+} from "../_shared/security.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
 
 // Status mapping to Uzbek
 const statusMap: Record<string, string> = {
@@ -33,10 +35,15 @@ function formatDateUz(iso: string | null | undefined): string {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { headers: buildCorsHeaders(req) });
   }
 
+  // Only signed-in app users or trusted server-side callers may trigger a sync.
+  const caller = await requireUserOrInternalSecret(req);
+  if (!caller) return unauthorized(req);
+
   try {
+
     console.log('Starting Google Sheets sync via Apps Script...');
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -151,25 +158,12 @@ serve(async (req) => {
       result = { raw: resultText };
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: `Synced ${orders?.length || 0} orders to Google Sheets`,
-        appsScriptResponse: result,
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
-    );
-  } catch (error: any) {
-    console.error('Error in sheets-sync-direct:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      }
-    );
+    return jsonResponse(req, {
+      success: true,
+      message: `Synced ${orders?.length || 0} orders to Google Sheets`,
+    }, 200);
+  } catch (error) {
+    return errorResponse(req, 'sheets-sync-direct', error, 500, 'Sync failed');
   }
+
 });

@@ -1,14 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildCorsHeaders, errorResponse, hasValidSharedSecret, jsonResponse, requireUserOrInternalSecret, unauthorized } from '../_shared/security.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: buildCorsHeaders(req) });
+  }
+
+  // Scheduled/internal callers only.
+  if (!hasValidSharedSecret(req, 'INTERNAL_FUNCTION_SECRET')) {
+    const caller = await requireUserOrInternalSecret(req);
+    if (!caller?.user?.roles.some((r) => r === 'admin' || r === 'rop')) return unauthorized(req);
   }
 
   try {
@@ -34,7 +37,7 @@ serve(async (req) => {
       console.log('No users with Telegram ID configured');
       return new Response(
         JSON.stringify({ success: true, message: 'No users with Telegram ID' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        { headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
@@ -192,20 +195,16 @@ serve(async (req) => {
         results.push({
           user: profile.full_name,
           success: false,
-          error: err.message
+          error: 'Delivery failed'
         });
       }
     }
 
     return new Response(
       JSON.stringify({ success: true, results }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      { headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' }, status: 200 }
     );
-  } catch (error: any) {
-    console.error('Error sending daily sales report:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-    );
+  } catch (error) {
+    return errorResponse(req, 'send-daily-sales-report', error, 500, 'Report failed');
   }
 });

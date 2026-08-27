@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { productSchema, firstError } from "@/lib/validation";
 
 const Products = () => {
   const [products, setProducts] = useState<any[]>([]);
@@ -72,7 +73,17 @@ const Products = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    const parsed = productSchema.safeParse({
+      name: formData.name,
+      description: formData.description,
+      price: parseFloat(formData.price),
+    });
+    if (!parsed.success) {
+      toast.error(firstError(parsed)!);
+      return;
+    }
+
     try {
       let imageUrl = editingProduct?.image_url || null;
 

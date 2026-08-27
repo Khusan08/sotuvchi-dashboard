@@ -12,6 +12,7 @@ import { Plus, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useNavigate } from "react-router-dom";
+import { sellerSchema, firstError } from "@/lib/validation";
 
 interface Seller {
   id: string;
@@ -75,6 +76,12 @@ const Sellers = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const parsed = sellerSchema.safeParse(formData);
+    if (!parsed.success) {
+      toast.error(firstError(parsed)!);
+      return;
+    }
 
     try {
       const { data: { session } } = await supabase.auth.getSession();

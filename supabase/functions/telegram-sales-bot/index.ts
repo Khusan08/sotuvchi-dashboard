@@ -1,14 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildCorsHeaders, errorResponse, hasValidSharedSecret, jsonResponse, requireUserOrInternalSecret, unauthorized } from '../_shared/security.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: buildCorsHeaders(req) });
+  }
+
+  // Telegram webhook secret token, internal scheduler secret, or an admin session.
+  const telegramSecret = req.headers.get('x-telegram-bot-api-secret-token');
+  const fromTelegram = !!telegramSecret && hasValidSharedSecret(req, 'TELEGRAM_WEBHOOK_SECRET');
+  if (!fromTelegram && !hasValidSharedSecret(req, 'INTERNAL_FUNCTION_SECRET')) {
+    const caller = await requireUserOrInternalSecret(req);
+    if (!caller?.user?.roles.some((r) => r === 'admin' || r === 'rop')) return unauthorized(req);
   }
 
   try {
@@ -81,7 +86,7 @@ serve(async (req) => {
         });
         
         return new Response(JSON.stringify({ success: true }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
         });
       } else if (data.startsWith('month_')) {
         // Show days of selected month
@@ -130,13 +135,13 @@ serve(async (req) => {
         });
         
         return new Response(JSON.stringify({ success: true }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
         });
       } else if (data === 'main_menu') {
         // Show main menu
         await sendMainMenu(BOT_TOKEN, chatId, callbackQuery.message.message_id);
         return new Response(JSON.stringify({ success: true }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
         });
       }
 
@@ -160,7 +165,7 @@ serve(async (req) => {
       }
 
       return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -189,7 +194,7 @@ serve(async (req) => {
       });
       
       return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -199,7 +204,7 @@ serve(async (req) => {
       await sendMainMenu(BOT_TOKEN, chatId);
       
       return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -244,19 +249,15 @@ serve(async (req) => {
       }
 
       return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
     return new Response(JSON.stringify({ success: true, message: 'No action taken' }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
     });
-  } catch (error: any) {
-    console.error('Error in telegram-sales-bot:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-    );
+  } catch (error) {
+    return errorResponse(req, 'telegram-sales-bot', error, 500, 'Request failed');
   }
 });
 
