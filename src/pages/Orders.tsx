@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { regionsData } from "@/lib/regions";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { OrderConfirmDialog } from "@/components/OrderConfirmDialog";
+import { orderSchema, firstError } from "@/lib/validation";
 
 const Orders = () => {
   const [orders, setOrders] = useState<any[]>([]);
@@ -264,6 +265,19 @@ const Orders = () => {
     
     // Prevent double submission
     if (isSubmitting) return;
+
+    const parsed = orderSchema.safeParse({
+      customer_name: formData.customer_name,
+      customer_phone: formData.customer_phone,
+      customer_phone2: formData.customer_phone2 ?? "",
+      region: formData.region ?? "",
+      district: formData.district ?? "",
+      notes: formData.notes ?? "",
+    });
+    if (!parsed.success) {
+      toast.error(firstError(parsed)!);
+      return;
+    }
     
     // For new orders, show confirmation dialog
     if (!editingOrder) {

@@ -22,6 +22,7 @@ import LeadDetailsDialog from "@/components/LeadDetailsDialog";
 import StageManagement from "@/components/StageManagement";
 import SortableStageColumn from "@/components/SortableStageColumn";
 import { StageChangeDialog } from "@/components/StageChangeDialog";
+import { leadSchema, firstError } from "@/lib/validation";
 
 const LEAD_TYPE_OPTIONS = ["Yangi lid", "Baza"];
 
@@ -249,6 +250,19 @@ const MUHIM_STAGE_ID = "1aa6d478-0e36-4642-b5c5-e2a6b6985c08";
     
     if (!employeeId) {
       toast.error("Iltimos, xodimni tanlang");
+      return;
+    }
+
+    const parsed = leadSchema.safeParse({
+      customer_name: formData.customer_name,
+      customer_phone: formData.customer_phone,
+      lead_type: formData.lead_type,
+      notes: formData.notes,
+      activity: formData.activity,
+      source: formData.source,
+    });
+    if (!parsed.success) {
+      toast.error(firstError(parsed)!);
       return;
     }
 

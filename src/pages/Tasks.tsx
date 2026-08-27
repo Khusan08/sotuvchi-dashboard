@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { taskSchema, firstError } from "@/lib/validation";
 
 interface Task {
   id: string;
@@ -158,6 +159,16 @@ const Tasks = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const parsed = taskSchema.safeParse({
+      title: formData.title,
+      description: formData.description,
+      due_date: formData.due_date,
+    });
+    if (!parsed.success) {
+      toast.error(firstError(parsed)!);
+      return;
+    }
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
