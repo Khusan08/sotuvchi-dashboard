@@ -195,7 +195,7 @@ serve(async (req) => {
         results.push({
           user: profile.full_name,
           success: false,
-          error: err.message
+          error: 'Delivery failed'
         });
       }
     }
