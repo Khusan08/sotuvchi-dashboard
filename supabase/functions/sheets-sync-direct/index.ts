@@ -35,10 +35,15 @@ function formatDateUz(iso: string | null | undefined): string {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { headers: buildCorsHeaders(req) });
   }
 
+  // Only signed-in app users or trusted server-side callers may trigger a sync.
+  const caller = await requireUserOrInternalSecret(req);
+  if (!caller) return unauthorized(req);
+
   try {
+
     console.log('Starting Google Sheets sync via Apps Script...');
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
