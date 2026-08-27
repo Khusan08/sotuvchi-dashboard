@@ -103,11 +103,7 @@ ${task.task_description ? `📝 <b>Tavsif:</b> ${task.task_description}` : ''}
       JSON.stringify({ success: true, data: telegramData }),
       { headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' }, status: 200 }
     );
-  } catch (error: any) {
-    console.error('Error sending task reminder:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' }, status: 500 }
-    );
+  } catch (error) {
+    return errorResponse(req, 'send-task-reminder', error, 500, 'Notification failed');
   }
 });

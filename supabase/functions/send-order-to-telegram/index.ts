@@ -371,14 +371,7 @@ serve(async (req) => {
         status: 200,
       }
     );
-  } catch (error: any) {
-    console.error('Error sending to Telegram:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      {
-        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
-        status: 500,
-      }
-    );
+  } catch (error) {
+    return errorResponse(req, 'send-order-to-telegram', error, 500, 'Notification failed');
   }
 });

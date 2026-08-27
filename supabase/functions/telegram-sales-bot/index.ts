@@ -256,12 +256,8 @@ serve(async (req) => {
     return new Response(JSON.stringify({ success: true, message: 'No action taken' }), {
       headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
     });
-  } catch (error: any) {
-    console.error('Error in telegram-sales-bot:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' }, status: 500 }
-    );
+  } catch (error) {
+    return errorResponse(req, 'telegram-sales-bot', error, 500, 'Request failed');
   }
 });
 

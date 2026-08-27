@@ -204,11 +204,7 @@ serve(async (req) => {
       JSON.stringify({ success: true, results }),
       { headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' }, status: 200 }
     );
-  } catch (error: any) {
-    console.error('Error sending daily sales report:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' }, status: 500 }
-    );
+  } catch (error) {
+    return errorResponse(req, 'send-daily-sales-report', error, 500, 'Report failed');
   }
 });

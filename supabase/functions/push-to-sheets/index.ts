@@ -185,11 +185,7 @@ serve(async (req) => {
       JSON.stringify({ success: true }),
       { headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' }, status: 200 }
     );
-  } catch (error: any) {
-    console.error('Error in push-to-sheets:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' }, status: 500 }
-    );
+  } catch (error) {
+    return errorResponse(req, 'push-to-sheets', error, 500, 'Sync failed');
   }
 });

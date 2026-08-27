@@ -1,13 +1,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1'
+import { buildCorsHeaders, errorResponse } from '../_shared/security.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: buildCorsHeaders(req) })
   }
 
   try {
@@ -23,7 +20,7 @@ Deno.serve(async (req) => {
 
     if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
         status: 401,
       })
     }
@@ -38,7 +35,7 @@ Deno.serve(async (req) => {
 
     if (!roleData) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
         status: 403,
       })
     }
@@ -48,7 +45,7 @@ Deno.serve(async (req) => {
 
     if (!user_id) {
       return new Response(JSON.stringify({ error: 'User ID is required' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
         status: 400,
       })
     }
@@ -59,21 +56,16 @@ Deno.serve(async (req) => {
     if (deleteError) {
       console.error('Error deleting user:', deleteError)
       return new Response(JSON.stringify({ error: deleteError.message }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
         status: 400,
       })
     }
 
     return new Response(JSON.stringify({ success: true }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
       status: 200,
     })
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'An error occurred'
-    console.error('Error in delete-user function:', errorMessage)
-    return new Response(JSON.stringify({ error: errorMessage }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
-    })
+    return errorResponse(req, 'delete-user', error, 500, 'Operation failed')
   }
 })
