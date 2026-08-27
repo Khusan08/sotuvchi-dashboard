@@ -1,9 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { buildCorsHeaders, errorResponse, hasValidSharedSecret, jsonResponse, requireUserOrInternalSecret, unauthorized } from '../_shared/security.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 // Google Sheets API helper
 async function appendToSheet(auth: any, spreadsheetId: string, range: string, values: any[][]) {
@@ -92,8 +89,11 @@ async function getAccessToken(serviceAccountKey: any) {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: buildCorsHeaders(req) });
   }
+
+  const caller = await requireUserOrInternalSecret(req);
+  if (!caller) return unauthorized(req);
 
   try {
     const { type, data } = await req.json();
@@ -107,7 +107,7 @@ serve(async (req) => {
       console.error('Missing Google Sheets configuration');
       return new Response(
         JSON.stringify({ success: false, error: 'Google Sheets not configured' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        { headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' }, status: 400 }
       );
     }
 
@@ -122,7 +122,7 @@ serve(async (req) => {
       console.error('Key value (first 100 chars):', serviceAccountKeyStr.substring(0, 100));
       return new Response(
         JSON.stringify({ success: false, error: 'Invalid service account key format' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        { headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' }, status: 400 }
       );
     }
     const auth = await getAccessToken(serviceAccountKey);
@@ -183,13 +183,13 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ success: true }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      { headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' }, status: 200 }
     );
   } catch (error: any) {
     console.error('Error in push-to-sheets:', error);
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      { headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' }, status: 500 }
     );
   }
 });
