@@ -158,25 +158,12 @@ serve(async (req) => {
       result = { raw: resultText };
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: `Synced ${orders?.length || 0} orders to Google Sheets`,
-        appsScriptResponse: result,
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
-    );
-  } catch (error: any) {
-    console.error('Error in sheets-sync-direct:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      }
-    );
+    return jsonResponse(req, {
+      success: true,
+      message: `Synced ${orders?.length || 0} orders to Google Sheets`,
+    }, 200);
+  } catch (error) {
+    return errorResponse(req, 'sheets-sync-direct', error, 500, 'Sync failed');
   }
+
 });
